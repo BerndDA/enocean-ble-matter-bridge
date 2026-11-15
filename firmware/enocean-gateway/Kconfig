@@ -37,6 +37,31 @@ config GATEWAY_ENOCEAN_RX_STACK_SIZE
 	int "Stack size of the TCM receive thread"
 	default 1024
 
+config GATEWAY_LAMETRIC
+	bool "LaMetric Time follows the power of an actuator"
+	depends on OPENTHREAD_SOURCES && SETTINGS
+	select OPENTHREAD_TCP_ENABLE
+	help
+	  When a D2-01 actuator (the kitchen radio) draws power, the LaMetric
+	  Time's screensaver is turned off and its radio app plays; at 0 W the
+	  screensaver is turned on and the radio stops. Local REST API over plain HTTP on OpenThread's
+	  TCP; an IPv4 clock is reached through the border router's NAT64.
+	  Set up in the shell: `lametric host|key|trigger`. See
+	  src/lametric/lametric.h.
+
+if GATEWAY_LAMETRIC
+
+config GATEWAY_LAMETRIC_PORT
+	int "Default HTTP port of the clock's local API"
+	default 8080
+
+config GATEWAY_LAMETRIC_ON_W
+	int "Power (W) from which the clock is switched on"
+	default 1
+	range 1 10000
+
+endif # GATEWAY_LAMETRIC
+
 module = GATEWAY_ENOCEAN
 module-str = Gateway EnOcean
 source "subsys/logging/Kconfig.template.log_config"

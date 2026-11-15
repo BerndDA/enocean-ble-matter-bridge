@@ -30,6 +30,12 @@ target_sources(app PRIVATE
   src/gateway_shell.cpp
 )
 
+# LaMetric Time follows the kitchen radio's power (src/lametric/lametric.h)
+if(CONFIG_GATEWAY_LAMETRIC)
+  target_sources(app PRIVATE src/lametric/lametric.cpp)
+  target_sources_ifdef(CONFIG_SHELL app PRIVATE src/lametric/lametric_shell.cpp)
+endif()
+
 # Status page (firmware/common/web): src/web/index.html and its JSON
 target_sources_ifdef(CONFIG_GATEWAY_WEB app PRIVATE src/web_status.cpp)
 

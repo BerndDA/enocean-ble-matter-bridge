@@ -9,6 +9,9 @@
 #include "eep.h"
 #include "onoff_light.h"
 #include "tcm.h"
+#ifdef CONFIG_GATEWAY_LAMETRIC
+#include "lametric/lametric.h"
+#endif
 
 #include <app-common/zap-generated/ids/Attributes.h>
 #include <app-common/zap-generated/ids/Clusters.h>
@@ -630,6 +633,9 @@ void EnOceanManager::HandleTelegram(const Telegram &t)
 			device->mHasPower = true;
 			device->mPowerW = watts;
 			device->mProvider->OnPower(watts);
+#ifdef CONFIG_GATEWAY_LAMETRIC
+			LaMetric::OnPower(t.mSender, watts);
+#endif
 		}
 		LOG_DBG("EnOcean: %08X %u %s", t.mSender, measurement.value,
 			eep_d2_01_unit_name(measurement.unit));

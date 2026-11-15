@@ -63,6 +63,28 @@ The shell accepts only ASCII: umlauts are dropped (`Küche` arrives as `Kche`). 
 
 Never change the TCM's base ID: every actuator taught in to it would have to be taught in again, and the module allows only 10 changes.
 
+## In the gateway shell: `lametric`
+
+The LaMetric Time follows the power of the kitchen radio's D2-01 actuator. At 1 W or more, the clock's screensaver is turned off and its radio app plays. At 0 W, the screensaver is turned on and the radio stops. Only the screensaver's on/off is changed: its schedule and the display brightness stay as set on the clock. Only changes are sent; the first power value after a start counts as one. A failed request is retried after 30 s, then after twice as long each time, up to 10 min. The power threshold is a Kconfig option (`CONFIG_GATEWAY_LAMETRIC_ON_W`).
+
+| Command | Purpose |
+| --- | --- |
+| `lametric host <IPv4\|IPv6> [port]` | The clock's address; port 8080 (local API, plain HTTP) by default |
+| `lametric key <API key>` | The clock's API key, from developer.lametric.com > Devices (or the LaMetric app) |
+| `lametric trigger <id>` | The D2-01 actuator whose power the clock follows; `0` turns it off |
+| `lametric status` | Settings, wanted and sent state, radio widget, last HTTP status and error |
+| `lametric on` / `lametric off` | Send screensaver off and radio on / screensaver on and radio off now, to test |
+
+The settings are saved and survive restarts. For this house:
+
+```
+lametric host <clock IPv4>
+lametric key <API key>
+lametric trigger 05017E43
+```
+
+The gateway reaches an IPv4 clock through the NAT64 prefix that the border router publishes in the Thread network. Without one, `lametric status` shows "no NAT64 prefix in the Thread network". The clock needs a fixed address (a DHCP reservation), and the Radio app must be installed on it.
+
 ## In the gateway shell: `gateway`
 
 | Command | Purpose |

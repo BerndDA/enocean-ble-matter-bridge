@@ -16,6 +16,9 @@
 #include "web/web_server.h"
 #include "web_status.h"
 #endif
+#ifdef CONFIG_GATEWAY_LAMETRIC
+#include "lametric/lametric.h"
+#endif
 
 #include "app/matter_init.h"
 #include "app/task_executor.h"
@@ -122,6 +125,9 @@ CHIP_ERROR AppTask::Init()
 #endif
 #ifdef CONFIG_GATEWAY_WEB
 		Gateway::Web::Init(Gateway::WriteWebStatus);
+#endif
+#ifdef CONFIG_GATEWAY_LAMETRIC
+		Gateway::LaMetric::Init();
 #endif
 		return CHIP_NO_ERROR;
 	} }));
