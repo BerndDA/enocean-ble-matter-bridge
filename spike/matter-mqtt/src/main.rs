@@ -28,24 +28,24 @@ use matter_controller::{AttestationTrust, FabricConfig, FileStore, MatterControl
 struct Args {
     /// Controller state: fabric root CA, own credentials, commissioned nodes.
     /// Losing this file means losing the fabric.
-    #[arg(long, default_value = "state/controller.bin")]
+    #[arg(long, env = "STORE", default_value = "state/controller.bin")]
     store: PathBuf,
 
     /// Directory with PAA root certificates (*.der), production and test.
-    #[arg(long, default_value = "certs/paa")]
+    #[arg(long, env = "PAA_DIR", default_value = "certs/paa")]
     paa_dir: PathBuf,
 
     /// Directory with CD signing certificates (*.der), production and test.
-    #[arg(long, default_value = "certs/cd")]
+    #[arg(long, env = "CD_DIR", default_value = "certs/cd")]
     cd_dir: PathBuf,
 
-    /// Topic prefix of the printed lines.
-    #[arg(long, default_value = "matter")]
+    /// Topic prefix.
+    #[arg(long, env = "PREFIX", default_value = "matter")]
     prefix: String,
 
     /// Web UI / REST API address. No authentication: anyone who can reach it
     /// can commission and remove devices.
-    #[arg(long, default_value = "127.0.0.1:8080")]
+    #[arg(long, env = "HTTP", default_value = "127.0.0.1:8080")]
     http: SocketAddr,
 
     /// Max interval in seconds a device may stay silent (liveness).

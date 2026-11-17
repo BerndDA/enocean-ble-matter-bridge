@@ -5,7 +5,7 @@ Apple/Google Home); it subscribes to every commissioned node and publishes the v
 retained MQTT topics like `matter/ble-gateway/bad/temperature 19.4`. Built on
 [`matter-controller`](https://github.com/phunapps/matter-rust).
 
-Still a spike: next are a Docker image and running it unattended for a while.
+Still a spike, running on the Pi (see Docker) to prove itself unattended.
 
 ## Setup
 
@@ -54,6 +54,42 @@ Plain TCP, MQTT 3.1.1, client id `matter-mqtt`, QoS 1.
   removed device gets all of them deleted.
 - Messages are queued (10,000) while the broker is unreachable; beyond that they are dropped, the
   republish after reconnecting restores the state.
+
+## Docker
+
+```sh
+docker build -t matter-mqtt .
+docker run -d --name matter-mqtt --network host -v ./state:/data \
+    -e MQTT=127.0.0.1:2222 matter-mqtt
+```
+
+- `rust:1-bookworm` builds, `gcr.io/distroless/cc-debian12:nonroot` runs (55 MB, no shell). The
+  attestation roots are fetched at build time into `/certs`.
+- **Host networking is required**: devices are found via mDNS and reached over IPv6 (Thread devices
+  through the border router), neither works through Docker's bridge NAT.
+- `/data` holds the fabric (`controller.bin`, `events-<node>.txt`). Moving an existing setup means
+  copying `state/` into it, and never running the old instance again.
+- Defaults inside the image: `STORE=/data/controller.bin`, `HTTP=0.0.0.0:8090`; set `MQTT` (and
+  optionally `MQTT_USER`, `MQTT_PASSWORD`, `PREFIX`) via the environment.
+
+On the Pi it runs from the home-automation compose file, built straight from this repo:
+
+```yaml
+  matter-mqtt:
+    image: matter-mqtt:latest
+    build:
+      context: https://github.com/BerndDA/enocean-ble-matter-bridge.git#main:spike/matter-mqtt
+    restart: unless-stopped
+    network_mode: host
+    user: "1000:1000"
+    environment:
+      - MQTT=127.0.0.1:2222
+      - HTTP=0.0.0.0:8090
+    volumes:
+      - ./volumes/matter-mqtt:/data
+```
+
+Update: `docker compose build matter-mqtt && docker compose up -d matter-mqtt`.
 
 ## Adding a device (multi-admin)
 
