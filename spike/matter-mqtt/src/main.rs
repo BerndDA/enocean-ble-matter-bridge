@@ -9,6 +9,7 @@
 
 mod hub;
 mod mapping;
+mod mqtt;
 mod tlv;
 mod watcher;
 mod web;
@@ -58,6 +59,20 @@ struct Args {
     /// Also publish every raw value under `<prefix>/raw/<node>/...`.
     #[arg(long)]
     raw: bool,
+
+    /// MQTT broker as host:port, or "none" to disable MQTT.
+    #[arg(long, env = "MQTT", default_value = "mqtt.home.seidenspinner.tv:2222")]
+    mqtt: String,
+
+    #[arg(long, env = "MQTT_USER")]
+    mqtt_user: Option<String>,
+
+    #[arg(long, env = "MQTT_PASSWORD", hide_env_values = true)]
+    mqtt_password: Option<String>,
+
+    /// Echo every published message on stdout.
+    #[arg(long)]
+    print: bool,
 }
 
 #[tokio::main]
@@ -72,6 +87,23 @@ async fn main() -> Result<()> {
     let args = Args::parse();
     let controller = open_controller(&args).await?;
 
+    let mqtt = if args.mqtt == "none" {
+        None
+    } else {
+        let (host, port) = args
+            .mqtt
+            .rsplit_once(':')
+            .and_then(|(h, p)| Some((h.trim_matches(['[', ']']).to_owned(), p.parse().ok()?)))
+            .with_context(|| format!("--mqtt {}: expected host:port", args.mqtt))?;
+        eprintln!("mqtt: broker {host}:{port}");
+        Some(mqtt::connect(mqtt::Settings {
+            host,
+            port,
+            user: args.mqtt_user.clone(),
+            password: args.mqtt_password.clone(),
+            status_topic: format!("{}/status", args.prefix),
+        }))
+    };
     let hub = hub::Hub::new(
         controller.clone(),
         hub::Config {
@@ -80,8 +112,14 @@ async fn main() -> Result<()> {
             max_interval: args.max_interval,
             all: args.all,
             raw: args.raw,
+            print: args.print || mqtt.is_none(),
         },
+        mqtt.as_ref().map(|(m, _)| m.clone()),
     );
+    let mqtt = mqtt.map(|(m, eventloop)| {
+        tokio::spawn(mqtt::run(eventloop, m.clone(), hub.clone()));
+        m
+    });
     for n in controller.nodes().await? {
         hub.start(n.node_id, n.label);
     }
@@ -90,11 +128,15 @@ async fn main() -> Result<()> {
         .await
         .with_context(|| format!("binding {}", args.http))?;
     eprintln!("web UI on http://{}", args.http);
-    axum::serve(listener, web::router(hub))
+    axum::serve(listener, web::router(hub.clone()))
         .with_graceful_shutdown(async {
             tokio::signal::ctrl_c().await.ok();
         })
         .await?;
+    hub.shutdown();
+    if let Some(m) = mqtt {
+        m.shutdown().await;
+    }
     Ok(())
 }
 

@@ -1,11 +1,11 @@
 # matter-mqtt spike
 
-A Matter controller with its **own fabric**. It subscribes to every attribute and event of every
-commissioned node and prints one line per report, `<topic> <json>`, ready to be turned into an MQTT
-publish. Built on [`matter-controller`](https://github.com/phunapps/matter-rust).
+A Matter controller with its **own fabric**. Devices join it as an additional admin (they stay in
+Apple/Google Home); it subscribes to every commissioned node and publishes the values as readable,
+retained MQTT topics like `matter/ble-gateway/bad/temperature 19.4`. Built on
+[`matter-controller`](https://github.com/phunapps/matter-rust).
 
-Goal of the spike: prove the library commissions and keeps subscriptions alive with our real
-devices before building the MQTT/Docker version.
+Still a spike: next are a Docker image and running it unattended for a while.
 
 ## Setup
 
@@ -20,17 +20,40 @@ Lose it and every device has to be commissioned again.
 ## Running
 
 ```sh
-./target/release/matter-mqtt                    # web UI on http://127.0.0.1:8080
+./target/release/matter-mqtt                       # web UI on http://127.0.0.1:8080
 ./target/release/matter-mqtt --http 0.0.0.0:8080   # reachable from the LAN
-RUST_LOG=debug ./target/release/matter-mqtt     # protocol logging to stderr
+./target/release/matter-mqtt --mqtt none --print   # no MQTT, messages on stdout
+RUST_LOG=debug ./target/release/matter-mqtt        # protocol logging to stderr
 ```
 
-One process does everything: it subscribes to all commissioned nodes and serves the web UI / REST
-API for adding, labelling and removing devices. Never run two instances on the same `state/`: they
-share one fabric identity and cancel each other's subscriptions.
+One process does everything: it subscribes to all commissioned nodes, publishes to MQTT and serves
+the web UI / REST API for adding, labelling and removing devices. Never run two instances on the
+same `state/`: they share one fabric identity and cancel each other's subscriptions.
 
 The web server has **no authentication**. Anyone who can reach it can commission and remove
 devices, hence the localhost default.
+
+## MQTT
+
+| Option | Env | Default |
+|---|---|---|
+| `--mqtt host:port` (`none` disables) | `MQTT` | `mqtt.home.seidenspinner.tv:2222` |
+| `--mqtt-user` | `MQTT_USER` | none |
+| `--mqtt-password` | `MQTT_PASSWORD` | none |
+| `--prefix` | | `matter` |
+| `--print` (echo every message on stdout) | | off, on with `--mqtt none` |
+
+Plain TCP, MQTT 3.1.1, client id `matter-mqtt`, QoS 1.
+
+- Values, `info` and `online` topics are **retained**; events are not.
+- `<prefix>/status` is `online` while the bridge is connected; `offline` is its last will and is
+  also sent on a clean shutdown, together with `online false` for every device.
+- After every (re)connect the complete state is published again, so a broker restarted without
+  persistence is refilled.
+- A renamed device or endpoint gets its old retained topics deleted (empty retained payload); a
+  removed device gets all of them deleted.
+- Messages are queued (10,000) while the broker is unreachable; beyond that they are dropped, the
+  republish after reconnecting restores the state.
 
 ## Adding a device (multi-admin)
 
@@ -63,7 +86,7 @@ The fabric label is what the device stores for our fabric. The vendor shown next
 
 ## Output
 
-stdout carries what will go to MQTT (retained), status messages go to stderr:
+Published messages (shown here as `--print` writes them; status messages go to stderr):
 
 ```text
 matter/nuki/online                          true
@@ -93,9 +116,6 @@ first complete read of a node, so a value never shows up under a temporary name.
 are visible in the web UI (*Raw values*); `--raw` also publishes them as
 `<prefix>/raw/<node>/<endpoint>/<cluster>/<attribute>`. To support a new device type, add its
 attributes to `mapping::attribute` (and events to `mapping::event`).
-
-Renaming a device or endpoint moves its topics; the old retained topics will need clearing once
-this publishes to MQTT.
 
 What gets subscribed (one subscription per node):
 

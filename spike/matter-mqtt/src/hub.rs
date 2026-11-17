@@ -4,7 +4,7 @@
 //! (see `mapping`) and hands them to [`Hub::publish`], which prints them
 //! (later: publishes them to MQTT, retained).
 
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -19,6 +19,7 @@ use serde_json::{Map, Value as Json, json};
 use tokio::task::JoinHandle;
 
 use crate::mapping;
+use crate::mqtt::Mqtt;
 use crate::watcher::Watcher;
 
 const OPERATIONAL_CREDENTIALS: u32 = 0x003e;
@@ -39,6 +40,8 @@ pub struct Config {
     pub all: bool,
     /// Also publish every raw value under `<prefix>/raw/<node>/...`.
     pub raw: bool,
+    /// Echo every message on stdout.
+    pub print: bool,
 }
 
 #[derive(Default, Clone, Serialize)]
@@ -65,20 +68,24 @@ struct NodeState {
     view: NodeView,
     /// Raw values by path, for name resolution and info payloads.
     raw: HashMap<(u16, u32, u32), Json>,
+    /// While `publish_all` runs: every topic it produced, to find stale ones.
+    touched: Option<HashSet<String>>,
 }
 
 pub struct Hub {
     pub controller: MatterController,
     pub cfg: Config,
+    mqtt: Option<Mqtt>,
     nodes: Mutex<HashMap<u64, NodeState>>,
     tasks: Mutex<HashMap<u64, JoinHandle<()>>>,
 }
 
 impl Hub {
-    pub fn new(controller: MatterController, cfg: Config) -> Arc<Self> {
+    pub fn new(controller: MatterController, cfg: Config, mqtt: Option<Mqtt>) -> Arc<Self> {
         Arc::new(Self {
             controller,
             cfg,
+            mqtt,
             nodes: Mutex::default(),
             tasks: Mutex::default(),
         })
@@ -95,7 +102,7 @@ impl Hub {
     pub fn start(self: &Arc<Self>, node_id: u64, label: Option<String>) {
         self.nodes.lock().unwrap().insert(
             node_id,
-            NodeState { label, view: NodeView::default(), raw: HashMap::new() },
+            NodeState { label, view: NodeView::default(), raw: HashMap::new(), touched: None },
         );
         let task = tokio::spawn(Watcher::new(self.clone(), node_id).run());
         if let Some(old) = self.tasks.lock().unwrap().insert(node_id, task) {
@@ -109,6 +116,15 @@ impl Hub {
             t.abort();
         }
         self.online(node_id, false);
+    }
+
+    /// Clean shutdown: every node goes offline (the broker's last will only
+    /// covers `<prefix>/status`).
+    pub fn shutdown(&self) {
+        let ids: Vec<u64> = self.tasks.lock().unwrap().keys().copied().collect();
+        for id in ids {
+            self.stop(id);
+        }
     }
 
     pub fn view(&self, node_id: u64) -> NodeView {
@@ -183,9 +199,9 @@ impl Hub {
         };
         n.view.events.push_front(EventView { topic: topic.clone(), payload: payload.clone() });
         n.view.events.truncate(KEEP_EVENTS);
-        // Events are never deduplicated: each one happened.
+        // Events are never deduplicated (each one happened) nor retained.
         if !topic.contains("/raw/") || self.cfg.raw {
-            println!("{topic} {}", payload_text(&payload));
+            self.send(&topic, payload_text(&payload), false);
         }
     }
 
@@ -201,14 +217,59 @@ impl Hub {
 
     /// Only changes go out; the resync reads would otherwise repeat everything.
     fn publish(&self, n: &mut NodeState, topic: String, payload: Json) {
+        if let Some(t) = &mut n.touched {
+            t.insert(topic.clone());
+        }
         if n.view.published.get(&topic) == Some(&payload) {
             return;
         }
-        println!("{topic} {}", payload_text(&payload));
+        self.send(&topic, payload_text(&payload), true);
         n.view.published.insert(topic, payload);
     }
 
+    fn send(&self, topic: &str, payload: String, retain: bool) {
+        if self.cfg.print {
+            println!("{topic} {payload}");
+        }
+        if let Some(m) = &self.mqtt {
+            m.publish(topic, payload, retain);
+        }
+    }
+
+    /// Deletes retained topics on the broker.
+    fn clear(&self, n: &mut NodeState, topics: Vec<String>) {
+        for topic in topics {
+            self.send(&topic, String::new(), true);
+            n.view.published.remove(&topic);
+        }
+    }
+
+    /// After an MQTT (re)connect: send the complete retained state again.
+    pub fn republish(&self) {
+        for n in self.nodes.lock().unwrap().values() {
+            for (topic, payload) in &n.view.published {
+                self.send(topic, payload_text(payload), true);
+            }
+        }
+    }
+
+    /// Publishes everything of a node and deletes retained topics it no
+    /// longer produces (a renamed device or endpoint).
     fn publish_all(&self, node_id: u64, n: &mut NodeState) {
+        n.touched = Some(HashSet::new());
+        self.publish_all_inner(node_id, n);
+        let touched = n.touched.take().unwrap_or_default();
+        let stale: Vec<String> = n
+            .view
+            .published
+            .keys()
+            .filter(|t| !t.contains("/raw/") && !touched.contains(*t))
+            .cloned()
+            .collect();
+        self.clear(n, stale);
+    }
+
+    fn publish_all_inner(&self, node_id: u64, n: &mut NodeState) {
         let mut endpoints: Vec<u16> = n.raw.keys().map(|k| k.0).collect();
         endpoints.sort_unstable();
         endpoints.dedup();
@@ -320,7 +381,10 @@ impl Hub {
             }
         }
         self.controller.forget_node(node_id).await?;
-        self.nodes.lock().unwrap().remove(&node_id);
+        if let Some(mut n) = self.nodes.lock().unwrap().remove(&node_id) {
+            let topics = n.view.published.keys().cloned().collect();
+            self.clear(&mut n, topics);
+        }
         std::fs::remove_file(self.watermark_file(node_id)).ok();
         eprintln!("removed node {node_id}{}", if local_only { " (local only)" } else { "" });
         Ok(())
