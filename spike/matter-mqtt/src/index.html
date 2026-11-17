@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Matter MQTT</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #fff; --text: #1d2330; --muted: #6b7280; --line: #e3e6eb;
+    --accent: #2563eb; --ok: #16a34a; --off: #9ca3af; --danger: #dc2626;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b; --card: #1b1f27; --text: #e6e8ec; --muted: #9aa1ad; --line: #2b313c;
+      --accent: #60a5fa; --ok: #4ade80; --off: #6b7280; --danger: #f87171;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 20px; margin: 0 0 20px; }
+  h2 { font-size: 15px; margin: 0 0 12px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+          padding: 16px; margin-bottom: 16px; }
+  form { display: flex; gap: 8px; flex-wrap: wrap; }
+  input { flex: 1 1 180px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px;
+          background: var(--bg); color: var(--text); font: inherit; }
+  button { padding: 8px 14px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer;
+           background: var(--card); color: var(--text); font: inherit; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.danger { color: var(--danger); }
+  button:disabled { opacity: .5; cursor: progress; }
+  .hint { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+  .msg { margin-top: 10px; font-size: 13px; }
+  .msg.err { color: var(--danger); }
+  .node { border-top: 1px solid var(--line); padding: 12px 0; }
+  .node:first-of-type { border-top: 0; }
+  .head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--off); flex: none; }
+  .dot.on { background: var(--ok); }
+  .title { font-weight: 600; }
+  .meta { color: var(--muted); font-size: 13px; }
+  .actions { margin-left: auto; display: flex; gap: 6px; }
+  .actions button { padding: 5px 10px; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+  td { padding: 4px 8px 4px 0; border-top: 1px solid var(--line); vertical-align: top; }
+  td.path { white-space: nowrap; color: var(--muted); font-family: ui-monospace, monospace; }
+  td.val { font-family: ui-monospace, monospace; word-break: break-all; }
+  .ep { font-weight: 600; padding-top: 12px; }
+  .empty { color: var(--muted); }
+  details { margin-top: 10px; }
+  summary { cursor: pointer; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Matter MQTT</h1>
+
+  <section class="card">
+    <h2>Add device</h2>
+    <form id="add">
+      <input name="code" placeholder="Pairing code (11 digits or MT:...)" required autocomplete="off">
+      <input name="label" placeholder="Label (optional)" autocomplete="off">
+      <button class="primary">Commission</button>
+    </form>
+    <p class="hint">In Apple Home: device settings, Turn On Pairing Mode. In Google Home: Linked Matter
+      apps &amp; services. The code is valid for about 15 minutes; commissioning takes up to a minute.</p>
+    <div id="add-msg" class="msg"></div>
+  </section>
+
+  <section class="card">
+    <h2>Devices</h2>
+    <div id="nodes"><p class="empty">Loading...</p></div>
+  </section>
+</main>
+
+<script>
+const CLUSTERS = {
+  0x0003: "Identify", 0x0006: "On/Off", 0x0008: "Level Control", 0x001d: "Descriptor",
+  0x0028: "Basic Information", 0x002f: "Power Source", 0x0039: "Bridged Device Info",
+  0x003b: "Switch", 0x0045: "Boolean State", 0x0101: "Door Lock", 0x0102: "Window Covering",
+  0x0201: "Thermostat", 0x0202: "Fan Control", 0x0300: "Color Control", 0x0400: "Illuminance",
+  0x0402: "Temperature", 0x0403: "Pressure", 0x0405: "Humidity", 0x0406: "Occupancy",
+  0x042a: "PM2.5", 0x040d: "CO2", 0x0090: "Electrical Power", 0x0091: "Electrical Energy",
+};
+const open = new Set();
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const hex = (n, w = 4) => "0x" + n.toString(16).toUpperCase().padStart(w, "0");
+
+async function api(method, url, body) {
+  const r = await fetch(url, {
+    method, headers: body ? {"Content-Type": "application/json"} : {},
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!r.ok) {
+    let msg = r.statusText;
+    try { msg = (await r.json()).error || msg; } catch {}
+    throw new Error(msg);
+  }
+  return r.status === 204 ? null : r.json();
+}
+
+function payload(v) { return typeof v === "string" ? v : JSON.stringify(v); }
+
+function valuesTable(view) {
+  let html = "<table>";
+  const pub = Object.entries(view.published).filter(([t]) => !t.includes("/raw/"));
+  if (!view.ready) html += `<tr><td class="ep" colspan="2">Waiting for the first complete read...</td></tr>`;
+  if (pub.length) html += `<tr><td class="ep" colspan="2">MQTT</td></tr>`;
+  for (const [topic, val] of pub) {
+    html += `<tr><td class="path">${esc(topic)}</td><td class="val">${esc(payload(val))}</td></tr>`;
+  }
+  if (view.events.length) {
+    html += `<tr><td class="ep" colspan="2">Recent events</td></tr>`;
+    for (const e of view.events.slice(0, 10)) {
+      html += `<tr><td class="path">${esc(e.topic)}</td><td class="val">${esc(payload(e.payload))}</td></tr>`;
+    }
+  }
+  html += "</table>";
+
+  const rows = Object.entries(view.values).sort(([a], [b]) => {
+    const pa = a.split("/").map(x => parseInt(x, 16)), pb = b.split("/").map(x => parseInt(x, 16));
+    return pa[0] - pb[0] || pa[1] - pb[1] || pa[2] - pb[2];
+  });
+  html += `<details><summary class="meta">Raw values (${rows.length})</summary><table>`;
+  let lastEp = null;
+  for (const [path, val] of rows) {
+    const [ep, cl, at] = path.split("/");
+    if (ep !== lastEp) { html += `<tr><td class="ep" colspan="2">Endpoint ${esc(ep)}</td></tr>`; lastEp = ep; }
+    const name = CLUSTERS[parseInt(cl, 16)] || hex(parseInt(cl, 16));
+    html += `<tr><td class="path">${esc(name)} / ${esc(at)}</td><td class="val">${esc(JSON.stringify(val))}</td></tr>`;
+  }
+  return html + "</table></details>";
+}
+
+async function render() {
+  let nodes;
+  try { nodes = await api("GET", "/api/nodes"); }
+  catch (e) { $("#nodes").innerHTML = `<p class="msg err">${esc(e.message)}</p>`; return; }
+  if (!nodes.length) { $("#nodes").innerHTML = `<p class="empty">No devices yet.</p>`; return; }
+
+  const views = await Promise.all(nodes.map(n =>
+    open.has(n.node_id) ? api("GET", `/api/nodes/${n.node_id}`).catch(() => null) : null));
+
+  $("#nodes").innerHTML = nodes.map((n, i) => `
+    <div class="node" data-id="${n.node_id}">
+      <div class="head">
+        <span class="dot ${n.online ? "on" : ""}" title="${n.online ? "online" : "offline"}"></span>
+        <span class="title">${esc(n.label || n.name || "Node " + n.node_id)}</span>
+        <span class="meta">node ${n.node_id}
+          ${n.vendor_id != null ? " · vendor " + hex(n.vendor_id) : ""}
+          ${n.product_id != null ? " · product " + hex(n.product_id) : ""}
+          · ${n.values} values</span>
+        <span class="actions">
+          <button data-act="toggle">${open.has(n.node_id) ? "Hide" : "Values"}</button>
+          <button data-act="label">Fabric label</button>
+          <button data-act="remove" class="danger">Remove</button>
+        </span>
+      </div>
+      ${views[i] ? valuesTable(views[i]) : ""}
+      <div class="msg"></div>
+    </div>`).join("");
+}
+
+$("#nodes").addEventListener("click", async ev => {
+  const btn = ev.target.closest("button[data-act]");
+  if (!btn) return;
+  const el = btn.closest(".node"), id = Number(el.dataset.id), msg = $(".msg", el);
+  const act = btn.dataset.act;
+  if (act === "toggle") { open.has(id) ? open.delete(id) : open.add(id); return render(); }
+
+  btn.disabled = true;
+  try {
+    if (act === "label") {
+      const label = prompt("Label of this controller's fabric on the device (max 32 characters):", "MQTT bridge");
+      if (label === null) return;
+      await api("PUT", `/api/nodes/${id}/fabric-label`, {label});
+      msg.className = "msg"; msg.textContent = "Fabric label set.";
+    } else if (act === "remove") {
+      if (!confirm(`Remove node ${id} from this fabric? It stays paired with your other ecosystems. ` +
+                   `Adding it back needs a new pairing code.`)) return;
+      try {
+        await api("DELETE", `/api/nodes/${id}`);
+      } catch (e) {
+        if (!confirm(`The device did not accept the removal: ${e.message}\n\nForget it locally anyway? ` +
+                     `Its entry for this fabric then stays on the device until removed in its other app.`)) throw e;
+        await api("DELETE", `/api/nodes/${id}?local_only=true`);
+      }
+      open.delete(id);
+      return render();
+    }
+  } catch (e) {
+    msg.className = "msg err"; msg.textContent = e.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+$("#add").addEventListener("submit", async ev => {
+  ev.preventDefault();
+  const form = ev.target, btn = $("button", form), msg = $("#add-msg");
+  btn.disabled = true;
+  msg.className = "msg"; msg.textContent = "Commissioning, this can take up to a minute...";
+  try {
+    const r = await api("POST", "/api/nodes", {code: form.code.value, label: form.label.value});
+    msg.textContent = `Added as node ${r.node_id}.`;
+    form.reset();
+    render();
+  } catch (e) {
+    msg.className = "msg err"; msg.textContent = e.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+render();
+setInterval(render, 3000);
+</script>
+</body>
+</html>
