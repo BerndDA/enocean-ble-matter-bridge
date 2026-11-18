@@ -1,0 +1,4 @@
+(sym_lib_table
+	(version 7)
+	(lib (name "EnOcean")(type "KiCad")(uri "${KIPRJMOD}/lib/EnOcean.kicad_sym")(options "")(descr "TCM 515"))
+)

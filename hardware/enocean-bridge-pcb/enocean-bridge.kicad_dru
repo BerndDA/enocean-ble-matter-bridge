@@ -1,0 +1,15 @@
+(version 1)
+
+# The ANT pad is an inner-row aQFN pad; its escape between pads E24 and J24 only
+# fits with the fab's minimum clearance. Elsewhere RF nets keep 0.2 mm (CPWG gap).
+(rule "RF escape at nRF52840"
+  (condition "(A.NetClass == 'RF' || B.NetClass == 'RF') && A.intersectsCourtyard('U1') && B.intersectsCourtyard('U1')")
+  (constraint clearance (min 0.1mm)))
+
+# Vias in the pads of AC5 (DECUSB) and AC13 (nRESET): JLC's minimum via, epoxy-filled
+# and capped. Only allowed inside the nRF52840's courtyard.
+(rule "via in pad at nRF52840"
+  (condition "A.Type == 'Via' && A.intersectsCourtyard('U1')")
+  (constraint via_diameter (min 0.25mm))
+  (constraint hole_size (min 0.15mm))
+  (constraint annular_width (min 0.05mm)))
