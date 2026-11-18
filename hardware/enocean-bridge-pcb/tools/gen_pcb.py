@@ -40,7 +40,7 @@ def mm(x, y):
 
 def fp_lib_path(nick):
     if nick == "EnOcean":
-        return os.path.join(PROJ, "lib", "EnOcean.pretty")
+        return os.path.join(PROJ, "..", "lib", "EnOcean.pretty")
     return os.path.join(KICAD_FP, nick + ".pretty")
 
 

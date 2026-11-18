@@ -62,7 +62,6 @@ def main():
         normal = [n for n in names if "250:150" not in n]
         return "(via " + " ".join(normal) + ")"
     text = re.sub(r"\(via ((?:\s*\"?Via[^()]*?)+)\)", keep_normal, text, count=1)
-    # In1 (GND) and In2 (+3V3) are planes: signals only on the outer layers.
     # In1 (GND) is a pure plane; In2 (+3V3 pour) may take signals.
     text = re.sub(r"(\(layer (?:%s)\.Cu\s*\(type )signal\)" % PLANE_LAYERS, r"\1power)", text)
     open(dsn, "w").write(text)

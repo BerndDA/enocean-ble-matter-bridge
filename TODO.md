@@ -12,7 +12,21 @@ What's left to do and to decide. Tick items off here; the plan behind the steps 
 
 ## Next
 
-- [ ] Finish the EnOcean bridge PCB (see below).
+- [ ] EnOcean hardware: decide between the carrier board (Pro Micro + TCM 515, simple) and the full custom board (see the two sections below).
+
+## EnOcean carrier board
+
+Pro Micro nRF52840 plugged onto a 2-layer board with a TCM 515. Design in [hardware/enocean-carrier/DESIGN.md](hardware/enocean-carrier/DESIGN.md).
+
+- [x] Pro Micro symbol and footprint (with antenna keepout) in `hardware/lib/`; the TCM 515 library moved there too.
+- [x] Schematic: ERC clean, netlist checked.
+- [x] Board: placed, 868 MHz path, autorouted, stitched. DRC 0 errors, 0 unconnected.
+- [x] One small SMD button (Pro Micro reset), no function button, no test pads; TCM rotated, board 46.5 × 33.4 mm.
+- [ ] Check the Pro Micro pinout against the module you'll use (B+/GND/RST/VCC = top four of the right column).
+- [ ] Review the routing; tidy the 8 silkscreen warnings.
+- [ ] Gerbers + drill for JLC (2 layers, no assembly); order 5 PCBs, 5 × TCM 515, Pro Micros, passives, KMR2 buttons, female headers.
+- [ ] Assemble, flash `BOARD=promicro-uf2`, check `enocean info` and range with the whip.
+- [ ] Tools are copies of the custom board's (`tools/`); share them if both boards stay.
 
 ## EnOcean bridge PCB
 

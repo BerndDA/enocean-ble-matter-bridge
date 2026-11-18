@@ -135,7 +135,7 @@ Passives come from JLC's basic library at BOM time. The remaining LCSC numbers a
 
 ## Schematic
 
-The schematic is generated: [tools/design.py](tools/design.py) holds every part with its value, footprint, LCSC number and pin → net map, and [tools/gen_schematic.py](tools/gen_schematic.py) writes `enocean-bridge.kicad_sch` from it with KiCad's own library symbols (TCM 515 from [lib/](lib/)). Pins connect through net labels and power symbols, so the sheet reads by net names. **Change the circuit in `design.py`** and regenerate. Edits made in Eeschema are overwritten.
+The schematic is generated: [tools/design.py](tools/design.py) holds every part with its value, footprint, LCSC number and pin → net map, and [tools/gen_schematic.py](tools/gen_schematic.py) writes `enocean-bridge.kicad_sch` from it with KiCad's own library symbols (TCM 515 from [../lib/](../lib/)). Pins connect through net labels and power symbols, so the sheet reads by net names. **Change the circuit in `design.py`** and regenerate. Edits made in Eeschema are overwritten.
 
 ```sh
 cd hardware/enocean-bridge-pcb

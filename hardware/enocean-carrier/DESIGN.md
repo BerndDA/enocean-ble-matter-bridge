@@ -1,0 +1,108 @@
+# EnOcean carrier board
+
+A Pro Micro nRF52840 (nice!nano / SuperMini) plugged onto a small 2-layer board that carries a TCM 515. It replaces the Pro Micro + EnOcean Pi hat with four wires, and is the simpler alternative to the [full custom board](../enocean-bridge-pcb/DESIGN.md).
+
+**The Pro Micro build of [firmware/enocean-gateway](../../firmware/enocean-gateway/) runs unchanged** (`BOARD=promicro-uf2`): the carrier uses exactly the pins that build expects.
+
+![Board, top](enocean-carrier-top.png)
+
+Status: schematic and board done. ERC clean, DRC 0 errors and 0 unconnected, only silkscreen warnings. Nothing is ordered yet; open items are in the repo's [TODO.md](../../TODO.md).
+
+## Why a carrier
+
+The Pro Micro brings the hard parts: the nRF52840 with its RF match and 2.4 GHz antenna, USB, the 3.3 V regulator and the UF2 bootloader. The carrier only needs the TCM 515 and a handful of 0805 parts. That means 2 layers, no fine pitch, no via in pad and no PCB assembly: everything can be hand-soldered.
+
+Compared with the custom board: about €20–25 per board instead of €40–55, a few dollars for the PCBs, but taller (46.5 × 33.4 mm plus the module on its headers).
+
+## Pin map
+
+| Function | Pro Micro pin (from the USB end) | nRF52840 | Connects to |
+| --- | --- | --- | --- |
+| 3.3 V | right 4 (VCC) | regulator output | FB1 → TCM VDD |
+| GND | left 3, left 4, right 2 | — | GND pours |
+| Reset | right 3 (RST) | P0.18 | SW1 (small SMD button) to GND: press = reset, double-tap = UF2 bootloader |
+| UART TX → TCM | right 12 | P0.09 | TCM 515 pin 20 UART_RX |
+| UART RX ← TCM | right 11 | P0.10 | TCM 515 pin 21 UART_TX |
+| Function button | left 12 | P1.06 | not used: factory reset via `matter device factoryreset` in the shell |
+| TCM reset | left 6 | P0.20 | TCM 515 pin 24 nRESET (unused by today's firmware; the TCM's pull-up wins) |
+
+The full header order, from [TinyGo's nice!nano pin list](https://tinygo.org/docs/reference/microcontrollers/boards/nicenano/), matches the classic Pro Micro layout. **Before soldering, check it against your module's silkscreen**: B+, GND, RST and VCC must be the top four pins of the right column with the USB end up and the components facing up. Square pad = pin 1 = P0.06.
+
+On a nice!nano, VCC is switched off while P0.13 is high. The firmware doesn't drive P0.13, and the TCM on VCC works today with the Pi hat.
+
+## Circuit
+
+The circuit follows the TCM 515 User Manual v1.22; details and sources are in the custom board's [DESIGN.md](../enocean-bridge-pcb/DESIGN.md#tcm-515-user-manual-v122).
+
+- **TCM VDD:** ferrite bead FB1 (600 Ω at 100 MHz) from the Pro Micro's 3.3 V, then C1 22 µF + C2 100 nF at the pin.
+- **TCM nRESET:** C3 100 nF to GND at the pin, plus a link to P0.20.
+- **nTURBO:** R1 10 kΩ pull-up (57600 baud at power-up). JP1 is an open solder jumper to GND that would select 460800 baud; leave it open.
+- **868 MHz:** RF_50 → node.
+  - R2 0 Ω up to the whip hole (86 mm wire, as certified).
+  - R3 0 Ω (not fitted) to the u.FL J1 (not fitted), as the alternative.
+  - C4 shunt pad (not fitted) for tuning.
+  - The line is 1.0 mm wide with a 0.2 mm gap to the pour (~54 Ω on 1.6 mm FR4; 1.2 mm would be 50 Ω), necked to 0.6 mm along the TCM pad.
+- **One button**, SW1, on the Pro Micro's RST: a small SMD tactile switch (C&K KMR2, 4.2 × 2.8 mm; LCSC C269272).
+- **No test pads.** The TCM's UART can be probed at the Pro Micro pins. TCM TP1–TP3 stay unconnected (EnOcean recommends pads there for their own debugging).
+
+## Board
+
+[enocean-carrier.kicad_pcb](enocean-carrier.kicad_pcb): 46.5 × 33.4 mm, 2 layers, 1.6 mm, GND pours on both sides.
+
+- **The Pro Micro** sits on the left: USB end flush with the top edge, antenna end flush with the bottom edge. Its footprint ([../lib/Modules.pretty](../lib/Modules.pretty)) keeps all copper out from between the header rows under the antenna.
+- **The TCM 515** stands upright next to it (rotated 270°). VDD and UART are at its bottom edge, a few millimetres from the Pro Micro's P0.09/P0.10. RF_50 is at its top edge, facing the whip and u.FL in the top-right corner, as far as possible from the 2.4 GHz antenna. No top copper under the module (keepout in its footprint).
+- **The parts around it:** C1/C2/FB1 below the TCM at VDD; R1/JP1 (nTURBO) and C3 (nRESET) at its right edge; the reset button bottom-right.
+- **Rules:** JLC 2-layer limits with margin: 0.15 mm track/clearance minimum, 0.25 mm default tracks, 0.6/0.3 mm vias.
+
+Pictures: [top](enocean-carrier-top.png), [bottom](enocean-carrier-bottom.png), [top copper](enocean-carrier-layer-top.png), [bottom copper](enocean-carrier-layer-bottom.png), [schematic](enocean-carrier.png).
+
+## How it's built
+
+Same pipeline as the custom board; the tools are copies adapted to 2 layers:
+
+- [tools/design.py](tools/design.py): parts, values and pin → net map. [tools/gen_schematic.py](tools/gen_schematic.py) writes the schematic, and [tools/check_netlist.py](tools/check_netlist.py) checks KiCad's netlist against it pin by pin.
+- [tools/placement.py](tools/placement.py) and [tools/gen_pcb.py](tools/gen_pcb.py): board, footprints linked to the schematic, pours, rules, and the 868 MHz path. It refuses to overwrite a routed board without `--force`.
+- [tools/route.py](tools/route.py): Freerouting (`autoroute.py`), then GND stitching (`stitch.py`), then DRC.
+
+```sh
+cd hardware/enocean-carrier
+KPY=/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3
+python3 tools/gen_schematic.py && python3 tools/check_netlist.py
+$KPY tools/gen_pcb.py --force && python3 tools/route.py
+tools/render_png.sh
+```
+
+Freerouting's result can change with small placement changes: moving C2 by 0.6 mm once left a connection open. Check DRC after every run. Once the board is edited by hand, stop using `--force`.
+
+## Parts (per board, hand-soldered)
+
+| Ref | Part | Note |
+| --- | --- | --- |
+| U1 | Pro Micro nRF52840 (nice!nano v2, SuperMini) | UF2 bootloader ≥ 0.6.1; on 2 × 12-pin female headers or soldered directly |
+| U2 | EnOcean TCM 515 (868 MHz) | Digi-Key 1084-TCM515, about €12.50; MSL 4: solder within 72 h of opening |
+| FB1 | Ferrite bead 0805, 600 Ω at 100 MHz | e.g. Würth 742792040 |
+| C1 | 22 µF 0805 X5R/X7R ≥ 6.3 V | |
+| C2, C3 | 100 nF 0805 | |
+| R1 | 10 kΩ 0805 | |
+| R2 | 0 Ω 0805 | whip |
+| SW1 | C&K KMR221NGLFS, 4.2 × 2.8 mm SMD | reset |
+| — | 86 mm wire | whip antenna, into the WHIP hole |
+| not fitted | R3 (0 Ω), J1 (Hirose U.FL-R-SMT-1), C4 | u.FL instead of the whip: fit R3 and J1, remove R2 |
+
+## Cost (5 boards, rough, 2026-11-18)
+
+| Item | Cost |
+| --- | --- |
+| 5 PCBs, 2 layers, 46.5 × 33.4 mm, JLCPCB | ~$2–5 + shipping ~$10–20 |
+| 5 × TCM 515 | ~€63 |
+| 5 × Pro Micro nRF52840 (SuperMini clones; a nice!nano costs more) | ~€25–40 |
+| Passives, button, headers | ~€5–10 |
+
+About €110–140 for five, €20–30 per board.
+
+## Assembly and bring-up
+
+1. Solder the TCM 515 first (castellated pads, iron or hot air), then the 0805 parts, the button and the headers. Leave JP1 open.
+2. Solder an 86 mm wire into the WHIP hole, standing upright if possible.
+3. Plug in the Pro Micro: USB end at the board edge, components up, square pad = pin 1.
+4. `make flash APP=enocean-gateway BOARD=promicro-uf2`; `enocean info` must show the TCM version and base ID.

@@ -35,7 +35,7 @@ class Libs:
     def __init__(self, kicad):
         self.dirs = {
             "*": os.path.join(kicad, "Contents/SharedSupport/symbols"),
-            "EnOcean": os.path.join(PROJ, "lib"),
+            "EnOcean": os.path.join(PROJ, "..", "lib"),
         }
         self.cache = {}
 
@@ -262,9 +262,9 @@ def main():
         f.write(sexp.dump(sch) + "\n")
 
     with open(os.path.join(PROJ, "sym-lib-table"), "w") as f:
-        f.write('(sym_lib_table\n\t(version 7)\n\t(lib (name "EnOcean")(type "KiCad")(uri "${KIPRJMOD}/lib/EnOcean.kicad_sym")(options "")(descr "TCM 515"))\n)\n')
+        f.write('(sym_lib_table\n\t(version 7)\n\t(lib (name "EnOcean")(type "KiCad")(uri "${KIPRJMOD}/../lib/EnOcean.kicad_sym")(options "")(descr "TCM 515"))\n)\n')
     with open(os.path.join(PROJ, "fp-lib-table"), "w") as f:
-        f.write('(fp_lib_table\n\t(version 7)\n\t(lib (name "EnOcean")(type "KiCad")(uri "${KIPRJMOD}/lib/EnOcean.pretty")(options "")(descr "TCM 515"))\n)\n')
+        f.write('(fp_lib_table\n\t(version 7)\n\t(lib (name "EnOcean")(type "KiCad")(uri "${KIPRJMOD}/../lib/EnOcean.pretty")(options "")(descr "TCM 515"))\n)\n')
     pro = os.path.join(PROJ, NAME + ".kicad_pro")
     if not os.path.exists(pro):
         with open(pro, "w") as f:
