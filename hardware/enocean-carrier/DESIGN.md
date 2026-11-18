@@ -6,7 +6,7 @@ A Pro Micro nRF52840 (nice!nano / SuperMini) plugged onto a small 2-layer board 
 
 ![Board, top](enocean-carrier-top.png)
 
-Status: schematic and board done. ERC clean, DRC 0 errors and 0 unconnected, only silkscreen warnings. Nothing is ordered yet; open items are in the repo's [TODO.md](../../TODO.md).
+Status: schematic and board done, fabrication files exported ([fab/](fab/)). ERC clean, DRC 0 errors and 0 unconnected, only silkscreen warnings. Nothing is ordered yet; open items are in the repo's [TODO.md](../../TODO.md).
 
 ## Why a carrier
 
@@ -63,16 +63,51 @@ Same pipeline as the custom board; the tools are copies adapted to 2 layers:
 - [tools/design.py](tools/design.py): parts, values and pin → net map. [tools/gen_schematic.py](tools/gen_schematic.py) writes the schematic, and [tools/check_netlist.py](tools/check_netlist.py) checks KiCad's netlist against it pin by pin.
 - [tools/placement.py](tools/placement.py) and [tools/gen_pcb.py](tools/gen_pcb.py): board, footprints linked to the schematic, pours, rules, and the 868 MHz path. It refuses to overwrite a routed board without `--force`.
 - [tools/route.py](tools/route.py): Freerouting (`autoroute.py`), then GND stitching (`stitch.py`), then DRC.
+- [tools/sync_fields.py](tools/sync_fields.py): copies changed symbol fields (LCSC, MPN) onto the routed board without touching tracks.
+- [tools/export_fab.py](tools/export_fab.py): Gerbers, drill, BOM and CPL for JLCPCB (see [Ordering](#ordering-at-jlcpcb)).
 
 ```sh
 cd hardware/enocean-carrier
 KPY=/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3
 python3 tools/gen_schematic.py && python3 tools/check_netlist.py
 $KPY tools/gen_pcb.py --force && python3 tools/route.py
+$KPY tools/sync_fields.py          # after changing only part numbers / fields
+python3 tools/export_fab.py
 tools/render_png.sh
 ```
 
 Freerouting's result can change with small placement changes: moving C2 by 0.6 mm once left a connection open. Check DRC after every run. Once the board is edited by hand, stop using `--force`.
+
+## Ordering at JLCPCB
+
+`python3 tools/export_fab.py` writes [fab/](fab/):
+
+| File | Use |
+| --- | --- |
+| [enocean-carrier-gerbers.zip](fab/enocean-carrier-gerbers.zip) | Gerbers + Excellon drill; upload this as the PCB |
+| [enocean-carrier-bom.csv](fab/enocean-carrier-bom.csv) | BOM for PCB assembly (JLC columns: Comment, Designator, Footprint, LCSC Part #) |
+| [enocean-carrier-cpl.csv](fab/enocean-carrier-cpl.csv) | Placement for PCB assembly (Designator, Mid X, Mid Y, Layer, Rotation) |
+
+**PCB:** 2 layers, FR-4, 1.6 mm, 1 oz, HASL lead-free (or ENIG), any colour. Everything else default; no impedance control or via-in-pad needed.
+
+**Assembly (optional):** "PCB Assembly", Economic, top side.
+- **JLC places 7 parts**: FB1, C1, C2, C3, R1, R2 (all basic parts) and SW1 (KMR2, the only extended part).
+- **Not in the order:**
+  - U1 (Pro Micro on headers) and U2 (TCM 515): you solder those.
+  - R3, J1, C4: not fitted (u.FL option).
+- **Placement check:** JLC's preview shows every part on its pads before you confirm. Check the button and the 0805 parts there; rotations should need no correction.
+- **Paste on unpopulated pads:** the stencil also puts paste on the TCM 515 pads and the empty u.FL pads, so they come back tinned. That makes hand-soldering the TCM easier.
+
+**Cost, 5 boards (2026-11-18, before shipping and VAT):**
+
+| Item | Cost |
+| --- | --- |
+| PCBs, 2 layers | ~$2–5 |
+| Assembly: $8.18 setup + $1.53 stencil + $3.07 for the KMR2 + $0.45 placement check | ~$13 |
+| Parts placed by JLC | ~$1–2 |
+| Shipping to Germany | ~$10–20 |
+
+That's roughly $30–40 for 5 assembled carriers. Add 5 × TCM 515 (Digi-Key, ~€12.50 each), Pro Micros, 2 × 12-pin female headers each, and wire for the whip.
 
 ## Parts (per board, hand-soldered)
 
@@ -102,7 +137,7 @@ About €110–140 for five, €20–30 per board.
 
 ## Assembly and bring-up
 
-1. Solder the TCM 515 first (castellated pads, iron or hot air), then the 0805 parts, the button and the headers. Leave JP1 open.
+1. Solder the TCM 515 first (castellated pads, iron or hot air), then the 0805 parts and the button if JLC didn't, then the headers. Leave JP1 open.
 2. Solder an 86 mm wire into the WHIP hole, standing upright if possible.
 3. Plug in the Pro Micro: USB end at the board edge, components up, square pad = pin 1.
 4. `make flash APP=enocean-gateway BOARD=promicro-uf2`; `enocean info` must show the TCM version and base ID.

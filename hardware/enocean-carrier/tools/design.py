@@ -69,21 +69,21 @@ part("U2", "EnOcean:TCM515", "TCM515", "EnOcean:TCM515", 100, 40, {
     "1": "GND", "3": "GND", "6": "GND", "15": "GND", "23": "GND",
 }, mpn="EnOcean TCM 515 (S3003-K515), 868.3 MHz")
 part("FB1", "Device:FerriteBead", "600R@100MHz", FP_L, 76, 30, {"1": "+3V3", "2": "VDD_TCM"},
-     mpn="Wurth 742792040 or any 0805 600 ohm bead")              # manual 11.6
-C("C1", "22uF", 80, 30, "VDD_TCM", mpn="X5R/X7R >= 6.3 V")       # manual 11.6
-C("C2", "100nF", 84, 30, "VDD_TCM")
-C("C3", "100nF", 80, 46, "TCM_NRESET")                           # manual 11.8, Figure 20
-R("R1", "10k", 84, 52, "VDD_TCM", "TCM_NTURBO")                  # 57600 baud at power-up
+     lcsc="C1017", mpn="GZ2012D601TF")              # manual 11.6
+C("C1", "22uF", 80, 30, "VDD_TCM", lcsc="C45783", mpn="CL21A226MAQNNNE")       # manual 11.6
+C("C2", "100nF", 84, 30, "VDD_TCM", lcsc="C49678", mpn="CC0805KRX7R9BB104")
+C("C3", "100nF", 80, 46, "TCM_NRESET", lcsc="C49678", mpn="CC0805KRX7R9BB104")                           # manual 11.8, Figure 20
+R("R1", "10k", 84, 52, "VDD_TCM", "TCM_NTURBO", lcsc="C17414", mpn="0805W8F1002T5E")                  # 57600 baud at power-up
 part("JP1", "Jumper:SolderJumper_2_Open", "460k8", "Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm",
      78, 56, {"1": "TCM_NTURBO", "2": "GND"})                    # closed: 460800 baud (firmware expects 57600)
 
 # 868 MHz: RF_50 -> whip (R2) or u.FL (R3), shunt pad for tuning
 C("C4", "DNP", 120, 34, "RF_868", dnp=True)
-R("R2", "0", 124, 34, "RF_868", "ANT_868")
-R("R3", "0", 128, 34, "RF_868", "RF_UFL", dnp=True)
+R("R2", "0", 124, 34, "RF_868", "ANT_868", lcsc="C17477", mpn="0805W8F0000T5E")
+R("R3", "0", 128, 34, "RF_868", "RF_UFL", dnp=True, lcsc="C17477", mpn="0805W8F0000T5E")
 TP("TP1", "ANT_868", 124, 44, fp="TestPoint:TestPoint_THTPad_D2.0mm_Drill1.0mm", value="WHIP 86mm")
 part("J1", "Connector:Conn_Coaxial", "U.FL", "Connector_Coaxial:U.FL_Hirose_U.FL-R-SMT-1_Vertical", 134, 42,
-     {"1": "RF_UFL", "2": "GND"}, dnp=True, mpn="Hirose U.FL-R-SMT-1")
+     {"1": "RF_UFL", "2": "GND"}, dnp=True, lcsc="C88374", mpn="U.FL-R-SMT-1(80)")
 
 # ---------------------------------------------------------------- button
 # The Pro Micro's reset: one press resets, a double-tap starts the UF2 bootloader.

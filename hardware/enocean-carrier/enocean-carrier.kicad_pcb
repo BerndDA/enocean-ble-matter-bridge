@@ -141,7 +141,7 @@
 				)
 			)
 		)
-		(property "LCSC" ""
+		(property "LCSC" "C88374"
 			(at 0 0 270)
 			(layer "F.SilkS")
 			(hide yes)
@@ -153,7 +153,7 @@
 				)
 			)
 		)
-		(property "MPN" "Hirose U.FL-R-SMT-1"
+		(property "MPN" "U.FL-R-SMT-1(80)"
 			(at 0 0 270)
 			(layer "F.SilkS")
 			(hide yes)
@@ -544,7 +544,7 @@
 				)
 			)
 		)
-		(property "LCSC" ""
+		(property "LCSC" "C1017"
 			(at 0 0 90)
 			(layer "F.SilkS")
 			(hide yes)
@@ -556,7 +556,7 @@
 				)
 			)
 		)
-		(property "MPN" "Wurth 742792040 or any 0805 600 ohm bead"
+		(property "MPN" "GZ2012D601TF"
 			(at 0 0 90)
 			(layer "F.SilkS")
 			(hide yes)
@@ -715,7 +715,7 @@
 				)
 			)
 		)
-		(property "LCSC" ""
+		(property "LCSC" "C17414"
 			(at 0 0 180)
 			(layer "F.SilkS")
 			(hide yes)
@@ -727,7 +727,7 @@
 				)
 			)
 		)
-		(property "MPN" ""
+		(property "MPN" "0805W8F1002T5E"
 			(at 0 0 180)
 			(layer "F.SilkS")
 			(hide yes)
@@ -1012,7 +1012,7 @@
 				)
 			)
 		)
-		(property "LCSC" ""
+		(property "LCSC" "C49678"
 			(at 0 0 0)
 			(layer "F.SilkS")
 			(hide yes)
@@ -1024,7 +1024,7 @@
 				)
 			)
 		)
-		(property "MPN" ""
+		(property "MPN" "CC0805KRX7R9BB104"
 			(at 0 0 0)
 			(layer "F.SilkS")
 			(hide yes)
@@ -1183,7 +1183,7 @@
 				)
 			)
 		)
-		(property "LCSC" ""
+		(property "LCSC" "C17477"
 			(at 0 0 270)
 			(layer "F.SilkS")
 			(hide yes)
@@ -1195,7 +1195,7 @@
 				)
 			)
 		)
-		(property "MPN" ""
+		(property "MPN" "0805W8F0000T5E"
 			(at 0 0 270)
 			(layer "F.SilkS")
 			(hide yes)
@@ -2309,7 +2309,7 @@
 				)
 			)
 		)
-		(property "LCSC" ""
+		(property "LCSC" "C49678"
 			(at 0 0 270)
 			(layer "F.SilkS")
 			(hide yes)
@@ -2321,7 +2321,7 @@
 				)
 			)
 		)
-		(property "MPN" ""
+		(property "MPN" "CC0805KRX7R9BB104"
 			(at 0 0 270)
 			(layer "F.SilkS")
 			(hide yes)
@@ -2611,7 +2611,7 @@
 				)
 			)
 		)
-		(property "LCSC" ""
+		(property "LCSC" "C45783"
 			(at 0 0 270)
 			(layer "F.SilkS")
 			(hide yes)
@@ -2623,7 +2623,7 @@
 				)
 			)
 		)
-		(property "MPN" "X5R/X7R >= 6.3 V"
+		(property "MPN" "CL21A226MAQNNNE"
 			(at 0 0 270)
 			(layer "F.SilkS")
 			(hide yes)
@@ -3046,7 +3046,7 @@
 				)
 			)
 		)
-		(property "LCSC" ""
+		(property "LCSC" "C17477"
 			(at 0 0 0)
 			(layer "F.SilkS")
 			(hide yes)
@@ -3058,7 +3058,7 @@
 				)
 			)
 		)
-		(property "MPN" ""
+		(property "MPN" "0805W8F0000T5E"
 			(at 0 0 0)
 			(layer "F.SilkS")
 			(hide yes)

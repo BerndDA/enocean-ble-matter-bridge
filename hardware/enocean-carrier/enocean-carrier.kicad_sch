@@ -1572,11 +1572,8 @@
 			(at 193.04 76.2 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(property "LCSC" "" (at 193.04 76.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "MPN" "Wurth 742792040 or any 0805 600 ohm bead"
-			(at 193.04 76.2 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
-		)
+		(property "LCSC" "C1017" (at 193.04 76.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "MPN" "GZ2012D601TF" (at 193.04 76.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(pin "1" (uuid "3a611bab-0a61-50d6-a010-f2da8e1b78c1"))
 		(pin "2" (uuid "14f83c59-b5f4-5aa9-add2-2fceed7bff36"))
 		(instances
@@ -1630,8 +1627,8 @@
 			(at 203.2 76.2 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(property "LCSC" "" (at 203.2 76.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "MPN" "X5R/X7R >= 6.3 V" (at 203.2 76.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "LCSC" "C45783" (at 203.2 76.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "MPN" "CL21A226MAQNNNE" (at 203.2 76.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(pin "1" (uuid "202195e8-9431-5a79-a19d-5b3d86e935b8"))
 		(pin "2" (uuid "6cf0caa4-e931-5c8a-b745-406c8ed47793"))
 		(instances
@@ -1685,8 +1682,11 @@
 			(at 213.36 76.2 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(property "LCSC" "" (at 213.36 76.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "MPN" "" (at 213.36 76.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "LCSC" "C49678" (at 213.36 76.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "MPN" "CC0805KRX7R9BB104"
+			(at 213.36 76.2 0)
+			(effects (font (size 1.27 1.27)) (hide yes))
+		)
 		(pin "1" (uuid "7e6a1c19-2d0e-5b50-95d8-bebf42827701"))
 		(pin "2" (uuid "d5026ee9-b8c7-5b21-b0c4-5dd28dc8217b"))
 		(instances
@@ -1740,8 +1740,11 @@
 			(at 203.2 116.84 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(property "LCSC" "" (at 203.2 116.84 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "MPN" "" (at 203.2 116.84 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "LCSC" "C49678" (at 203.2 116.84 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "MPN" "CC0805KRX7R9BB104"
+			(at 203.2 116.84 0)
+			(effects (font (size 1.27 1.27)) (hide yes))
+		)
 		(pin "1" (uuid "da669922-74a4-571b-a723-a6624178f5ec"))
 		(pin "2" (uuid "8a45dc40-2e99-5a46-9e36-85938fd9b188"))
 		(instances
@@ -1795,8 +1798,8 @@
 			(at 213.36 132.08 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(property "LCSC" "" (at 213.36 132.08 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "MPN" "" (at 213.36 132.08 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "LCSC" "C17414" (at 213.36 132.08 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "MPN" "0805W8F1002T5E" (at 213.36 132.08 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(pin "1" (uuid "653a8391-87b6-5851-8cef-3a18fea7e5c1"))
 		(pin "2" (uuid "2df4c2ac-df5d-53fa-a859-34f4268a3de9"))
 		(instances
@@ -1945,8 +1948,8 @@
 			(at 314.96 86.36 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(property "LCSC" "" (at 314.96 86.36 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "MPN" "" (at 314.96 86.36 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "LCSC" "C17477" (at 314.96 86.36 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "MPN" "0805W8F0000T5E" (at 314.96 86.36 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(pin "1" (uuid "0fae4f3c-15fa-5170-a56a-d021fc8c665b"))
 		(pin "2" (uuid "4ebc9ebd-dbd9-5cb4-98de-0ab6b58aa995"))
 		(instances
@@ -1985,8 +1988,8 @@
 			(at 325.12 86.36 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(property "LCSC" "" (at 325.12 86.36 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "MPN" "" (at 325.12 86.36 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "LCSC" "C17477" (at 325.12 86.36 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "MPN" "0805W8F0000T5E" (at 325.12 86.36 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(pin "1" (uuid "e56b5152-2073-50f1-a584-307d222f6a07"))
 		(pin "2" (uuid "48eee8b0-342c-56cd-8163-80e1b6b052fc"))
 		(instances
@@ -2059,8 +2062,8 @@
 			(at 340.36 106.68 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(property "LCSC" "" (at 340.36 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "MPN" "Hirose U.FL-R-SMT-1"
+		(property "LCSC" "C88374" (at 340.36 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "MPN" "U.FL-R-SMT-1(80)"
 			(at 340.36 106.68 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
