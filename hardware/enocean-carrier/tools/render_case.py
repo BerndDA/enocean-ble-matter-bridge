@@ -139,6 +139,7 @@ lid = stl("lid", os.path.join(WORK, "lid_asm.stl"), M["lid"], (0, 0, BASE_H))
 # one rod per LED; the green one (middle) carries the other two, so the clips move all three
 rod = cyl("rod", C(*LED)[0], C(*LED)[1], -PIPE_LEN, PIPE_LEN + LID_T, ROD_D, M["acrylic"], 32)
 rod.parent = lid
+rod["led"] = "green"
 rods = [rod]
 for i, l in enumerate(LEDS):
     if l == LED:
@@ -146,6 +147,7 @@ for i, l in enumerate(LEDS):
     dx, dy = C(*l)[0] - C(*LED)[0], C(*l)[1] - C(*LED)[1]
     r = cyl(f"rod{i}", dx, dy, -(PIPE_LEN + LID_T) / 2, PIPE_LEN + LID_T, ROD_D, M["acrylic"], 32)
     r.parent = rod
+    r["led"] = ("red", "green", "yellow")[i]
     rods.append(r)
 pins = [stl(f"pin{i}", os.path.join(WORK, "pin_asm.stl"), M["pin"], (bx, by, TOP_Z + SW_H + 0.3))
         for i, (bx, by) in enumerate(BUTTONS)]
@@ -314,23 +316,27 @@ if MODE.startswith("anim"):
         bpy.ops.object.shade_smooth()
         for o in parts + [cable]:
             o.parent = plug
-        # EnOcean LED: the acrylic rod in the light pipe lights up, blinks once the cable is in
-        glow_mat = mat("led_glow", (0.4, 0.6, 0.45), 0.3, 0.0, ((0.15, 1.0, 0.3), 0.0))   # green LED
-        lx, ly = C(*LED)
-        rod.data.materials[0] = glow_mat
-        glow_light_data = bpy.data.lights.new("led_light", "POINT")
-        glow_light_data.color = (0.2, 1.0, 0.35)
-        glow_light_data.energy = 0.0
-        glow_light_data.shadow_soft_size = 0.002
-        glow_light = bpy.data.objects.new("led_light", glow_light_data)
-        scene.collection.objects.link(glow_light)
-        glow_light.parent = lid
-        glow_light.location = (lx, ly, 3.5)
-        glow_mat["light"] = glow_light_data.name
+        # status LEDs: each acrylic rod lights up in its LED's colour once the cable is in
+        glows = []
+        for name, l, rgb in (("red", LEDS[0], (1.0, 0.08, 0.05)), ("green", LEDS[1], (0.15, 1.0, 0.3)),
+                             ("yellow", LEDS[2], (1.0, 0.75, 0.05))):
+            r = next(o for o in rods if o.get("led") == name)
+            gm = mat(f"led_{name}", tuple(0.35 + 0.3 * c for c in rgb), 0.3, 0.0, (rgb, 0.0))
+            r.data.materials[0] = gm
+            ld = bpy.data.lights.new(f"led_{name}", "POINT")
+            ld.color = rgb
+            ld.energy = 0.0
+            ld.shadow_soft_size = 0.002
+            lo = bpy.data.objects.new(f"led_{name}", ld)
+            scene.collection.objects.link(lo)
+            lo.parent = lid
+            lo.location = (*C(*l), 3.5)
+            gm["light"] = ld.name
+            glows.append((name, gm))
     anim_case.run(scene, cam, cam_data, target, center, lid, pins, whip, board_group,
                   dict(BASE_H=BASE_H, TOP_Z=TOP_Z, SW_H=SW_H), OUT, FRAMES,
                   view="usb" if MODE == "anim-usb" else "front", plug=plug,
-                  glow_mat=glow_mat if MODE == "anim-usb" else None, rod=rod,
+                  glows=glows if MODE == "anim-usb" else None, rod=rod,
                   samples=SAMPLES)
     raise SystemExit(0)
 shot("closed", (c.x + 0.95, c.y - 1.05, c.z + 0.75), (c.x, c.y, c.z + 0.02), lens=60, show_whip=True)

@@ -2,7 +2,7 @@
 # Photo-style renders of the carrier in its case (Blender):
 #   tools/render_case.sh [samples]   stills case/render-{closed,exploded,open}.png (Cycles, default 192 samples)
 #   tools/render_case.sh anim [samples]   assembly clip case/anim.mp4 (EEVEE, 8 s, 1280x720), buttons side
-#   tools/render_case.sh anim-usb [samples]   the same from the USB end: acrylic rod and USB-C plug go in, LED blinks: case/anim-usb.mp4 (11 s)
+#   tools/render_case.sh anim-usb [samples]   the same from the USB end: acrylic rod and USB-C plug go in, LEDs light up: case/anim-usb.mp4 (12 s)
 # Needs OpenSCAD, KiCad, Blender (and ffmpeg for the clip).
 set -e
 cd "$(dirname "$0")/.."

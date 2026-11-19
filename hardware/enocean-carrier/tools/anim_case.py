@@ -49,12 +49,13 @@ def ease(obj):
 
 
 def run(scene, cam, cam_data, target, center, lid, pins, whip, board_group, d, out, frames,
-        view="front", plug=None, glow_mat=None, rod=None, samples=32):
-    """view "front": the buttons side; "usb": the USB end: the acrylic rod (child of the lid) drops
-    into the light pipe, then a USB-C plug goes in and the LED blinks."""
+        view="front", plug=None, glows=None, rod=None, samples=32):
+    """view "front": the buttons side; "usb": the USB end: the acrylic rods (children of the lid) drop
+    into the light pipes, then a USB-C plug goes in and the LEDs light up: red, green, yellow once
+    each, then green blinks three times. glows: [(colour name, rod material with a "light")]."""
     base_h, top_z, sw_h = d["BASE_H"], d["TOP_Z"], d["SW_H"]
     usb = view == "usb"
-    end = END + (72 if usb else 0)        # usb: rod goes in, plug goes in, then the LED blinks
+    end = END + (96 if usb else 0)        # usb: rods go in, plug goes in, then the LEDs light up
     plug_in = 224 if usb else 200         # frame the plug is fully in
     pin_z = top_z + sw_h + 0.3
 
@@ -90,27 +91,30 @@ def run(scene, cam, cam_data, target, center, lid, pins, whip, board_group, d, o
         movers.append(plug)
     for o in movers:
         ease(o)
-    if glow_mat is not None:              # three blinks after the plug is in
-        inp = glow_mat.node_tree.nodes["Principled BSDF"].inputs["Emission Strength"]
-        inp.default_value = 0.0
-        inp.keyframe_insert("default_value", frame=1)
-        light = bpy.data.lights.get(glow_mat.get("light", ""))
-        if light is not None:
-            light.energy = 0.0
-            light.keyframe_insert("energy", frame=1)
-        for on in (plug_in + 6, plug_in + 18, plug_in + 30):
-            inp.default_value = 250.0
-            inp.keyframe_insert("default_value", frame=on)
+    if glows:                             # after the plug is in: lamp test, then green blinks
+        t0 = plug_in + 6
+        on = {"red": [t0], "green": [t0 + 6, t0 + 24, t0 + 34, t0 + 44], "yellow": [t0 + 12]}
+        for name, gm in glows:
+            inp = gm.node_tree.nodes["Principled BSDF"].inputs["Emission Strength"]
+            light = bpy.data.lights.get(gm.get("light", ""))
             inp.default_value = 0.0
-            inp.keyframe_insert("default_value", frame=on + 6)
+            inp.keyframe_insert("default_value", frame=1)
             if light is not None:
-                light.energy = 0.6
-                light.keyframe_insert("energy", frame=on)
                 light.energy = 0.0
-                light.keyframe_insert("energy", frame=on + 6)
-        for owner in (glow_mat.node_tree, light):
-            interp(owner, "CONSTANT")
-        assert fcurves(glow_mat.node_tree), "no keyframes found for the LED"
+                light.keyframe_insert("energy", frame=1)
+            for f in on.get(name, []):
+                inp.default_value = 250.0
+                inp.keyframe_insert("default_value", frame=f)
+                inp.default_value = 0.0
+                inp.keyframe_insert("default_value", frame=f + 6)
+                if light is not None:
+                    light.energy = 0.6
+                    light.keyframe_insert("energy", frame=f)
+                    light.energy = 0.0
+                    light.keyframe_insert("energy", frame=f + 6)
+            for owner in (gm.node_tree, light):
+                interp(owner, "CONSTANT")
+            assert fcurves(gm.node_tree), f"no keyframes found for the {name} LED"
 
     # --- camera: on a pivot that turns 60 degrees, target sinks as the parts come down
     pivot = bpy.data.objects.new("pivot", None)
