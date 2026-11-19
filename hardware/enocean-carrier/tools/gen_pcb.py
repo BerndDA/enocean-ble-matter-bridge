@@ -217,7 +217,9 @@ def main():
     route_868(board, nets)
 
     for s, x, y, size, layer in (("EnOcean carrier v0.2", 32.0, 31.6, 1.0, pcbnew.B_SilkS),
-                                 ("WHIP", 44.4, 4.6, 0.8, pcbnew.F_SilkS)):
+                                 ("WHIP", 44.4, 4.6, 0.8, pcbnew.F_SilkS),
+                                 ("TCM515", 26.0, 2.4, 1.0, pcbnew.F_SilkS),       # above the module, stays visible
+                                 ("nice!nano", 10.02, 6.0, 1.0, pcbnew.F_SilkS)):  # between the rows, under the module
         t = pcbnew.PCB_TEXT(board)
         t.SetText(s)
         t.SetPosition(mm(x, y))

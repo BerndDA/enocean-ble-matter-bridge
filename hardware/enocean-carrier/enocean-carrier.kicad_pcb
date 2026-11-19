@@ -5538,6 +5538,28 @@
 			)
 		)
 	)
+	(gr_text "nice!nano"
+		(at 110.02 106 0)
+		(layer "F.SilkS")
+		(uuid "27e39434-d5b4-4b1c-a1d4-a2912a383ddc")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(gr_text "TCM515"
+		(at 126 102.4 0)
+		(layer "F.SilkS")
+		(uuid "28c20d95-4202-485f-be2a-1d8beafd85d8")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
 	(gr_text "EnOcean carrier v0.2"
 		(at 132 131.6 0)
 		(layer "B.SilkS")
