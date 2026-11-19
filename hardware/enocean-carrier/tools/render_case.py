@@ -17,9 +17,12 @@ import sys
 import bpy
 from mathutils import Vector
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # for anim_case.py
 args = sys.argv[sys.argv.index("--") + 1:]
 WORK, OUT = args[0], args[1]
 SAMPLES = int(args[2]) if len(args) > 2 else 192
+MODE = args[3] if len(args) > 3 else "stills"        # "stills" or "anim" (frames for anim.mp4)
+FRAMES = args[4] if len(args) > 4 else ""            # anim: comma list of frames to render (test), default all
 
 # ---------------------------------------------------------------- dimensions (carrier_case.scad)
 WALL, GAP, FLOOR, UNDER, BOARD_T = 2.0, 0.4, 2.0, 4.0, 1.6
@@ -164,6 +167,13 @@ for i, (bx, by) in enumerate(BUTTONS):
     inside.append(cyl(f"sw_cap{i}", bx, by, TOP_Z + 1.0, SW_H - 1.0, 3.0, M["chip"]))
 whip = cyl("whip", WHIP[0], WHIP[1], TOP_Z - 0.5, 86.0, 0.8, M["copper"], 24)
 
+# board + everything mounted on it move as one in the animation
+board_group = bpy.data.objects.new("board_group", None)
+scene.collection.objects.link(board_group)
+board_root.parent = board_group
+for o in inside:
+    o.parent = board_group
+
 floor = None
 bpy.ops.mesh.primitive_plane_add(size=2000, location=(OUT_W / 2, OUT_D / 2, 0))
 floor = bpy.context.object
@@ -259,6 +269,11 @@ def shot(name, cam_loc, target_loc, lens=70, lid_z=None, pin_lift=0.0, show_lid=
 
 
 c = center
+if MODE == "anim":
+    import anim_case   # noqa: E402  (tools/anim_case.py, next to this script)
+    anim_case.run(scene, cam, cam_data, target, center, lid, pins, whip, board_group,
+                  dict(BASE_H=BASE_H, TOP_Z=TOP_Z, SW_H=SW_H), OUT, FRAMES)
+    raise SystemExit(0)
 shot("closed", (c.x + 0.95, c.y - 1.05, c.z + 0.75), (c.x, c.y, c.z + 0.02), lens=60, show_whip=True)
 shot("exploded", (c.x + 1.0, c.y - 1.15, c.z + 0.95), (c.x, c.y, c.z + 0.12), lens=55,
      lid_z=BASE_H + 32, pin_lift=32 - 12)
