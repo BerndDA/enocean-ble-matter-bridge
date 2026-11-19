@@ -52,15 +52,18 @@ def main():
     # parts JLC places: an LCSC number and not DNP
     placed = {p["ref"]: p for p in design.PARTS if p["lcsc"] and not p["dnp"]}
 
+    # one line per LCSC part (e.g. both buttons), values joined
     groups = collections.OrderedDict()
     for p in sorted(placed.values(), key=lambda p: (p["lcsc"], p["ref"])):
-        key = (p["value"], p["footprint"].split(":")[1], p["lcsc"])
-        groups.setdefault(key, []).append(p["ref"])
+        g = groups.setdefault((p["footprint"].split(":")[1], p["lcsc"]), {"values": [], "refs": []})
+        if p["value"] not in g["values"]:
+            g["values"].append(p["value"])
+        g["refs"].append(p["ref"])
     with open(os.path.join(FAB, f"{NAME}-bom.csv"), "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["Comment", "Designator", "Footprint", "LCSC Part #"])
-        for (value, fp, lcsc), refs in groups.items():
-            w.writerow([value, ",".join(refs), fp, lcsc])
+        for (fp, lcsc), g in groups.items():
+            w.writerow(["/".join(g["values"]), ",".join(g["refs"]), fp, lcsc])
 
     with tempfile.TemporaryDirectory() as d:
         pos = os.path.join(d, "pos.csv")

@@ -45,8 +45,12 @@ PLACE = {
     "TP1": (44.4, RF_Y, 0, "F"),       # whip hole
     "R3": (38.6, 5.6, 270, "F"),       # to the u.FL (DNP), pad 1 on top
     "J1": (43.9, 9.5, 0, "F"),         # u.FL (DNP) at the right edge, signal pad facing R3
-    # reset button, holes
-    "SW1": (41.0, 30.0, 0, "F"),
+    # EnOcean LED (P1.11) right of the module, resistor below it: R4 pad 2 under D1 pad 2 (anode)
+    "D1": (41.6, 18.0, 0, "F"),
+    "R4": (41.6, 20.4, 0, "F"),
+    # buttons: FUNC (P1.06) and RESET side by side at the bottom edge, holes
+    "SW2": (37.0, 30.8, 0, "F"),
+    "SW1": (43.0, 30.8, 0, "F"),
     "H1": (23.5, 30.3, 0, "F"),
     "H2": (42.4, 24.2, 0, "F"),
 }

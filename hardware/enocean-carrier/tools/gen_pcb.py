@@ -179,7 +179,7 @@ def main():
             fp.SetField(fname, fval)
             if fname not in ("Reference", "Value"):
                 fp.GetField(fname).SetVisible(False)
-        if ref in ("U2", "TP1"):        # obvious parts; their labels would sit on others
+        if ref in ("U2", "TP1", "H1", "H2"):   # obvious parts; their labels would sit on others
             fp.Reference().SetVisible(False)
         fp.Reference().SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(0.9), pcbnew.FromMM(0.9)))
         fp.Reference().SetTextThickness(pcbnew.FromMM(0.14))
@@ -216,11 +216,13 @@ def main():
 
     route_868(board, nets)
 
-    for s, x, y, size in (("EnOcean carrier v0.1", 30.0, 32.4, 0.8), ("WHIP", 44.4, 4.6, 0.8)):
+    for s, x, y, size, layer in (("EnOcean carrier v0.1", 32.0, 31.6, 1.0, pcbnew.B_SilkS),
+                                 ("WHIP", 44.4, 4.6, 0.8, pcbnew.F_SilkS)):
         t = pcbnew.PCB_TEXT(board)
         t.SetText(s)
         t.SetPosition(mm(x, y))
-        t.SetLayer(pcbnew.F_SilkS)
+        t.SetLayer(layer)
+        t.SetMirrored(layer == pcbnew.B_SilkS)
         t.SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(size), pcbnew.FromMM(size)))
         t.SetTextThickness(pcbnew.FromMM(size * 0.15))
         board.Add(t)

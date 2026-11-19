@@ -56,7 +56,8 @@ part("U1", "Modules:ProMicro_nRF52840", "ProMicro nRF52840", "Modules:ProMicro_n
     "15": "NRESET",         # RST: double-tap for the UF2 bootloader
     "24": "TCM_RX",         # P0.09 UART0 TX -> TCM UART_RX
     "23": "TCM_TX",         # P0.10 UART0 RX <- TCM UART_TX
-    "12": None,             # P1.06 sw0 (function button) not used: factory reset via the shell
+    "12": "BTN_FUNC",       # P1.06 sw0: hold 6 s for a factory reset
+    "22": "LED_TCM",        # P1.11: EnOcean activity LED (unused by today's firmware: stays dark)
     "6": "TCM_NRESET",      # P0.20: TCM reset from firmware (unused today; the TCM's pull-up wins)
     "13": None,             # B+ (battery), not used
 }, nc_rest=True, mpn="nice!nano v2 / SuperMini nRF52840 with UF2 bootloader >= 0.6.1")
@@ -85,10 +86,17 @@ TP("TP1", "ANT_868", 124, 44, fp="TestPoint:TestPoint_THTPad_D2.0mm_Drill1.0mm",
 part("J1", "Connector:Conn_Coaxial", "U.FL", "Connector_Coaxial:U.FL_Hirose_U.FL-R-SMT-1_Vertical", 134, 42,
      {"1": "RF_UFL", "2": "GND"}, dnp=True, lcsc="C88374", mpn="U.FL-R-SMT-1(80)")
 
-# ---------------------------------------------------------------- button
-# The Pro Micro's reset: one press resets, a double-tap starts the UF2 bootloader.
+# ---------------------------------------------------------------- buttons, LED
+# SW1: the Pro Micro's reset (press: reset, double-tap: UF2 bootloader).
+# SW2: the firmware's function button (hold 6 s: factory reset).
 part("SW1", "Switch:SW_Push", "RESET", "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2", 14, 30, {"1": "NRESET", "2": "GND"},
      lcsc="C269272", mpn="C&K KMR221NGLFS (4.2 x 2.8 mm)")
+part("SW2", "Switch:SW_Push", "FUNC", "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2", 14, 40, {"1": "BTN_FUNC", "2": "GND"},
+     lcsc="C269272", mpn="C&K KMR221NGLFS (4.2 x 2.8 mm)")
+# EnOcean LED on P1.11, active high: 3.3 V - 2.1 V over 1 k = about 1.2 mA
+R("R4", "1k", 60, 70, "LED_TCM", "LED_A", lcsc="C17513", mpn="0805W8F1001T5E")
+part("D1", "Device:LED", "yellow", "LED_SMD:LED_0805_2012Metric_Pad1.15x1.40mm_HandSolder", 60, 80,
+     {"2": "LED_A", "1": "GND"}, rot=90, lcsc="C2296", mpn="KT-0805Y")
 
 part("H1", "Mechanical:MountingHole", "M2", "MountingHole:MountingHole_2.2mm_M2", 10, 90, {})
 part("H2", "Mechanical:MountingHole", "M2", "MountingHole:MountingHole_2.2mm_M2", 16, 90, {})
