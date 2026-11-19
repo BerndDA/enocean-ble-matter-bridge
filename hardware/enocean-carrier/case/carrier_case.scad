@@ -167,6 +167,8 @@ module lid() {
             if (light_pipe)
                 for (l = LEDS) translate([B(l)[0], B(l)[1], -pipe_len]) cylinder(d = pipe_bore + 2 * pipe_wall, h = pipe_len);
         }
+        // the buttons sit close to the front edge: notch the lip around each pin collar
+        for (b = BUTTONS) translate([B(b)[0], B(b)[1], -lip_h - 1]) cylinder(d = pin_collar_d + 1.0, h = lip_h + 1);
         // the lip must not cover the USB opening: cut it there
         translate([B([USB_X, 0])[0] - 6.5, OUT_D - wall - 2, -lip_h - 1]) cube([13, 3, lip_h + 1]);
         if (light_pipe)
@@ -184,10 +186,11 @@ module lid() {
 
 // push pin: collar under the lid keeps it captive, lower end 0.3 mm above the switch
 pin_below = inner_h - SW_H - 0.3;   // collar top (lid underside) down to the pin tip
+pin_collar_d = 5.4;                 // keeps the pin captive (hole 3.8); 0.35 mm clear of the base wall
 module pin() {
     collar = 1.2;
     cylinder(d = 3.3, h = pin_below + lid_t + 1.2);           // shaft: through the lid, 1.2 mm proud
-    translate([0, 0, pin_below - collar]) cylinder(d = 6.0, h = collar);
+    translate([0, 0, pin_below - collar]) cylinder(d = pin_collar_d, h = collar);
 }
 
 if (light_pipe) echo(str("light pipes: cut three ", rod_d, " mm acrylic rods to ", rod_len, " mm"));
