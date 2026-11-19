@@ -41,13 +41,16 @@ PLACE = {
     "C3": (37.4, 21.1, 0, "F"),        # nRESET filter, pad 1 facing the pin
     # 868 MHz, top-right corner
     "C4": (36.4, 3.65, 270, "F"),      # shunt (DNP), pad 1 on the line
-    "R2": (40.6, RF_Y, 0, "F"),        # to the whip
+    "R2": (40.4, RF_Y, 0, "F"),        # to the whip
     "TP1": (44.4, RF_Y, 0, "F"),       # whip hole
     "R3": (38.6, 5.6, 270, "F"),       # to the u.FL (DNP), pad 1 on top
     "J1": (43.9, 9.5, 0, "F"),         # u.FL (DNP) at the right edge, signal pad facing R3
-    # EnOcean LED (P1.11) right of the module, resistor below it: R4 pad 2 under D1 pad 2 (anode)
-    "D1": (41.6, 18.0, 0, "F"),
-    "R4": (41.6, 20.4, 0, "F"),
+    # RGB LED right of the module (rot 180: red and green cathodes face left), its three
+    # resistors (0603) in a column to the left: R4 red, R5 green, R6 blue
+    "D1": (43.2, 18.0, 180, "F"),
+    "R4": (38.6, 16.2, 0, "F"),
+    "R5": (38.6, 17.7, 0, "F"),
+    "R6": (38.6, 19.2, 0, "F"),
     # buttons (TS-1187A, 5.1 x 5.1 mm) side by side along the bottom edge, same orientation:
     # FUNC (P1.06) left, RESET right; holes
     "SW2": (29.0, 30.75, 0, "F"),

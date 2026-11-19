@@ -37,10 +37,10 @@ BASE_H = TOP_Z + INNER_H
 OUT_W, OUT_D = BOARD_W + 2 * GAP + 2 * WALL, BOARD_H + 2 * GAP + 2 * WALL
 OFF = WALL + GAP
 SW_H = 1.5
-LID_T, LED_H = 2.0, 0.8
+LID_T, LED_H = 2.0, 1.9                # LED_H: RGB LED 3528 (v0.2)
 ROD_D = 3.0                           # acrylic rod in the light pipe (carrier_case.scad rod_d)
 PIPE_LEN = INNER_H - LED_H - 1.0      # light pipe below the lid
-LED = (41.6, 18.0)                    # D1, KiCad board coordinates
+LED = (43.2, 18.0)                    # D1 (RGB, v0.2), KiCad board coordinates
 
 
 def C(x, y):

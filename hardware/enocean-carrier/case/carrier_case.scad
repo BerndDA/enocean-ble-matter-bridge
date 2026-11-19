@@ -22,7 +22,7 @@ usb_z    = pm_gap + pm_pcb + 1.6;               // USB-C centre above the carrie
 
 // ---------------------------------------------------------------- options
 sma_hole   = false;   // 6.5 mm hole in the right wall for an SMA bulkhead (u.FL pigtail instead of the whip)
-whip_hole  = true;    // hole in the lid above the whip pad: the 86 mm wire goes straight up
+whip_hole  = true;    // 3 mm hole in the lid above the whip pad: the 86 mm wire (up to 1.5 mm) goes straight up
 light_pipe = true;    // tube from the lid down to just above the LED, holds a clear acrylic rod
 rod_d      = 3.0;     // acrylic (PMMA) rod pressed into the light pipe
 pipe_bore  = rod_d + 0.2;   // printed holes come out ~0.1-0.2 mm small: press fit
@@ -36,12 +36,12 @@ function P(x, y) = [x, BOARD_H - y];      // KiCad board coordinates -> case coo
 
 HOLES   = [P(22.2, 30.7), P(42.4, 24.2)]; // H1, H2: M2
 BUTTONS = [P(29.0, 30.75), P(41.6, 30.75)];  // SW2 FUNC, SW1 RESET (XKB TS-1187A, 5.1 x 5.1 x 1.5 mm)
-LED     = P(41.6, 18.0);                  // D1
+LED     = P(43.2, 18.0);                  // D1, RGB 3528
 WHIP    = P(44.4, 2.6);                   // TP1
 UFL     = P(43.9, 9.5);                   // J1
 USB_X   = 2.4 + 15.24 / 2;                // Pro Micro centre line (pads at x 2.4 and 17.64)
 SW_H    = 1.5;                            // switch height above the board
-LED_H   = 0.8;
+LED_H   = 1.9;                            // RGB LED 3528 (v0.2), was 0.8 for the 0805 LED
 
 // ---------------------------------------------------------------- case
 wall     = 2.0;
@@ -84,7 +84,7 @@ module base() {
             p0 = B(P(x - 1.6, 32.2));
             translate([p0[0], p0[1], floor_t - pocket_d]) cube([3.2, 31.0, pocket_d + 1]);
         }
-        translate([B(WHIP)[0], B(WHIP)[1], floor_t - pocket_d]) cylinder(d = 4.0, h = pocket_d + 1);
+        translate([B(WHIP)[0], B(WHIP)[1], floor_t - pocket_d]) cylinder(d = 5.0, h = pocket_d + 1);   // whip pad 3.2 mm + solder
         // M2 screws from the top through board and floor into hex nuts in the underside
         for (h = HOLES) {
             translate([B(h)[0], B(h)[1], -1]) cylinder(d = 2.4, h = floor_t + 2);
@@ -116,7 +116,7 @@ module lid() {
             translate([B(LED)[0], B(LED)[1], -inner_h]) cylinder(d = pipe_bore, h = inner_h + lid_t + 1);
         // button holes
         for (b = BUTTONS) translate([B(b)[0], B(b)[1], -1]) cylinder(d = 3.8, h = lid_t + 2);
-        if (whip_hole) translate([B(WHIP)[0], B(WHIP)[1], -1]) cylinder(d = 2.5, h = lid_t + 2);
+        if (whip_hole) translate([B(WHIP)[0], B(WHIP)[1], -1]) cylinder(d = 3.0, h = lid_t + 2);   // wire up to 1.5 mm, some play
     }
 }
 

@@ -36,8 +36,8 @@ def part(ref, lib_id, value, footprint, x, y, nets, dnp=False, lcsc="", mpn="", 
                       nc_rest=nc_rest, rot=rot))
 
 
-def R(ref, value, x, y, top, bottom, **kw):
-    part(ref, "Device:R", value, FP_R, x, y, {"1": top, "2": bottom}, **kw)
+def R(ref, value, x, y, top, bottom, fp=FP_R, **kw):
+    part(ref, "Device:R", value, fp, x, y, {"1": top, "2": bottom}, **kw)
 
 
 def C(ref, value, x, y, top, bottom="GND", **kw):
@@ -57,7 +57,9 @@ part("U1", "Modules:ProMicro_nRF52840", "ProMicro nRF52840", "Modules:ProMicro_n
     "24": "TCM_RX",         # P0.09 UART0 TX -> TCM UART_RX
     "23": "TCM_TX",         # P0.10 UART0 RX <- TCM UART_TX
     "12": "BTN_FUNC",       # P1.06 sw0: hold 6 s for a factory reset
-    "22": "LED_TCM",        # P1.11: EnOcean activity LED (unused by today's firmware: stays dark)
+    "22": "LED_R",          # P1.11 / P1.13 / P1.15: RGB LED, active low (common anode);
+    "21": "LED_G",          # unused by today's firmware: the pins float and the LED stays dark
+    "20": "LED_B",
     "6": "TCM_NRESET",      # P0.20: TCM reset from firmware (unused today; the TCM's pull-up wins)
     "13": None,             # B+ (battery), not used
 }, nc_rest=True, mpn="nice!nano v2 / SuperMini nRF52840 with UF2 bootloader >= 0.6.1")
@@ -82,7 +84,7 @@ part("JP1", "Jumper:SolderJumper_2_Open", "460k8", "Jumper:SolderJumper-2_P1.3mm
 C("C4", "DNP", 120, 34, "RF_868", dnp=True)
 R("R2", "0", 124, 34, "RF_868", "ANT_868", lcsc="C17477", mpn="0805W8F0000T5E")
 R("R3", "0", 128, 34, "RF_868", "RF_UFL", dnp=True, lcsc="C17477", mpn="0805W8F0000T5E")
-TP("TP1", "ANT_868", 124, 44, fp="TestPoint:TestPoint_THTPad_D2.0mm_Drill1.0mm", value="WHIP 86mm")
+TP("TP1", "ANT_868", 124, 44, fp="Modules:WhipPad_D3.2mm_Drill1.8mm", value="WHIP 86mm")   # wire up to 1.5 mm
 part("J1", "Connector:Conn_Coaxial", "U.FL", "Connector_Coaxial:U.FL_Hirose_U.FL-R-SMT-1_Vertical", 134, 42,
      {"1": "RF_UFL", "2": "GND"}, dnp=True, lcsc="C88374", mpn="U.FL-R-SMT-1(80)")
 
@@ -94,10 +96,14 @@ part("SW1", "Switch:SW_Push", "RESET", "Button_Switch_SMD:SW_Push_1P1T_XKB_TS-11
      lcsc="C318884", mpn="TS-1187A-B-A-B")
 part("SW2", "Switch:SW_Push", "FUNC", "Button_Switch_SMD:SW_Push_1P1T_XKB_TS-1187A", 14, 40, {"1": "BTN_FUNC", "2": "GND"},
      lcsc="C318884", mpn="TS-1187A-B-A-B")
-# EnOcean LED on P1.11, active high: 3.3 V - 2.1 V over 1 k = about 1.2 mA
-R("R4", "1k", 60, 70, "LED_TCM", "LED_A", lcsc="C17513", mpn="0805W8F1001T5E")
-part("D1", "Device:LED", "yellow", "LED_SMD:LED_0805_2012Metric_Pad1.15x1.40mm_HandSolder", 60, 80,
-     {"2": "LED_A", "1": "GND"}, rot=90, lcsc="C2296", mpn="KT-0805Y")
+# RGB status LED, common anode on 3.3 V; each cathode through its resistor to a GPIO (low = on).
+# Red has the lower forward voltage, so it gets the larger resistor: about 1.3 / 1.8 / 1.8 mA.
+FP_R0603 = "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder"
+R("R4", "1k", 60, 66, "LED_R", "LED_RK", fp=FP_R0603, lcsc="C21190", mpn="0603WAF1001T5E")
+R("R5", "330", 64, 66, "LED_G", "LED_GK", fp=FP_R0603, lcsc="C23138", mpn="0603WAF3300T5E")
+R("R6", "330", 68, 66, "LED_B", "LED_BK", fp=FP_R0603, lcsc="C23138", mpn="0603WAF3300T5E")
+part("D1", "Device:LED_BAGR", "RGB", "Modules:LED_RGB_3528_TZ_S4-3528RGBTA-A", 64, 80,
+     {"1": "LED_BK", "2": "+3V3", "3": "LED_GK", "4": "LED_RK"}, lcsc="C2827321", mpn="S4-3528RGBTA-A")
 
 part("H1", "Mechanical:MountingHole", "M2", "MountingHole:MountingHole_2.2mm_M2", 10, 90, {})
 part("H2", "Mechanical:MountingHole", "M2", "MountingHole:MountingHole_2.2mm_M2", 16, 90, {})

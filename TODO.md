@@ -26,7 +26,8 @@ Pro Micro nRF52840 soldered onto a 2-layer board with a TCM 515. Design in [hard
 - [ ] Review the routing; tidy the 8 silkscreen warnings.
 - [x] Function button (SW2, P1.06) and an EnOcean LED (P1.11) added back in the space the rotated TCM freed.
 - [x] Fabrication files: `fab/` (Gerbers + drill zip, BOM and CPL for JLC assembly of the 10 small parts).
-- [ ] Firmware: drive the EnOcean LED on P1.11 (e.g. blink per telegram) in the Pro Micro overlay of `firmware/enocean-gateway`.
+- [x] v0.2: RGB LED (P1.11 red, P1.13 green, P1.15 blue, active low) instead of the single LED; whip hole for wire up to 1.5 mm. v0.1 kept as tag `enocean-carrier-v0.1`.
+- [ ] Firmware: drive the RGB LED (P1.11/P1.13/P1.15, active low, PWM) in the Pro Micro overlay of `firmware/enocean-gateway`, e.g. colour per state, blink per telegram.
 - [ ] Order at JLCPCB: upload the zip, 2 layers 1.6 mm; optionally PCB Assembly (Economic, top) with the BOM/CPL, check the placement preview.
 - [ ] Order 5 × TCM 515 (Digi-Key 1084-TCM515), Pro Micros (with their pin headers; no sockets); passives and buttons only if not assembled by JLC.
 - [ ] Assemble, flash `BOARD=promicro-uf2`, check `enocean info` and range with the whip.
