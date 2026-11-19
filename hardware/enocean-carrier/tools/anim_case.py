@@ -21,18 +21,37 @@ def key(obj, frame, z=None, **attrs):
         obj.keyframe_insert(k, frame=frame)
 
 
-def ease(obj):
-    ad = obj.animation_data
-    if not ad or not ad.action:
-        return
-    for fc in getattr(ad.action, "fcurves", []):
+def fcurves(owner):
+    """All F-curves of an animated ID; Blender 4.4+ keeps them in layered actions."""
+    ad = getattr(owner, "animation_data", None)
+    act = ad.action if ad else None
+    if act is None:
+        return []
+    if hasattr(act, "layers") and len(act.layers):
+        out = []
+        for layer in act.layers:
+            for strip in layer.strips:
+                for bag in getattr(strip, "channelbags", []):
+                    out.extend(bag.fcurves)
+        return out
+    return list(getattr(act, "fcurves", []))
+
+
+def interp(owner, mode):
+    for fc in fcurves(owner):
         for kp in fc.keyframe_points:
-            kp.interpolation = "BEZIER"
-            kp.easing = "AUTO"
+            kp.interpolation = mode
 
 
-def run(scene, cam, cam_data, target, center, lid, pins, whip, board_group, d, out, frames):
+def ease(obj):
+    interp(obj, "BEZIER")
+
+
+def run(scene, cam, cam_data, target, center, lid, pins, whip, board_group, d, out, frames,
+        view="front", plug=None, glow_mat=None):
+    """view "front": the buttons side; "usb": the USB end, and a USB-C plug goes in at the end."""
     base_h, top_z, sw_h = d["BASE_H"], d["TOP_Z"], d["SW_H"]
+    end = END + (48 if view == "usb" else 0)   # usb: plug goes in, then the LED blinks
     pin_z = top_z + sw_h + 0.3
 
     # --- motion (object locations in mm, inside the 0.01-scaled root)
@@ -51,8 +70,37 @@ def run(scene, cam, cam_data, target, center, lid, pins, whip, board_group, d, o
     key(whip, 1, wz + 120.0)
     key(whip, 120, wz + 120.0)
     key(whip, 156, wz)
-    for o in [board_group, lid, whip, *pins]:
+    movers = [board_group, lid, whip, *pins]
+    if plug is not None:                  # slides in along the case's long axis (+Y = out of the end wall)
+        plug.location.y = 45.0
+        plug.keyframe_insert("location", index=1, frame=1)
+        plug.keyframe_insert("location", index=1, frame=168)
+        plug.location.y = 0.0
+        plug.keyframe_insert("location", index=1, frame=200)
+        movers.append(plug)
+    for o in movers:
         ease(o)
+    if glow_mat is not None:              # three blinks after the plug is in (frame 200)
+        inp = glow_mat.node_tree.nodes["Principled BSDF"].inputs["Emission Strength"]
+        inp.default_value = 0.0
+        inp.keyframe_insert("default_value", frame=1)
+        light = bpy.data.lights.get(glow_mat.get("light", ""))
+        if light is not None:
+            light.energy = 0.0
+            light.keyframe_insert("energy", frame=1)
+        for on in (206, 218, 230):
+            inp.default_value = 250.0
+            inp.keyframe_insert("default_value", frame=on)
+            inp.default_value = 0.0
+            inp.keyframe_insert("default_value", frame=on + 6)
+            if light is not None:
+                light.energy = 0.6
+                light.keyframe_insert("energy", frame=on)
+                light.energy = 0.0
+                light.keyframe_insert("energy", frame=on + 6)
+        for owner in (glow_mat.node_tree, light):
+            interp(owner, "CONSTANT")
+        assert fcurves(glow_mat.node_tree), "no keyframes found for the LED"
 
     # --- camera: on a pivot that turns 60 degrees, target sinks as the parts come down
     pivot = bpy.data.objects.new("pivot", None)
@@ -62,13 +110,12 @@ def run(scene, cam, cam_data, target, center, lid, pins, whip, board_group, d, o
     cam.location = Vector((0.0, -1.55, 0.95))
     cam_data.lens = 45
     cam_data.dof.aperture_fstop = 8
-    pivot.rotation_euler = (0, 0, math.radians(-35))
+    a0, a1 = (-35, 30) if view == "front" else (215, 140)
+    pivot.rotation_euler = (0, 0, math.radians(a0))
     pivot.keyframe_insert("rotation_euler", index=2, frame=1)
-    pivot.rotation_euler = (0, 0, math.radians(30))
-    pivot.keyframe_insert("rotation_euler", index=2, frame=END)
-    for fc in getattr(pivot.animation_data.action, "fcurves", []):
-        for kp in fc.keyframe_points:
-            kp.interpolation = "LINEAR"
+    pivot.rotation_euler = (0, 0, math.radians(a1))
+    pivot.keyframe_insert("rotation_euler", index=2, frame=end)
+    interp(pivot, "LINEAR")
     target.location = center + Vector((0, 0, 0.32))
     target.keyframe_insert("location", index=2, frame=1)
     target.location = center + Vector((0, 0, 0.05))
@@ -84,12 +131,12 @@ def run(scene, cam, cam_data, target, center, lid, pins, whip, board_group, d, o
     scene.render.resolution_x = 1280
     scene.render.resolution_y = 720
     scene.render.fps = FPS
-    scene.frame_start, scene.frame_end = 1, END
+    scene.frame_start, scene.frame_end = 1, end
     scene.render.image_settings.file_format = "PNG"
 
     fdir = os.path.join(out, "anim-frames")
     os.makedirs(fdir, exist_ok=True)
-    todo = [int(f) for f in frames.split(",")] if frames else range(1, END + 1)
+    todo = [int(f) for f in frames.split(",")] if frames else range(1, end + 1)
     for f in todo:
         scene.frame_set(f)
         scene.render.filepath = os.path.join(fdir, f"f{f:04d}.png")

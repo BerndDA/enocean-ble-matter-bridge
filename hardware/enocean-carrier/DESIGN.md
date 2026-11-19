@@ -153,10 +153,10 @@ About €110–140 for five, €20–30 per board.
 | --- | --- | --- |
 | ![closed](case/render-closed.png) | ![exploded](case/render-exploded.png) | ![open](case/render-open.png) |
 
-Renders: `tools/render_case.sh` (Blender + Cycles; KiCad's 3D export of the board, the case STLs, and simple stand-ins for the Pro Micro, TCM 515, buttons and whip). Assembly clip: [case/anim.mp4](case/anim.mp4), made by `tools/render_case.sh anim` (EEVEE, 8 s, about 5 minutes to render).
+Renders: `tools/render_case.sh` (Blender + Cycles; KiCad's 3D export of the board, the case STLs, and simple stand-ins for the Pro Micro, TCM 515, buttons and whip). Assembly clips: [case/anim.mp4](case/anim.mp4) from the buttons side (`tools/render_case.sh anim`, 8 s) and [case/anim-usb.mp4](case/anim-usb.mp4) from the USB end, where a USB-C cable goes in and the EnOcean LED blinks (`tools/render_case.sh anim-usb`, 10 s). EEVEE, about 5 minutes each.
 
-- **Size:** 51.3 × 38.2 × 17.6 mm, for the Pro Micro soldered directly on its pin headers (`pm_mount = "direct"`, the default). For a socketed Pro Micro (female headers) set `pm_mount = "socket"`: about 26 mm tall.
-- **Board mounting:** the board sits on two standoffs (M2 self-tapping screws, about 6 mm long) and a 0.8 mm ledge along the edge. The USB-C notch in the end wall is open at the top, so the board goes in from above with the Pro Micro on it.
+- **Size:** 51.3 × 38.2 × 14.6 mm, for the Pro Micro soldered directly on its pin headers (`pm_mount = "direct"`, the default). For a socketed Pro Micro (female headers) set `pm_mount = "socket"`: about 23 mm tall.
+- **Board mounting:** the board lies flat on the 3 mm floor. Pockets 2 mm deep under the two pin rows and the whip pad take the solder joints: trim the pin ends flush after soldering. Two M2 × 6 mm screws go from the top through the board and the floor into M2 hex nuts in traps on the underside. The USB-C notch in the end wall is open at the top, so the board goes in from above with the Pro Micro on it.
 - **Lid:** held by a friction lip.
   - **Buttons:** two holes with captive push pins. Put them in from below before closing; their collar keeps them in, and the tip rests 0.3 mm above the switch.
   - **LED:** a light pipe from the lid down to just above the LED.

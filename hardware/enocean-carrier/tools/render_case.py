@@ -21,11 +21,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # for anim_case
 args = sys.argv[sys.argv.index("--") + 1:]
 WORK, OUT = args[0], args[1]
 SAMPLES = int(args[2]) if len(args) > 2 else 192
-MODE = args[3] if len(args) > 3 else "stills"        # "stills" or "anim" (frames for anim.mp4)
+MODE = args[3] if len(args) > 3 else "stills"        # "stills", "anim" (front view) or "anim-usb" (USB side)
 FRAMES = args[4] if len(args) > 4 else ""            # anim: comma list of frames to render (test), default all
 
 # ---------------------------------------------------------------- dimensions (carrier_case.scad)
-WALL, GAP, FLOOR, UNDER, BOARD_T = 2.0, 0.4, 2.0, 4.0, 1.6
+WALL, GAP, FLOOR, UNDER, BOARD_T = 2.0, 0.4, 3.0, 0.0, 1.6
 BOARD_W, BOARD_H = 46.5, 33.4
 SOCKET = False                        # carrier_case.scad pm_mount: "direct" (False) or "socket"
 PM_GAP = 11.0 if SOCKET else 2.5
@@ -269,10 +269,47 @@ def shot(name, cam_loc, target_loc, lens=70, lid_z=None, pin_lift=0.0, show_lid=
 
 
 c = center
-if MODE == "anim":
+if MODE.startswith("anim"):
     import anim_case   # noqa: E402  (tools/anim_case.py, next to this script)
+    plug = None
+    if MODE == "anim-usb":
+        # USB-C plug with cable, pointing out of the end wall, as one group
+        plug = bpy.data.objects.new("plug", None)
+        scene.collection.objects.link(plug)
+        plug.parent = root
+        uz = pm_z + PM_PCB + 1.6                 # receptacle centre
+        yf = PM_Y1 + 0.4                         # receptacle front face
+        parts = [
+            box("plug_shell", cx - 4.1, yf - 6.4, uz - 1.25, cx + 4.1, yf + 0.3, uz + 1.25, M["metal"], 0.6),
+            box("plug_body", cx - 5.4, yf + 0.3, uz - 2.8, cx + 5.4, yf + 17.0, uz + 2.8, M["chip"], 1.2),
+            box("plug_relief", cx - 3.2, yf + 17.0, uz - 2.2, cx + 3.2, yf + 23.0, uz + 2.2, M["chip"], 1.0),
+        ]
+        bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=1.8, depth=60, location=(cx, yf + 53.0, uz),
+                                            rotation=(math.radians(90), 0, 0))
+        cable = bpy.context.object
+        cable.data.materials.append(M["chip"])
+        bpy.ops.object.shade_smooth()
+        for o in parts + [cable]:
+            o.parent = plug
+        # EnOcean LED light at the top of the light pipe, blinks once the cable is in
+        glow_mat = mat("led_glow", (0.25, 0.2, 0.08), 0.4, 0.0, ((1.0, 0.72, 0.15), 0.0))
+        lx, ly = C(41.6, 18.0)
+        glow = cyl("led_glow", 0, 0, 0, 1.9, 2.5, glow_mat, 32)
+        glow.parent = lid
+        glow.location = (lx, ly, 0.15)
+        glow_light_data = bpy.data.lights.new("led_light", "POINT")
+        glow_light_data.color = (1.0, 0.7, 0.2)
+        glow_light_data.energy = 0.0
+        glow_light_data.shadow_soft_size = 0.002
+        glow_light = bpy.data.objects.new("led_light", glow_light_data)
+        scene.collection.objects.link(glow_light)
+        glow_light.parent = lid
+        glow_light.location = (lx, ly, 3.5)
+        glow_mat["light"] = glow_light_data.name
     anim_case.run(scene, cam, cam_data, target, center, lid, pins, whip, board_group,
-                  dict(BASE_H=BASE_H, TOP_Z=TOP_Z, SW_H=SW_H), OUT, FRAMES)
+                  dict(BASE_H=BASE_H, TOP_Z=TOP_Z, SW_H=SW_H), OUT, FRAMES,
+                  view="usb" if MODE == "anim-usb" else "front", plug=plug,
+                  glow_mat=glow_mat if MODE == "anim-usb" else None)
     raise SystemExit(0)
 shot("closed", (c.x + 0.95, c.y - 1.05, c.z + 0.75), (c.x, c.y, c.z + 0.02), lens=60, show_whip=True)
 shot("exploded", (c.x + 1.0, c.y - 1.15, c.z + 0.95), (c.x, c.y, c.z + 0.12), lens=55,

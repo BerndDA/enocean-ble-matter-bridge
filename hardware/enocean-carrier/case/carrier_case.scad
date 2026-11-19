@@ -42,14 +42,14 @@ LED_H   = 0.8;
 
 // ---------------------------------------------------------------- case
 wall     = 2.0;
-floor_t  = 2.0;
+floor_t  = 3.0;     // the board lies on the floor; pockets take the solder joints
+pocket_d = 2.0;     // pocket depth under the pin rows and the whip pad
 gap      = 0.4;     // board to wall, each side
-under    = 4.0;     // floor to board bottom: room for the header pins and solder
+under    = 0.0;     // floor to board bottom
 inner_h  = pm_gap + pm_pcb + pm_parts + 0.8;   // board top to lid underside
 lid_t    = 2.0;
 lip_h    = 3.0;     // lid lip reaching into the base
 fit      = 0.25;    // lip clearance per side
-ledge    = 0.8;     // board support around the edge
 $fn = 48;
 
 IN_W = BOARD_W + 2 * gap;
@@ -65,22 +65,26 @@ module rounded_box(w, d, h, r = 1.5) {
     hull() for (x = [r, w - r], y = [r, d - r]) translate([x, y, 0]) cylinder(r = r, h = h);
 }
 
+// pin rows of the Pro Micro headers (board x 2.4 and 17.64, pins y 2.7 .. 30.64)
+PIN_ROWS_X = [2.4, 17.64];
+
 module base() {
     difference() {
-        union() {
-            difference() {
-                rounded_box(OUT_W, OUT_D, base_h);
-                translate([wall, wall, floor_t]) cube([IN_W, IN_D, base_h]);
-            }
-            // ledge around the inside: the board rests on it where it has no holes
-            translate([wall, wall, floor_t]) difference() {
-                cube([IN_W, IN_D, under]);
-                translate([gap + ledge, gap + ledge, -1]) cube([IN_W - 2 * (gap + ledge), IN_D - 2 * (gap + ledge), under + 2]);
-            }
-            // standoffs for M2 self-tapping screws
-            for (h = HOLES) translate([B(h)[0], B(h)[1], floor_t]) cylinder(d = 5.0, h = under);
+        difference() {
+            rounded_box(OUT_W, OUT_D, base_h);
+            translate([wall, wall, floor_t]) cube([IN_W, IN_D, base_h]);
         }
-        for (h = HOLES) translate([B(h)[0], B(h)[1], floor_t - 1]) cylinder(d = 1.7, h = under + 2);
+        // pockets for the solder joints on the board's underside (trim the pin ends flush)
+        for (x = PIN_ROWS_X) {
+            p0 = B(P(x - 1.6, 32.2));
+            translate([p0[0], p0[1], floor_t - pocket_d]) cube([3.2, 31.0, pocket_d + 1]);
+        }
+        translate([B(WHIP)[0], B(WHIP)[1], floor_t - pocket_d]) cylinder(d = 4.0, h = pocket_d + 1);
+        // M2 screws from the top through board and floor into hex nuts in the underside
+        for (h = HOLES) {
+            translate([B(h)[0], B(h)[1], -1]) cylinder(d = 2.4, h = floor_t + 2);
+            translate([B(h)[0], B(h)[1], -0.01]) cylinder(d = 4.8, h = 1.8, $fn = 6);
+        }
         // USB-C opening in the end wall (board y = 0 is the top wall here)
         translate([B([USB_X, 0])[0] - 6, OUT_D - wall - 1, top_z + usb_z - 3.5]) cube([12, wall + 2, 7]);
         if (sma_hole)
