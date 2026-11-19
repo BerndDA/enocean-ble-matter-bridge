@@ -54,8 +54,8 @@ LED_H   = 0.8;                            // 0805 LEDs
 
 // [text, board x, board y, size, halign]; LEDs: D1 red PWR, D2 green LINK, D3 yellow RX
 LABELS = [
-    ["FUNC",  29.0, 27.8, label_h, "center"],
-    ["RESET", 41.6, 27.8, label_h, "center"],
+    ["FUNC",  26.4, 30.75, label_h, "right"],   // left of each button
+    ["RST",   39.0, 30.75, label_h, "right"],
     ["PWR",   41.0, 16.4, label_h, "right"],
     ["LINK",  41.0, 20.4, label_h, "right"],
     ["RX",    41.0, 24.4, label_h, "right"],
