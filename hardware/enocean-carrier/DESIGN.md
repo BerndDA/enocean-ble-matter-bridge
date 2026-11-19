@@ -90,7 +90,7 @@ Freerouting's result can change with small placement changes: moving C2 by 0.6 m
 | [enocean-carrier-bom.csv](fab/enocean-carrier-bom.csv) | BOM for PCB assembly (JLC columns: Comment, Designator, Footprint, LCSC Part #) |
 | [enocean-carrier-cpl.csv](fab/enocean-carrier-cpl.csv) | Placement for PCB assembly (Designator, Mid X, Mid Y, Layer, Rotation) |
 
-**PCB:** 2 layers, FR-4, 1.6 mm, 1 oz, HASL lead-free (or ENIG), any colour. Everything else default; no impedance control or via-in-pad needed.
+**PCB:** 2 layers, FR-4, 1.6 mm, 1 oz, green, HASL lead-free, single PCB (no panel, no edge rails or fiducials, no castellated holes). Everything else default; no impedance control or via-in-pad needed. Economic assembly only allows some colours and finishes: with other choices JLC greys "Economic" out and quotes "Standard" (~$51 instead of ~$15 for the assembly).
 
 **Assembly (optional):** "PCB Assembly", Economic, top side.
 - **JLC places 10 parts**: FB1, C1, C2, C3, R1, R2, R4, D1 and SW1/SW2, all from JLC's basic library, so there are no extended-part fees.
