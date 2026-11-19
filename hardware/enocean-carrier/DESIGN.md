@@ -53,7 +53,7 @@ The circuit follows the TCM 515 User Manual v1.22; details and sources are in th
 
 - **The Pro Micro** sits on the left: USB end flush with the top edge, antenna end flush with the bottom edge. Its footprint ([../lib/Modules.pretty](../lib/Modules.pretty)) keeps all copper out from between the header rows under the antenna.
 - **The TCM 515** stands upright next to it (rotated 270°). VDD and UART are at its bottom edge, a few millimetres from the Pro Micro's P0.09/P0.10. RF_50 is at its top edge, facing the whip pad in the top-right corner and the u.FL at the right edge below it (so a pigtail leaves the board directly), as far as possible from the 2.4 GHz antenna. No top copper under the module (keepout in its footprint).
-- **The parts around it:** C1/C2/FB1 below the TCM at VDD; R1/JP1 (nTURBO), the LED with R4, and C3 (nRESET) at its right edge; FUNC (SW2, upright) bottom-left under the TCM, RESET (SW1) bottom-right.
+- **The parts around it:** C2, C1 and FB1 in a row below the TCM at VDD; R1/JP1 (nTURBO), the LED with R4, and C3 (nRESET) at its right edge; the two buttons side by side along the bottom edge, same orientation: FUNC (SW2) left, RESET (SW1) right.
 - **Rules:** JLC 2-layer limits with margin: 0.15 mm track/clearance minimum, 0.25 mm default tracks, 0.6/0.3 mm vias.
 
 Pictures: [top](enocean-carrier-top.png), [bottom](enocean-carrier-bottom.png), [top copper](enocean-carrier-layer-top.png), [bottom copper](enocean-carrier-layer-bottom.png), [schematic](enocean-carrier.png).

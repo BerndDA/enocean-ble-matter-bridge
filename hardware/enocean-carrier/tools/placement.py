@@ -32,9 +32,9 @@ PLACE = {
     "U1": (2.4, 2.7, 0, "F"),          # module outline x 1.0..19.0, y 0.0..33.3
     "U2": (TCM[0], TCM[1], 270, "F"),
     # TCM supply, below the module next to VDD
-    "C2": (31.6, 26.0, 270, "F"),      # 100 nF, closest to VDD; rot 270: pad 1 (VDD) on top
-    "C1": (33.9, 26.0, 270, "F"),      # 22 uF
-    "FB1": (31.6, 30.0, 90, "F"),
+    "C2": (31.6, 25.9, 270, "F"),      # 100 nF, closest to VDD; rot 270: pad 1 (VDD) on top
+    "C1": (33.9, 25.9, 270, "F"),      # 22 uF
+    "FB1": (36.2, 25.9, 270, "F"),
     # right edge of the module
     "R1": (37.4, 14.1, 180, "F"),      # nTURBO pull-up, pad 2 (nTURBO) facing the pin
     "JP1": (41.0, 14.1, 0, "F"),
@@ -48,10 +48,10 @@ PLACE = {
     # EnOcean LED (P1.11) right of the module, resistor below it: R4 pad 2 under D1 pad 2 (anode)
     "D1": (41.6, 18.0, 0, "F"),
     "R4": (41.6, 20.4, 0, "F"),
-    # buttons (TS-1187A, 5.1 x 5.1 mm): FUNC (P1.06) bottom-left under the TCM, upright;
-    # RESET bottom-right; holes
-    "SW2": (27.5, 29.4, 90, "F"),
-    "SW1": (41.6, 30.6, 0, "F"),
+    # buttons (TS-1187A, 5.1 x 5.1 mm) side by side along the bottom edge, same orientation:
+    # FUNC (P1.06) left, RESET right; holes
+    "SW2": (29.0, 30.75, 0, "F"),
+    "SW1": (41.6, 30.75, 0, "F"),
     "H1": (22.2, 30.7, 0, "F"),
     "H2": (42.4, 24.2, 0, "F"),
 }
