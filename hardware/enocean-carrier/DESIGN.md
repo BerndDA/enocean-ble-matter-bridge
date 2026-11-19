@@ -93,7 +93,8 @@ Freerouting's result can change with small placement changes: moving C2 by 0.6 m
 **PCB:** 2 layers, FR-4, 1.6 mm, 1 oz, green, HASL lead-free, single PCB (no panel, no edge rails or fiducials, no castellated holes). Everything else default; no impedance control or via-in-pad needed. Economic assembly only allows some colours and finishes: with other choices JLC greys "Economic" out and quotes "Standard" (~$51 instead of ~$15 for the assembly).
 
 **Assembly (optional):** "PCB Assembly", Economic, top side.
-- **JLC places 12 parts**: FB1, C1, C2, C3, R1, R2, R4, R5, R6 and SW1/SW2 from JLC's basic library, and the RGB LED D1, the only extended part ($3.07 loading fee once).
+- **JLC places 11 parts**: FB1, C1, C2, C3, R1, R2, R4, R5, R6 and SW1/SW2, all from JLC's basic library, so no extended-part fees.
+- **The RGB LED D1 is soldered by hand**, like the TCM: it's an extended part at JLC ($3.07 fee). Buy it at LCSC: Tuozhan S4-3528RGBTA-A, C2827321, about $0.03 each, sold in small minimum quantities. Another 3528 RGB LED fits only if it's common anode with the same pinout (1 blue, 2 anode, 3 green, 4 red).
 - **Not in the order:**
   - U1 (Pro Micro on headers) and U2 (TCM 515): you solder those.
   - R3, J1, C4: not fitted (u.FL option).
@@ -123,7 +124,7 @@ That's roughly $30–40 for 5 assembled carriers. Add 5 × TCM 515 (Digi-Key, ~�
 | R1 | 10 kΩ 0805 | |
 | R2 | 0 Ω 0805 | whip |
 | SW1, SW2 | XKB TS-1187A-B-A-B, 5.1 × 5.1 mm SMD | reset, function |
-| D1 | RGB LED 3528, common anode (S4-3528RGBTA-A) | status |
+| D1 | RGB LED 3528, common anode (S4-3528RGBTA-A, LCSC C2827321) | status; hand-soldered |
 | R4 | 1 kΩ 0603 | red |
 | R5, R6 | 330 Ω 0603 | green, blue |
 | — | 86 mm wire, up to 1.5 mm thick | whip antenna, into the WHIP hole |

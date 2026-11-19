@@ -2564,8 +2564,11 @@
 			(at 162.56 203.2 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(property "LCSC" "C2827321" (at 162.56 203.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "MPN" "S4-3528RGBTA-A" (at 162.56 203.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "LCSC" "" (at 162.56 203.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "MPN" "S4-3528RGBTA-A (LCSC C2827321), hand-soldered: kept out of the JLC assembly (extended part)"
+			(at 162.56 203.2 0)
+			(effects (font (size 1.27 1.27)) (hide yes))
+		)
 		(pin "1" (uuid "6aa13fc3-bd6f-5387-889a-3cee65846c8e"))
 		(pin "2" (uuid "718c8625-c57c-53fa-9b55-309f66c71aab"))
 		(pin "3" (uuid "b2b1ff57-8511-5710-b80d-67370c7cea6c"))

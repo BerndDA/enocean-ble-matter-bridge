@@ -3996,7 +3996,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C2827321"
+		(property "LCSC" ""
 			(at 0 0 180)
 			(layer "F.SilkS")
 			(hide yes)
@@ -4008,7 +4008,7 @@
 				)
 			)
 		)
-		(property "MPN" "S4-3528RGBTA-A"
+		(property "MPN" "S4-3528RGBTA-A (LCSC C2827321), hand-soldered: kept out of the JLC assembly (extended part)"
 			(at 0 0 180)
 			(layer "F.SilkS")
 			(hide yes)

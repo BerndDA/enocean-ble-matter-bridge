@@ -103,7 +103,8 @@ R("R4", "1k", 60, 66, "LED_R", "LED_RK", fp=FP_R0603, lcsc="C21190", mpn="0603WA
 R("R5", "330", 64, 66, "LED_G", "LED_GK", fp=FP_R0603, lcsc="C23138", mpn="0603WAF3300T5E")
 R("R6", "330", 68, 66, "LED_B", "LED_BK", fp=FP_R0603, lcsc="C23138", mpn="0603WAF3300T5E")
 part("D1", "Device:LED_BAGR", "RGB", "Modules:LED_RGB_3528_TZ_S4-3528RGBTA-A", 64, 80,
-     {"1": "LED_BK", "2": "+3V3", "3": "LED_GK", "4": "LED_RK"}, lcsc="C2827321", mpn="S4-3528RGBTA-A")
+     {"1": "LED_BK", "2": "+3V3", "3": "LED_GK", "4": "LED_RK"},
+     mpn="S4-3528RGBTA-A (LCSC C2827321), hand-soldered: kept out of the JLC assembly (extended part)")
 
 part("H1", "Mechanical:MountingHole", "M2", "MountingHole:MountingHole_2.2mm_M2", 10, 90, {})
 part("H2", "Mechanical:MountingHole", "M2", "MountingHole:MountingHole_2.2mm_M2", 16, 90, {})
