@@ -61,7 +61,8 @@ part("U1", "Modules:ProMicro_nRF52840", "ProMicro nRF52840", "Modules:ProMicro_n
     "21": "LED_G",          # unused by today's firmware: the pins float and the LEDs stay dark
     "20": "LED_Y",
     "6": "TCM_NRESET",      # P0.20: TCM reset from firmware (unused today; the TCM's pull-up wins)
-    "13": None,             # B+ (battery), not used
+    "13": None,             # RAW (nice!nano: battery/raw input), not used. The nice!nano v2 has a 13th pin
+                            # on each side above the rows (B+ / B-, battery only): no header there, not on this board
 }, nc_rest=True, mpn="nice!nano v2 / SuperMini nRF52840 with UF2 bootloader >= 0.6.1")
 
 # ---------------------------------------------------------------- TCM 515

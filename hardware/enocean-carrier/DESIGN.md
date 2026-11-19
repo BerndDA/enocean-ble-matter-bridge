@@ -27,7 +27,9 @@ Compared with the custom board: about €20–25 per board instead of €40–55
 | Status LEDs | right 10 / 9 / 8 | P1.11 red, P1.13 green, P1.15 yellow | 3.3 V → LED D1 / D2 / D3 → R4 1 kΩ / R5 330 Ω / R6 1 kΩ → pin; **active low**. Unused by today's firmware (pins float, LEDs dark) |
 | TCM reset | left 6 | P0.20 | TCM 515 pin 24 nRESET (unused by today's firmware; the TCM's pull-up wins) |
 
-The full header order, from [TinyGo's nice!nano pin list](https://tinygo.org/docs/reference/microcontrollers/boards/nicenano/), matches the classic Pro Micro layout. **Before soldering, check it against your module's silkscreen**: B+, GND, RST and VCC must be the top four pins of the right column with the USB end up and the components facing up. Square pad = pin 1 = P0.06.
+The full header order, from [TinyGo's nice!nano pin list](https://tinygo.org/docs/reference/microcontrollers/boards/nicenano/), matches the classic Pro Micro layout. **Before soldering, check it against your module's silkscreen**: RAW, GND, RST and VCC must be the top four pins of the right column with the USB end up and the components facing up. Square pad = pin 1 = P0.06.
+
+**nice!nano v2 with 13 pins per side:** current nice!nano v2 boards have one more pin at the top (USB end) of each side, B+ and B-, for a LiPo battery only. The carrier uses only the 2 × 12 rows below them; per the [nice!nano docs](https://nicekeyboards.com/docs/nice-nano/getting-started/), put no header on B+ / B-, they stay free. Line up the 12-pin headers with the RAW/P0.06 row, not with the top pins.
 
 On a nice!nano, VCC is switched off while P0.13 is high. The firmware doesn't drive P0.13, and the TCM on VCC works today with the Pi hat.
 

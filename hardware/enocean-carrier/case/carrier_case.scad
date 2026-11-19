@@ -30,12 +30,14 @@ pipe_wall  = 0.8;     // also the wall between two pipes (LEDs 4 mm apart): two 
 
 // ---------------------------------------------------------------- labels engraved in the lid top
 labels     = true;
-name       = "";      // product name, large, over the Pro Micro / TCM area ("" = none)
+name       = "EnMT";  // product name, large, over the Pro Micro / TCM area ("" = none)
+logo       = true;    // the EnMT logo (radio waves + triangle of nodes) left of the name
+logo_h     = 9.0;     // logo height
 label_font = "Liberation Sans:style=Bold";
 label_d    = 0.6;     // engraving depth
 label_grow = 0.12;    // widens the strokes by 2 x this: grooves >= 0.5 mm, printable on MJF/SLS/resin
 label_h    = 2.0;     // small labels (cap height about 0.7 x this)
-name_h     = 4.5;
+name_h     = 5.5;
 
 // ---------------------------------------------------------------- board (from the PCB)
 BOARD_W = 46.5;
@@ -61,7 +63,7 @@ LABELS = [
     ["RX",    41.0, 24.4, label_h, "right"],
     ["868",   42.4,  2.6, label_h, "right"],
 ];
-NAME_AT = [18.0, 12.0];                   // board coordinates of the name's centre
+NAME_AT = [14.5, 10.5];                   // board coordinates of the centre of logo + name
 
 // ---------------------------------------------------------------- case
 wall     = 2.0;
@@ -122,6 +124,36 @@ module engrave(t, p, size, halign) {
         offset(delta = label_grow) text(t, size = size, font = label_font, halign = halign, valign = "center");
 }
 
+// EnMT logo, drawn in the source image's pixel space (y down, ~230 x 200 px), scaled to logo_h:
+// two radio-wave arcs left of a node, which links to two nodes on the right (a triangle)
+LOGO_NODES = [[110, 100, 17], [198, 38, 19], [198, 162, 19]];   // x, y, radius
+module logo2d() {
+    k = logo_h / 162;
+    scale([k, -k]) translate([-140, -100]) {
+        for (n = LOGO_NODES) translate([n[0], n[1]]) circle(r = n[2]);
+        for (e = [[0, 1], [0, 2], [1, 2]])
+            hull() for (i = e) translate([LOGO_NODES[i][0], LOGO_NODES[i][1]]) circle(r = 8);
+        for (r = [42, 68]) translate([LOGO_NODES[0][0], LOGO_NODES[0][1]]) arc2d(r, 6.5, 180 - 42, 180 + 42);
+    }
+}
+module arc2d(r, w, a0, a1) {           // stroke of width 2w with round ends
+    intersection() {
+        difference() { circle(r = r + w, $fn = 96); circle(r = r - w, $fn = 96); }
+        polygon([[0, 0], for (a = [a0 : 2 : a1]) (r + 2 * w) * [cos(a), sin(a)]]);
+    }
+    for (a = [a0, a1]) translate(r * [cos(a), sin(a)]) circle(r = w);
+}
+// logo, a gap, then the name; centred as a group around the origin
+module brand2d() {
+    lw = logo ? logo_h * 1.12 : 0;              // logo width (~182 x 162 px)
+    tw = name == "" ? 0 : len(name) * name_h * 0.78;   // rough text width (bold caps)
+    gap = (logo && name != "") ? 2.0 : 0;
+    x0 = -(lw + gap + tw) / 2;
+    if (logo) translate([x0 + lw / 2, 0]) logo2d();
+    if (name != "") translate([x0 + lw + gap, 0]) offset(delta = label_grow)
+        text(name, size = name_h, font = label_font, halign = "left", valign = "center");
+}
+
 module lid() {
     difference() {
         union() {
@@ -144,7 +176,8 @@ module lid() {
         if (whip_hole) translate([B(WHIP)[0], B(WHIP)[1], -1]) cylinder(d = 3.0, h = lid_t + 2);   // wire up to 1.5 mm, some play
         if (labels) {
             for (l = LABELS) engrave(l[0], P(l[1], l[2]), l[3], l[4]);
-            if (name != "") engrave(name, P(NAME_AT[0], NAME_AT[1]), name_h, "center");
+            if (name != "" || logo) translate([B(P(NAME_AT[0], NAME_AT[1]))[0], B(P(NAME_AT[0], NAME_AT[1]))[1], lid_t - label_d])
+                linear_extrude(label_d + 1) brand2d();
         }
     }
 }
