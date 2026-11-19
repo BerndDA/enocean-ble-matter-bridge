@@ -121,6 +121,8 @@ module pin() {
 
 // ---------------------------------------------------------------- parts
 if (part == "base") base();
+else if (part == "lid_asm") lid();     // as mounted (renders)
+else if (part == "pin_asm") pin();     // as mounted, tip at z = 0 (renders)
 else if (part == "lid") translate([0, 0, lid_t]) rotate([180, 0, 0]) translate([0, -OUT_D, 0]) lid();  // print upside down
 else if (part == "pin") rotate([180, 0, 0]) translate([0, 0, -(pin_below + lid_t + 1.2)]) pin();     // print collar down
 else {

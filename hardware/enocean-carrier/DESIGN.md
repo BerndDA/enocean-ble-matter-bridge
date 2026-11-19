@@ -149,7 +149,11 @@ About €110–140 for five, €20–30 per board.
 | [carrier_case-lid.stl](case/carrier_case-lid.stl) | already turned upside down, no supports |
 | [carrier_case-pin.stl](case/carrier_case-pin.stl) | 2×, collar down |
 
-![Case](case/carrier_case-assembly.png)
+| Closed | Exploded | Open |
+| --- | --- | --- |
+| ![closed](case/render-closed.png) | ![exploded](case/render-exploded.png) | ![open](case/render-open.png) |
+
+Renders: `tools/render_case.sh` (Blender + Cycles; KiCad's 3D export of the board, the case STLs, and simple stand-ins for the Pro Micro, TCM 515, buttons and whip).
 
 - **Size:** 51.3 × 38.2 mm, about 26 mm tall with the Pro Micro on female headers. With `pm_mount = "direct"` (Pro Micro soldered on pin headers) it's about 17 mm.
 - **Board mounting:** the board sits on two standoffs (M2 self-tapping screws, about 6 mm long) and a 0.8 mm ledge along the edge. The USB-C notch in the end wall is open at the top, so the board goes in from above with the Pro Micro plugged in.
