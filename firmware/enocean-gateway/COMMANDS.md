@@ -21,7 +21,7 @@ Run from the repository root. `APP=enocean-gateway` is required on every call; w
 | `make zap APP=enocean-gateway` | Regenerate the data model code after editing `src/default_zap/bridge.zap` |
 | `make clean APP=enocean-gateway` | Delete the build folders and the test build |
 
-Add `BOARD=promicro-uf2` (Pro Micro with its UF2 bootloader, flashed over USB) or `BOARD=promicro` (Pro Micro over SWD) to any target for the Pro Micro nRF52840; the default is the DK. On the Pro Micro the TCM sits on P0.09 (TX, to the module's RX) and P0.10 (RX, from the module's TX), plus 3.3 V and GND; the shell runs over the Pro Micro's USB port (`make term BOARD=promicro-uf2`). There is no OTA on the Pro Micro (no room for a second image slot). The `diag`, `measure` and `summary` targets belong to the BLE gateway.
+Add `BOARD=promicro-uf2` (Pro Micro with its UF2 bootloader, flashed over USB) , `BOARD=promicro` (Pro Micro over SWD) or `BOARD=enmt` (the EnMT carrier board: `promicro-uf2` plus its PWR/LINK/RX LEDs, [boards/enmt_carrier.overlay](boards/enmt_carrier.overlay)) to any target for the Pro Micro nRF52840; the default is the DK. On the Pro Micro the TCM sits on P0.09 (TX, to the module's RX) and P0.10 (RX, from the module's TX), plus 3.3 V and GND; the shell runs over the Pro Micro's USB port (`make term BOARD=promicro-uf2`). There is no OTA on the Pro Micro (no room for a second image slot). The `diag`, `measure` and `summary` targets belong to the BLE gateway.
 
 ## Status page
 

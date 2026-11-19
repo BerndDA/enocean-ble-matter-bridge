@@ -183,6 +183,7 @@ The Pro Micro (also sold as nice!nano clone or "SuperMini") is a second option n
 
 - **`BOARD=promicro-uf2`**: keeps the UF2 bootloader the board ships with. You flash over USB by copying a file. No wiring needed.
 - **`BOARD=promicro`**: flashed over SWD with the DK as programmer. This erases the UF2 bootloader, and gives a little more flash and a real full erase.
+- **`BOARD=enmt`** (EnOcean gateway only): the [EnMT carrier board](hardware/enocean-carrier/DESIGN.md), a nice!nano with a TCM 515. Same as `promicro-uf2` plus the carrier's three status LEDs ([boards/enmt_carrier.overlay](firmware/enocean-gateway/boards/enmt_carrier.overlay)): green LINK (Matter/Thread status), yellow RX (a pulse per telegram, Identify), red PWR (on once the TCM answers, blinking while it doesn't). `promicro-uf2` also runs on the carrier, with the LEDs dark.
 
 | | DK | Pro Micro, UF2 | Pro Micro, SWD |
 | --- | --- | --- | --- |
@@ -220,7 +221,7 @@ make term BOARD=promicro
 
 To go back to UF2 afterwards, flash the board's UF2 bootloader hex over SWD again.
 
-The build folders end in `-promicro` or `-promicro-uf2`. `make measure` only finds the DK's port.
+The build folders end in `-promicro`, `-promicro-uf2` or `-enmt`. `make measure` only finds the DK's port.
 
 The DK and the Pro Micro have different Matter credentials (see [Commissioning](#commissioning)), so both can be commissioned at once.
 

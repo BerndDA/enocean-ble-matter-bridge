@@ -19,6 +19,9 @@
 #ifdef CONFIG_GATEWAY_LAMETRIC
 #include "lametric/lametric.h"
 #endif
+#ifdef CONFIG_GATEWAY_STATUS_LEDS
+#include "status_leds.h"
+#endif
 
 #include "app/matter_init.h"
 #include "app/task_executor.h"
@@ -136,6 +139,9 @@ CHIP_ERROR AppTask::Init()
 		LOG_ERR("User interface initialization failed.");
 		return CHIP_ERROR_INCORRECT_STATE;
 	}
+#ifdef CONFIG_GATEWAY_STATUS_LEDS
+	Gateway::StatusLeds::Init();
+#endif
 
 	/* Register Matter event handler that controls the connectivity status LED based on the captured Matter
 	 * network state. */

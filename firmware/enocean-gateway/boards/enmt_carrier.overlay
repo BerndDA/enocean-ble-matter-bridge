@@ -1,0 +1,46 @@
+/*
+ * EnMT carrier board (hardware/enocean-carrier): a nice!nano v2 on a carrier with a TCM 515,
+ * two buttons and three status LEDs under the lid's light pipes.
+ *
+ * Applied on top of the Pro Micro UF2 target (promicro_nrf52840/nrf52840/uf2, which includes
+ * promicro_nrf52840_common.dtsi for the TCM UART and the function button) by `make BOARD=enmt`.
+ *
+ * The LEDs hang from 3.3 V through their resistors: a pin pulled low lights its LED.
+ * Order of the leds node = DK_LED1..4 of the DK library = LED1..4 of Nrf::Board:
+ *   LED1  green  LINK  P1.13  Matter/Thread status (Nrf::Board: off-blink, BLE blink, on when connected)
+ *   LED2  yellow RX    P1.15  short pulse per EnOcean telegram; Matter Identify blinks it
+ *   LED3  red    PWR   P1.11  on once the TCM answers, blinks while it doesn't (status_leds.cpp)
+ *   LED4  the nice!nano's own LED on P0.15 (under the module, not visible in the case)
+ * All four blink together during a factory reset (button held 6 s).
+ */
+
+/* led0 keeps its label: the board's aliases (led0, mcuboot-led0) point at it. */
+&led0 {
+	gpios = <&gpio1 13 GPIO_ACTIVE_LOW>;
+	label = "LINK LED (green)";
+};
+
+/ {
+	leds {
+		led_rx: led_1 {
+			gpios = <&gpio1 15 GPIO_ACTIVE_LOW>;
+			label = "RX LED (yellow)";
+		};
+
+		led_pwr: led_2 {
+			gpios = <&gpio1 11 GPIO_ACTIVE_LOW>;
+			label = "PWR LED (red)";
+		};
+
+		led_module: led_3 {
+			gpios = <&gpio0 15 GPIO_ACTIVE_HIGH>;
+			label = "nice!nano LED";
+		};
+	};
+
+	aliases {
+		led1 = &led_rx;
+		led2 = &led_pwr;
+		led3 = &led_module;
+	};
+};

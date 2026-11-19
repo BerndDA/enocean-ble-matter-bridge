@@ -13,6 +13,10 @@
 #include "lametric/lametric.h"
 #endif
 
+#ifdef CONFIG_GATEWAY_STATUS_LEDS
+#include "status_leds.h"
+#endif
+
 #include <app-common/zap-generated/ids/Attributes.h>
 #include <app-common/zap-generated/ids/Clusters.h>
 #include <platform/CHIPDeviceLayer.h>
@@ -580,6 +584,9 @@ void EnOceanManager::HandleTelegram(const Telegram &t)
 	if (tcm_is_own_id(t.mSender)) {
 		return;
 	}
+#ifdef CONFIG_GATEWAY_STATUS_LEDS
+	StatusLeds::TelegramReceived();
+#endif
 	UpdateSeen(t, now);
 
 	Device *device = nullptr;

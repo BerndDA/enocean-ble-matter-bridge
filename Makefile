@@ -1,7 +1,7 @@
 # Shortcuts for building, flashing and testing the gateways. `make` lists the targets.
 # Every target sets up the SDK itself (scripts/ncs-env.sh); no need to source it first.
 # Add APP=enocean-gateway for the EnOcean gateway (default: the BLE gateway), and
-# BOARD=promicro or BOARD=promicro-uf2 for the Pro Micro nRF52840.
+# BOARD=promicro or BOARD=promicro-uf2 for the Pro Micro nRF52840, BOARD=enmt for the EnMT carrier.
 
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
@@ -20,6 +20,8 @@ endif
 #   dk            nRF52840 DK (default)
 #   promicro      Pro Micro nRF52840, flashed over SWD through the DK's Debug Out header
 #   promicro-uf2  Pro Micro nRF52840 with its factory UF2 bootloader, flashed over USB
+#   enmt          EnMT carrier board (hardware/enocean-carrier): promicro-uf2 plus its three status
+#                 LEDs (boards/enmt_carrier.overlay); enocean-gateway only
 # An exported BOARD from the shell is ignored.
 ifeq ($(origin BOARD),environment)
 BOARD    := dk
@@ -39,8 +41,17 @@ TARGET   := promicro_nrf52840/nrf52840/uf2
 SUFFIX   := -promicro-uf2
 UF2      := 1
 PORT     ?= $(firstword $(filter-out /dev/cu.usbmodem000683%,$(wildcard /dev/cu.usbmodem*)))
+else ifeq ($(BOARD),enmt)
+TARGET   := promicro_nrf52840/nrf52840/uf2
+SUFFIX   := -enmt
+UF2      := 1
+PORT     ?= $(firstword $(filter-out /dev/cu.usbmodem000683%,$(wildcard /dev/cu.usbmodem*)))
+BOARD_ARGS := -DEXTRA_DTC_OVERLAY_FILE=boards/enmt_carrier.overlay
+ifeq ($(wildcard $(APP_DIR)/boards/enmt_carrier.overlay),)
+$(error BOARD=enmt needs $(APP_DIR)/boards/enmt_carrier.overlay (only APP=enocean-gateway has one))
+endif
 else
-$(error BOARD must be dk, promicro or promicro-uf2)
+$(error BOARD must be dk, promicro, promicro-uf2 or enmt)
 endif
 
 # Flash a build folder: west flash, or for promicro-uf2 the .uf2 copied to the bootloader drive
@@ -74,28 +85,28 @@ help: ## List the targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-12s %s\n", $$1, $$2}'
 
 build: ## Build the app (incremental)
-	@$(NCS) west build -b $(TARGET) --sysbuild -d $(BUILD) $(APP_DIR)
+	@$(NCS) west build -b $(TARGET) --sysbuild -d $(BUILD) $(APP_DIR) $(if $(BOARD_ARGS),-- $(BOARD_ARGS))
 
 flash: build ## Build and flash; keeps commissioning and stored devices
 	@$(call flash_dir,$(BUILD))
 
 flash-erase: build ## Build and flash with a full erase; the gateway must be commissioned again
 ifdef UF2
-	@echo "BOARD=promicro-uf2 can't erase over UF2: the settings lie outside what the bootloader writes."
-	@echo "Use 'make flash BOARD=promicro-uf2', then 'matter factoryreset' in the shell or hold the button 6 s."
+	@echo "BOARD=$(BOARD) can't erase over UF2: the settings lie outside what the bootloader writes."
+	@echo "Use 'make flash BOARD=$(BOARD)', then 'matter factoryreset' in the shell or hold the button 6 s."
 	@exit 1
 else
 	@$(call flash_dir,$(BUILD),--erase)
 endif
 
 release: ## Build with prj_release.conf (no logging, watchdog, reset on fatal error) into build-release
-	@$(NCS) west build -b $(TARGET) --sysbuild -d $(RELEASE) $(APP_DIR) -- -DFILE_SUFFIX=release
+	@$(NCS) west build -b $(TARGET) --sysbuild -d $(RELEASE) $(APP_DIR) -- -DFILE_SUFFIX=release $(BOARD_ARGS)
 
 release-flash: release ## Build the release firmware and flash it; keeps commissioning and stored devices
 	@$(call flash_dir,$(RELEASE))
 
 diag: ## Build the diagnostics firmware (stack, heap, thread statistics) into build-diag
-	@$(NCS) west build -b $(TARGET) --sysbuild -d $(DIAG) $(APP_DIR) -- -DEXTRA_CONF_FILE=diag.conf
+	@$(NCS) west build -b $(TARGET) --sysbuild -d $(DIAG) $(APP_DIR) -- -DEXTRA_CONF_FILE=diag.conf $(BOARD_ARGS)
 
 diag-flash: diag ## Build and flash the diagnostics firmware
 	@$(call flash_dir,$(DIAG))

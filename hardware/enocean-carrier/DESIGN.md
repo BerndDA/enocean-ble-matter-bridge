@@ -2,7 +2,7 @@
 
 A Pro Micro nRF52840 (nice!nano / SuperMini) soldered onto a small 2-layer board that carries a TCM 515. It replaces the Pro Micro + EnOcean Pi hat with four wires, and is the simpler alternative to the [full custom board](../enocean-bridge-pcb/DESIGN.md).
 
-**The Pro Micro build of [firmware/enocean-gateway](../../firmware/enocean-gateway/) runs unchanged** (`BOARD=promicro-uf2`): the carrier uses exactly the pins that build expects.
+**Firmware: `make flash APP=enocean-gateway BOARD=enmt`** builds [firmware/enocean-gateway](../../firmware/enocean-gateway/) for this board: the Pro Micro UF2 build plus the three status LEDs ([boards/enmt_carrier.overlay](../../firmware/enocean-gateway/boards/enmt_carrier.overlay)): green LINK = Matter/Thread status, yellow RX = a pulse per received telegram (and Matter Identify), red PWR = on once the TCM answers, blinking while it doesn't. The plain Pro Micro build (`BOARD=promicro-uf2`) runs on it too, with the LEDs dark.
 
 ![Board, top](enocean-carrier-top.png)
 
@@ -176,4 +176,4 @@ Renders: `tools/render_case.sh` (Blender + Cycles; KiCad's 3D export of the boar
 1. Solder the TCM 515 first (castellated pads, iron or hot air), then the 0805 parts and the buttons if JLC didn't. Leave JP1 open.
 2. Solder an 86 mm wire into the WHIP hole, standing upright if possible.
 3. Solder the Pro Micro on with its pin headers (short ends into the carrier, plastic spacer between the boards): USB end at the board edge, components up, square pad = pin 1. Flash it before soldering if you like; it works either way.
-4. `make flash APP=enocean-gateway BOARD=promicro-uf2`; `enocean info` must show the TCM version and base ID.
+4. `make flash APP=enocean-gateway BOARD=enmt`; red PWR must stay on (blinking = no answer from the TCM), and `enocean info` must show the TCM version and base ID.

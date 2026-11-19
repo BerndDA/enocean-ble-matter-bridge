@@ -62,6 +62,16 @@ config GATEWAY_LAMETRIC_ON_W
 
 endif # GATEWAY_LAMETRIC
 
+config GATEWAY_STATUS_LEDS
+	bool "PWR and RX LEDs of the EnMT carrier board"
+	depends on NCS_SAMPLE_MATTER_LEDS
+	default $(dt_nodelabel_exists,led_pwr)
+	help
+	  Red PWR (LED3): on once the TCM answers, blinking while it doesn't.
+	  Yellow RX (LED2): a short pulse per received telegram. Green LINK is
+	  Nrf::Board's status LED (LED1). On by default when the devicetree has the
+	  carrier's LEDs (boards/enmt_carrier.overlay, `make BOARD=enmt`).
+
 module = GATEWAY_ENOCEAN
 module-str = Gateway EnOcean
 source "subsys/logging/Kconfig.template.log_config"
