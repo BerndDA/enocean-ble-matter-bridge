@@ -39,7 +39,7 @@ OFF = WALL + GAP
 SW_H = 1.5
 LID_T, LED_H = 2.0, 0.8                # LED_H: 0805 LEDs
 ROD_D = 5.0                           # acrylic rod in the light pipe (carrier_case.scad rod_d)
-PIPE_LEN = INNER_H - LED_H - 1.0      # light pipe below the lid
+PIPE_LEN = INNER_H - LED_H - 0.5      # light pipe below the lid
 LED = (43.2, 18.3)                    # D1-D3 centre (D2), KiCad board coordinates
 
 
