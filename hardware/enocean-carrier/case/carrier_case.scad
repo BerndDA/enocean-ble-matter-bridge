@@ -28,6 +28,15 @@ rod_d      = 3.0;     // acrylic (PMMA) rods pressed into the light pipes
 pipe_bore  = rod_d + 0.2;   // printed holes come out ~0.1-0.2 mm small: press fit
 pipe_wall  = 0.8;     // also the wall between two pipes (LEDs 4 mm apart): two lines of a 0.4 mm nozzle
 
+// ---------------------------------------------------------------- labels engraved in the lid top
+labels     = true;
+name       = "";      // product name, large, over the Pro Micro / TCM area ("" = none)
+label_font = "Liberation Sans:style=Bold";
+label_d    = 0.6;     // engraving depth
+label_grow = 0.12;    // widens the strokes by 2 x this: grooves >= 0.5 mm, printable on MJF/SLS/resin
+label_h    = 2.0;     // small labels (cap height about 0.7 x this)
+name_h     = 4.5;
+
 // ---------------------------------------------------------------- board (from the PCB)
 BOARD_W = 46.5;
 BOARD_H = 33.4;
@@ -42,6 +51,17 @@ UFL     = P(43.9, 9.5);                   // J1
 USB_X   = 2.4 + 15.24 / 2;                // Pro Micro centre line (pads at x 2.4 and 17.64)
 SW_H    = 1.5;                            // switch height above the board
 LED_H   = 0.8;                            // 0805 LEDs
+
+// [text, board x, board y, size, halign]; LEDs: D1 red PWR, D2 green LINK, D3 yellow RX
+LABELS = [
+    ["FUNC",  29.0, 27.8, label_h, "center"],
+    ["RESET", 41.6, 27.8, label_h, "center"],
+    ["PWR",   41.0, 16.4, label_h, "right"],
+    ["LINK",  41.0, 20.4, label_h, "right"],
+    ["RX",    41.0, 24.4, label_h, "right"],
+    ["868",   42.4,  2.6, label_h, "right"],
+];
+NAME_AT = [18.0, 12.0];                   // board coordinates of the name's centre
 
 // ---------------------------------------------------------------- case
 wall     = 2.0;
@@ -97,6 +117,11 @@ module base() {
     }
 }
 
+module engrave(t, p, size, halign) {
+    translate([B(p)[0], B(p)[1], lid_t - label_d]) linear_extrude(label_d + 1)
+        offset(delta = label_grow) text(t, size = size, font = label_font, halign = halign, valign = "center");
+}
+
 module lid() {
     difference() {
         union() {
@@ -117,6 +142,10 @@ module lid() {
         // button holes
         for (b = BUTTONS) translate([B(b)[0], B(b)[1], -1]) cylinder(d = 3.8, h = lid_t + 2);
         if (whip_hole) translate([B(WHIP)[0], B(WHIP)[1], -1]) cylinder(d = 3.0, h = lid_t + 2);   // wire up to 1.5 mm, some play
+        if (labels) {
+            for (l = LABELS) engrave(l[0], P(l[1], l[2]), l[3], l[4]);
+            if (name != "") engrave(name, P(NAME_AT[0], NAME_AT[1]), name_h, "center");
+        }
     }
 }
 
