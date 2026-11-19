@@ -38,9 +38,10 @@ OUT_W, OUT_D = BOARD_W + 2 * GAP + 2 * WALL, BOARD_H + 2 * GAP + 2 * WALL
 OFF = WALL + GAP
 SW_H = 1.5
 LID_T, LED_H = 2.0, 0.8                # LED_H: 0805 LEDs
-ROD_D = 5.0                           # acrylic rod in the light pipe (carrier_case.scad rod_d)
+ROD_D = 3.0                           # acrylic rods in the light pipes (carrier_case.scad rod_d)
 PIPE_LEN = INNER_H - LED_H - 0.5      # light pipe below the lid
-LED = (43.2, 18.3)                    # D1-D3 centre (D2), KiCad board coordinates
+LEDS = [(43.2, 16.4), (43.2, 20.4), (43.2, 24.4)]   # D1 red, D2 green, D3 yellow, KiCad board coordinates
+LED = LEDS[1]                         # the one that blinks in the USB clip (green)
 
 
 def C(x, y):
@@ -135,8 +136,17 @@ def stl(name, path, material, loc=(0, 0, 0)):
 base = stl("base", os.path.join(WORK, "base.stl"), M["case"])
 lid = stl("lid", os.path.join(WORK, "lid_asm.stl"), M["lid"], (0, 0, BASE_H))
 # acrylic rod in the light pipe, flush with the lid top, moves with the lid
+# one rod per LED; the green one (middle) carries the other two, so the clips move all three
 rod = cyl("rod", C(*LED)[0], C(*LED)[1], -PIPE_LEN, PIPE_LEN + LID_T, ROD_D, M["acrylic"], 32)
 rod.parent = lid
+rods = [rod]
+for i, l in enumerate(LEDS):
+    if l == LED:
+        continue
+    dx, dy = C(*l)[0] - C(*LED)[0], C(*l)[1] - C(*LED)[1]
+    r = cyl(f"rod{i}", dx, dy, -(PIPE_LEN + LID_T) / 2, PIPE_LEN + LID_T, ROD_D, M["acrylic"], 32)
+    r.parent = rod
+    rods.append(r)
 pins = [stl(f"pin{i}", os.path.join(WORK, "pin_asm.stl"), M["pin"], (bx, by, TOP_Z + SW_H + 0.3))
         for i, (bx, by) in enumerate(BUTTONS)]
 
@@ -265,7 +275,8 @@ except Exception:
 
 def shot(name, cam_loc, target_loc, lens=70, lid_z=None, pin_lift=0.0, show_lid=True, show_whip=False, fstop=5.6):
     lid.hide_render = not show_lid
-    rod.hide_render = not show_lid
+    for r in rods:
+        r.hide_render = not show_lid
     for p in pins:
         p.hide_render = not show_lid
         p.location.z = TOP_Z + SW_H + 0.3 + pin_lift
@@ -304,11 +315,11 @@ if MODE.startswith("anim"):
         for o in parts + [cable]:
             o.parent = plug
         # EnOcean LED: the acrylic rod in the light pipe lights up, blinks once the cable is in
-        glow_mat = mat("led_glow", (0.6, 0.55, 0.4), 0.3, 0.0, ((1.0, 0.72, 0.15), 0.0))
+        glow_mat = mat("led_glow", (0.4, 0.6, 0.45), 0.3, 0.0, ((0.15, 1.0, 0.3), 0.0))   # green LED
         lx, ly = C(*LED)
         rod.data.materials[0] = glow_mat
         glow_light_data = bpy.data.lights.new("led_light", "POINT")
-        glow_light_data.color = (1.0, 0.7, 0.2)
+        glow_light_data.color = (0.2, 1.0, 0.35)
         glow_light_data.energy = 0.0
         glow_light_data.shadow_soft_size = 0.002
         glow_light = bpy.data.objects.new("led_light", glow_light_data)

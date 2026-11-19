@@ -46,17 +46,17 @@ PLACE = {
     "R3": (38.6, 5.6, 270, "F"),       # to the u.FL (DNP), pad 1 on top
     "J1": (43.9, 9.5, 0, "F"),         # u.FL (DNP) at the right edge, signal pad facing R3
     # status LEDs (0805) in a column right of their resistors (0603), cathodes (pad 1) facing
-    # left; one 5 mm light pipe centred on D2 covers all three. R4/D1 red, R5/D2 green, R6/D3 yellow
+    # left, 4 mm apart: each gets its own 3 mm light pipe (rods need 3.2 mm bores + 0.8 mm wall).
+    # R4/D1 red, R5/D2 green, R6/D3 yellow
     "D1": (43.2, 16.4, 0, "F"),
-    "D2": (43.2, 18.3, 0, "F"),
-    "D3": (43.2, 20.2, 0, "F"),
+    "D2": (43.2, 20.4, 0, "F"),
+    "D3": (43.2, 24.4, 0, "F"),
     "R4": (38.6, 16.2, 0, "F"),
-    "R5": (38.6, 17.7, 0, "F"),
-    "R6": (38.6, 19.2, 0, "F"),
+    "R5": (38.6, 18.4, 0, "F"),
+    "R6": (39.0, 23.4, 0, "F"),     # below C3, next to D3
     # buttons (TS-1187A, 5.1 x 5.1 mm) side by side along the bottom edge, same orientation:
-    # FUNC (P1.06) left, RESET right; holes
+    # FUNC (P1.06) left, RESET right; one M2 hole (H2 gave way to the LED column in v0.2)
     "SW2": (29.0, 30.75, 0, "F"),
     "SW1": (41.6, 30.75, 0, "F"),
     "H1": (22.2, 30.7, 0, "F"),
-    "H2": (42.4, 24.2, 0, "F"),
 }

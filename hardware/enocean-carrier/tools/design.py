@@ -96,7 +96,7 @@ part("SW1", "Switch:SW_Push", "RESET", "Button_Switch_SMD:SW_Push_1P1T_XKB_TS-11
      lcsc="C318884", mpn="TS-1187A-B-A-B")
 part("SW2", "Switch:SW_Push", "FUNC", "Button_Switch_SMD:SW_Push_1P1T_XKB_TS-1187A", 14, 40, {"1": "BTN_FUNC", "2": "GND"},
      lcsc="C318884", mpn="TS-1187A-B-A-B")
-# Status LEDs: three single 0805 LEDs side by side under one light pipe, all from JLC's basic
+# Status LEDs: three single 0805 LEDs, each under its own 3 mm light pipe, all from JLC's basic
 # library (no blue LED is basic: it would cost the $3 extended-part fee). Anodes on 3.3 V, each
 # cathode through its resistor to a GPIO (low = on), so the firmware sees the same pins as v0.2's
 # RGB LED: P1.11 red, P1.13 green, P1.15 yellow (was blue).
@@ -111,9 +111,8 @@ part("D2", "Device:LED", "GREEN", FP_LED, 64, 76, {"1": "LED_GK", "2": "+3V3"}, 
 part("D3", "Device:LED", "YELLOW", FP_LED, 68, 76, {"1": "LED_YK", "2": "+3V3"}, lcsc="C2296", mpn="KT-0805Y")
 
 part("H1", "Mechanical:MountingHole", "M2", "MountingHole:MountingHole_2.2mm_M2", 10, 90, {})
-part("H2", "Mechanical:MountingHole", "M2", "MountingHole:MountingHole_2.2mm_M2", 16, 90, {})
 
 # Footprint-only parts (copper, holes, test pads): not in the BOM.
-NOT_IN_BOM = {"JP1", "H1", "H2"} | {p["ref"] for p in PARTS if p["ref"].startswith("TP")}
+NOT_IN_BOM = {"JP1", "H1"} | {p["ref"] for p in PARTS if p["ref"].startswith("TP")}
 for _p in PARTS:
     _p["in_bom"] = _p["ref"] not in NOT_IN_BOM

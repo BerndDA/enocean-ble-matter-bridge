@@ -2644,34 +2644,6 @@
 		)
 	)
 	(symbol
-		(lib_id "Mechanical:MountingHole")
-		(at 40.64 228.6 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom no)
-		(on_board yes)
-		(dnp no)
-		(uuid "86ac1a2a-4038-5c0d-90d9-453154945994")
-		(property "Reference" "H2" (at 40.64 223.52 0) (effects (font (size 1.27 1.27))))
-		(property "Value" "M2" (at 40.64 225.425 0) (effects (font (size 1.27 1.27))))
-		(property "Footprint" "MountingHole:MountingHole_2.2mm_M2"
-			(at 40.64 228.6 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
-		)
-		(property "Datasheet" "" (at 40.64 228.6 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Description" "Mounting Hole without connection"
-			(at 40.64 228.6 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
-		)
-		(property "LCSC" "" (at 40.64 228.6 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "MPN" "" (at 40.64 228.6 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(instances
-			(project "enocean-carrier"
-				(path "/0cc30e1c-cb4b-5910-b553-3bec39702a7f" (reference "H2") (unit 1))
-			)
-		)
-	)
-	(symbol
 		(lib_id "power:PWR_FLAG")
 		(at 50.8 254 0)
 		(unit 1)

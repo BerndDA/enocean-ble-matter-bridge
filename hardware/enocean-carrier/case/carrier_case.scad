@@ -23,10 +23,10 @@ usb_z    = pm_gap + pm_pcb + 1.6;               // USB-C centre above the carrie
 // ---------------------------------------------------------------- options
 sma_hole   = false;   // 6.5 mm hole in the right wall for an SMA bulkhead (u.FL pigtail instead of the whip)
 whip_hole  = true;    // 3 mm hole in the lid above the whip pad: the 86 mm wire (up to 1.5 mm) goes straight up
-light_pipe = true;    // tube from the lid down to just above the LED, holds a clear acrylic rod
-rod_d      = 5.0;     // acrylic (PMMA) rod pressed into the light pipe, covers all three LEDs
+light_pipe = true;    // one tube per LED from the lid down to just above it, each holds a clear acrylic rod
+rod_d      = 3.0;     // acrylic (PMMA) rods pressed into the light pipes
 pipe_bore  = rod_d + 0.2;   // printed holes come out ~0.1-0.2 mm small: press fit
-pipe_wall  = 0.9;
+pipe_wall  = 0.8;     // also the wall between two pipes (LEDs 4 mm apart): two lines of a 0.4 mm nozzle
 
 // ---------------------------------------------------------------- board (from the PCB)
 BOARD_W = 46.5;
@@ -34,9 +34,9 @@ BOARD_H = 33.4;
 BOARD_T = 1.6;
 function P(x, y) = [x, BOARD_H - y];      // KiCad board coordinates -> case coordinates
 
-HOLES   = [P(22.2, 30.7), P(42.4, 24.2)]; // H1, H2: M2
+HOLES   = [P(22.2, 30.7)];               // H1: M2 (v0.1 had a second hole, H2, where the LEDs are now)
 BUTTONS = [P(29.0, 30.75), P(41.6, 30.75)];  // SW2 FUNC, SW1 RESET (XKB TS-1187A, 5.1 x 5.1 x 1.5 mm)
-LED     = P(43.2, 18.3);                  // D1-D3 (0805, column at 1.9 mm pitch): centre on D2
+LEDS    = [P(43.2, 16.4), P(43.2, 20.4), P(43.2, 24.4)];   // D1 red, D2 green, D3 yellow (0805)
 WHIP    = P(44.4, 2.6);                   // TP1
 UFL     = P(43.9, 9.5);                   // J1
 USB_X   = 2.4 + 15.24 / 2;                // Pro Micro centre line (pads at x 2.4 and 17.64)
@@ -52,7 +52,7 @@ under    = 0.0;     // floor to board bottom
 inner_h  = pm_gap + pm_pcb + pm_parts + 0.8;   // board top to lid underside
 lid_t    = 2.0;
 lip_h    = 3.0;     // lid lip reaching into the base
-pipe_len = inner_h - LED_H - 0.5;          // light pipe below the lid, ends 0.5 mm above the LEDs (the outer two are 1.9 mm off-centre)
+pipe_len = inner_h - LED_H - 0.5;          // light pipes below the lid, end 0.5 mm above the LEDs
 rod_len  = pipe_len + lid_t;               // rod flush with the lid top and the pipe end
 fit      = 0.25;    // lip clearance per side
 $fn = 48;
@@ -108,12 +108,12 @@ module lid() {
             }
             // light pipe down to just above the LED
             if (light_pipe)
-                translate([B(LED)[0], B(LED)[1], -pipe_len]) cylinder(d = pipe_bore + 2 * pipe_wall, h = pipe_len);
+                for (l = LEDS) translate([B(l)[0], B(l)[1], -pipe_len]) cylinder(d = pipe_bore + 2 * pipe_wall, h = pipe_len);
         }
         // the lip must not cover the USB opening: cut it there
         translate([B([USB_X, 0])[0] - 6.5, OUT_D - wall - 2, -lip_h - 1]) cube([13, 3, lip_h + 1]);
         if (light_pipe)
-            translate([B(LED)[0], B(LED)[1], -inner_h]) cylinder(d = pipe_bore, h = inner_h + lid_t + 1);
+            for (l = LEDS) translate([B(l)[0], B(l)[1], -inner_h]) cylinder(d = pipe_bore, h = inner_h + lid_t + 1);
         // button holes
         for (b = BUTTONS) translate([B(b)[0], B(b)[1], -1]) cylinder(d = 3.8, h = lid_t + 2);
         if (whip_hole) translate([B(WHIP)[0], B(WHIP)[1], -1]) cylinder(d = 3.0, h = lid_t + 2);   // wire up to 1.5 mm, some play
@@ -128,7 +128,7 @@ module pin() {
     translate([0, 0, pin_below - collar]) cylinder(d = 6.0, h = collar);
 }
 
-if (light_pipe) echo(str("light pipe: cut a ", rod_d, " mm acrylic rod to ", rod_len, " mm"));
+if (light_pipe) echo(str("light pipes: cut three ", rod_d, " mm acrylic rods to ", rod_len, " mm"));
 
 // ---------------------------------------------------------------- parts
 if (part == "base") base();
@@ -145,6 +145,6 @@ else {
     color("tan") translate([B(P(19.9, 23.5))[0], B(P(19.9, 23.5))[1], top_z]) cube([14.7, 19, 3]);
     for (b = BUTTONS) color("black") translate([B(b)[0] - 2.55, B(b)[1] - 2.55, top_z]) cube([5.1, 5.1, SW_H]);
     color("white", 0.8) translate([0, 0, base_h + 12]) lid();
-    if (light_pipe) color("gold", 0.6) translate([B(LED)[0], B(LED)[1], base_h + 12 - pipe_len]) cylinder(d = rod_d, h = rod_len);
+    if (light_pipe) for (l = LEDS) color("gold", 0.6) translate([B(l)[0], B(l)[1], base_h + 12 - pipe_len]) cylinder(d = rod_d, h = rod_len);
     for (b = BUTTONS) color("orange") translate([B(b)[0], B(b)[1], base_h + 12 - pin_below]) pin();
 }
