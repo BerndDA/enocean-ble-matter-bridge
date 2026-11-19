@@ -139,6 +139,29 @@ That's roughly $30–40 for 5 assembled carriers. Add 5 × TCM 515 (Digi-Key, ~�
 
 About €110–140 for five, €20–30 per board.
 
+## Case (3D-printed)
+
+[case/carrier_case.scad](case/carrier_case.scad) (OpenSCAD) and the ready STLs in [case/](case/), rendered by `tools/export_case.sh` (OpenSCAD: `brew install --cask openscad@snapshot`):
+
+| Part | Print |
+| --- | --- |
+| [carrier_case-base.stl](case/carrier_case-base.stl) | upright, no supports |
+| [carrier_case-lid.stl](case/carrier_case-lid.stl) | already turned upside down, no supports |
+| [carrier_case-pin.stl](case/carrier_case-pin.stl) | 2×, collar down |
+
+![Case](case/carrier_case-assembly.png)
+
+- **Size:** 51.3 × 38.2 mm, about 26 mm tall with the Pro Micro on female headers. With `pm_mount = "direct"` (Pro Micro soldered on pin headers) it's about 17 mm.
+- **Board mounting:** the board sits on two standoffs (M2 self-tapping screws, about 6 mm long) and a 0.8 mm ledge along the edge. The USB-C notch in the end wall is open at the top, so the board goes in from above with the Pro Micro plugged in.
+- **Lid:** held by a friction lip.
+  - **Buttons:** two holes with captive push pins. Put them in from below before closing; their collar keeps them in, and the tip rests 0.3 mm above the switch.
+  - **LED:** a light pipe from the lid down to just above the LED.
+  - **Whip:** a 2.5 mm hole above the whip pad, so the 86 mm wire stands straight up through the lid.
+- **u.FL variant:** `sma_hole = true` adds a 6.5 mm hole in the side wall for an SMA bulkhead with a u.FL pigtail.
+- **Material:** plastic only near the antennas; no metal parts or metallic filament.
+
+**Before printing, measure your stack:** the height of the Pro Micro above the carrier (`pm_gap`) and of its USB-C (`usb_z`) are estimates. Adjust them, run `tools/export_case.sh`, and check that the USB opening lines up. A quick test print of the base alone shows it.
+
 ## Assembly and bring-up
 
 1. Solder the TCM 515 first (castellated pads, iron or hot air), then the 0805 parts and the button if JLC didn't, then the headers. Leave JP1 open.

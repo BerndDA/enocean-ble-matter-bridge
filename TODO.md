@@ -30,6 +30,8 @@ Pro Micro nRF52840 plugged onto a 2-layer board with a TCM 515. Design in [hardw
 - [ ] Order at JLCPCB: upload the zip, 2 layers 1.6 mm; optionally PCB Assembly (Economic, top) with the BOM/CPL, check the placement preview.
 - [ ] Order 5 × TCM 515 (Digi-Key 1084-TCM515), Pro Micros, 2 × 12-pin female headers per board; passives and buttons only if not assembled by JLC.
 - [ ] Assemble, flash `BOARD=promicro-uf2`, check `enocean info` and range with the whip.
+- [x] 3D-printable case (`case/`, OpenSCAD).
+- [ ] Case: measure the Pro Micro height on the real stack, adjust `pm_gap`/`usb_z`, test-print the base.
 - [ ] Tools are copies of the custom board's (`tools/`); share them if both boards stay.
 
 ## EnOcean bridge PCB
