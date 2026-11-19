@@ -53,5 +53,5 @@ PLACE = {
     "SW2": (29.0, 30.75, 0, "F"),
     "SW1": (41.6, 30.75, 0, "F"),
     "H1": (22.2, 30.7, 0, "F"),
-    "H2": (42.4, 24.2, 0, "F"),
+    "H2": (38.4, 10.2, 0, "F"),        # upper right, between R3, J1 and R1 (the u.FL line passes diagonally above)
 }
