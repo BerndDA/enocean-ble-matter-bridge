@@ -24,7 +24,7 @@ usb_z    = pm_gap + pm_pcb + 1.6;               // USB-C centre above the carrie
 sma_hole   = false;   // 6.5 mm hole in the right wall for an SMA bulkhead (u.FL pigtail instead of the whip)
 whip_hole  = true;    // 3 mm hole in the lid above the whip pad: the 86 mm wire (up to 1.5 mm) goes straight up
 light_pipe = true;    // tube from the lid down to just above the LED, holds a clear acrylic rod
-rod_d      = 3.0;     // acrylic (PMMA) rod pressed into the light pipe
+rod_d      = 5.0;     // acrylic (PMMA) rod pressed into the light pipe, covers all three LEDs
 pipe_bore  = rod_d + 0.2;   // printed holes come out ~0.1-0.2 mm small: press fit
 pipe_wall  = 0.9;
 
@@ -36,12 +36,12 @@ function P(x, y) = [x, BOARD_H - y];      // KiCad board coordinates -> case coo
 
 HOLES   = [P(22.2, 30.7), P(42.4, 24.2)]; // H1, H2: M2
 BUTTONS = [P(29.0, 30.75), P(41.6, 30.75)];  // SW2 FUNC, SW1 RESET (XKB TS-1187A, 5.1 x 5.1 x 1.5 mm)
-LED     = P(43.2, 18.0);                  // D1, RGB 3528
+LED     = P(43.2, 18.3);                  // D1-D3 (0805, column at 1.9 mm pitch): centre on D2
 WHIP    = P(44.4, 2.6);                   // TP1
 UFL     = P(43.9, 9.5);                   // J1
 USB_X   = 2.4 + 15.24 / 2;                // Pro Micro centre line (pads at x 2.4 and 17.64)
 SW_H    = 1.5;                            // switch height above the board
-LED_H   = 1.9;                            // RGB LED 3528 (v0.2), was 0.8 for the 0805 LED
+LED_H   = 0.8;                            // 0805 LEDs
 
 // ---------------------------------------------------------------- case
 wall     = 2.0;

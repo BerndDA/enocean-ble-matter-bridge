@@ -57,9 +57,9 @@ part("U1", "Modules:ProMicro_nRF52840", "ProMicro nRF52840", "Modules:ProMicro_n
     "24": "TCM_RX",         # P0.09 UART0 TX -> TCM UART_RX
     "23": "TCM_TX",         # P0.10 UART0 RX <- TCM UART_TX
     "12": "BTN_FUNC",       # P1.06 sw0: hold 6 s for a factory reset
-    "22": "LED_R",          # P1.11 / P1.13 / P1.15: RGB LED, active low (common anode);
-    "21": "LED_G",          # unused by today's firmware: the pins float and the LED stays dark
-    "20": "LED_B",
+    "22": "LED_R",          # P1.11 / P1.13 / P1.15: status LEDs red / green / yellow, active low;
+    "21": "LED_G",          # unused by today's firmware: the pins float and the LEDs stay dark
+    "20": "LED_Y",
     "6": "TCM_NRESET",      # P0.20: TCM reset from firmware (unused today; the TCM's pull-up wins)
     "13": None,             # B+ (battery), not used
 }, nc_rest=True, mpn="nice!nano v2 / SuperMini nRF52840 with UF2 bootloader >= 0.6.1")
@@ -96,15 +96,19 @@ part("SW1", "Switch:SW_Push", "RESET", "Button_Switch_SMD:SW_Push_1P1T_XKB_TS-11
      lcsc="C318884", mpn="TS-1187A-B-A-B")
 part("SW2", "Switch:SW_Push", "FUNC", "Button_Switch_SMD:SW_Push_1P1T_XKB_TS-1187A", 14, 40, {"1": "BTN_FUNC", "2": "GND"},
      lcsc="C318884", mpn="TS-1187A-B-A-B")
-# RGB status LED, common anode on 3.3 V; each cathode through its resistor to a GPIO (low = on).
-# Red has the lower forward voltage, so it gets the larger resistor: about 1.3 / 1.8 / 1.8 mA.
+# Status LEDs: three single 0805 LEDs side by side under one light pipe, all from JLC's basic
+# library (no blue LED is basic: it would cost the $3 extended-part fee). Anodes on 3.3 V, each
+# cathode through its resistor to a GPIO (low = on), so the firmware sees the same pins as v0.2's
+# RGB LED: P1.11 red, P1.13 green, P1.15 yellow (was blue).
+# Red and yellow ~2.0 V: 1k -> ~1.3 mA; green (InGaN, ~2.6 V at low current, 430 mcd @ 5 mA): 330R.
 FP_R0603 = "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder"
+FP_LED = "LED_SMD:LED_0805_2012Metric"
 R("R4", "1k", 60, 66, "LED_R", "LED_RK", fp=FP_R0603, lcsc="C21190", mpn="0603WAF1001T5E")
 R("R5", "330", 64, 66, "LED_G", "LED_GK", fp=FP_R0603, lcsc="C23138", mpn="0603WAF3300T5E")
-R("R6", "330", 68, 66, "LED_B", "LED_BK", fp=FP_R0603, lcsc="C23138", mpn="0603WAF3300T5E")
-part("D1", "Device:LED_BAGR", "RGB", "Modules:LED_RGB_3528_TZ_S4-3528RGBTA-A", 64, 80,
-     {"1": "LED_BK", "2": "+3V3", "3": "LED_GK", "4": "LED_RK"},
-     mpn="S4-3528RGBTA-A (LCSC C2827321), hand-soldered: kept out of the JLC assembly (extended part)")
+R("R6", "1k", 68, 66, "LED_Y", "LED_YK", fp=FP_R0603, lcsc="C21190", mpn="0603WAF1001T5E")
+part("D1", "Device:LED", "RED", FP_LED, 60, 76, {"1": "LED_RK", "2": "+3V3"}, lcsc="C84256", mpn="NCD0805R1")
+part("D2", "Device:LED", "GREEN", FP_LED, 64, 76, {"1": "LED_GK", "2": "+3V3"}, lcsc="C2297", mpn="KT-0805G")
+part("D3", "Device:LED", "YELLOW", FP_LED, 68, 76, {"1": "LED_YK", "2": "+3V3"}, lcsc="C2296", mpn="KT-0805Y")
 
 part("H1", "Mechanical:MountingHole", "M2", "MountingHole:MountingHole_2.2mm_M2", 10, 90, {})
 part("H2", "Mechanical:MountingHole", "M2", "MountingHole:MountingHole_2.2mm_M2", 16, 90, {})

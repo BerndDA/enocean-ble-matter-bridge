@@ -45,9 +45,11 @@ PLACE = {
     "TP1": (44.4, RF_Y, 0, "F"),       # whip hole
     "R3": (38.6, 5.6, 270, "F"),       # to the u.FL (DNP), pad 1 on top
     "J1": (43.9, 9.5, 0, "F"),         # u.FL (DNP) at the right edge, signal pad facing R3
-    # RGB LED right of the module (rot 180: red and green cathodes face left), its three
-    # resistors (0603) in a column to the left: R4 red, R5 green, R6 blue
-    "D1": (43.2, 18.0, 180, "F"),
+    # status LEDs (0805) in a column right of their resistors (0603), cathodes (pad 1) facing
+    # left; one 5 mm light pipe centred on D2 covers all three. R4/D1 red, R5/D2 green, R6/D3 yellow
+    "D1": (43.2, 16.4, 0, "F"),
+    "D2": (43.2, 18.3, 0, "F"),
+    "D3": (43.2, 20.2, 0, "F"),
     "R4": (38.6, 16.2, 0, "F"),
     "R5": (38.6, 17.7, 0, "F"),
     "R6": (38.6, 19.2, 0, "F"),
