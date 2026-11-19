@@ -179,7 +179,7 @@ def main():
             fp.SetField(fname, fval)
             if fname not in ("Reference", "Value"):
                 fp.GetField(fname).SetVisible(False)
-        if ref in ("U2", "TP1", "H1", "H2", "R4", "R5", "R6", "D1", "D2", "D3"):   # obvious or tiny parts: labels would sit on others
+        if ref in ("U1", "U2", "TP1", "H1", "H2", "R4", "R5", "R6", "D1", "D2", "D3"):   # obvious or tiny parts: labels would sit on others
             fp.Reference().SetVisible(False)
         fp.Reference().SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(0.9), pcbnew.FromMM(0.9)))
         fp.Reference().SetTextThickness(pcbnew.FromMM(0.14))
@@ -279,7 +279,7 @@ def route_868(board, nets):
     track("GND", [(gx, gy), (gx, gy + 1.1)], 0.5)
     via(gx, gy + 1.1)
     # TCM corner GND pads: a fixed via each, so routing can't cut them off the pours
-    for num, (dx, dy) in (("23", (1.55, 0.9)), ("15", (0.0, 2.5)), ("6", (0.0, -1.8))):
+    for num, (dx, dy) in (("23", (1.55, 0.9)), ("15", (-1.65, 0.0)), ("6", (0.0, -1.8))):
         gx, gy = pad("U2", num)
         track("GND", [(gx, gy), (gx + dx, gy + dy)], 0.4)
         via(gx + dx, gy + dy)

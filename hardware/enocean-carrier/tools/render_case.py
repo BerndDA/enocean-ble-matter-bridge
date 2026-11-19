@@ -52,9 +52,9 @@ def C(x, y):
 BUTTONS = [C(29.0, 30.75), C(41.6, 30.75)]
 WHIP = C(44.4, 2.6)
 PM_X0, PM_X1 = 1.02 + OFF, 19.02 + OFF
-PM_Y0, PM_Y1 = BOARD_H - 33.32 + OFF, BOARD_H - 0.02 + OFF
+PM_Y0, PM_Y1 = BOARD_H - 33.02 + OFF, BOARD_H + OFF       # nice!nano v2, USB end flush with the board edge
 PIN_ROWS_X = [2.4 + OFF, 17.64 + OFF]
-PIN_YS = [BOARD_H - (2.7 + 2.54 * i) + OFF for i in range(12)]
+PIN_YS = [BOARD_H - (3.81 + 2.54 * i) + OFF for i in range(12)]
 
 # ---------------------------------------------------------------- helpers
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -174,7 +174,16 @@ for i, x in enumerate(PIN_ROWS_X):
     for y in PIN_YS:
         inside.append(box("pintip", x - 0.32, y - 0.32, TOP_Z + PM_GAP + PM_PCB, x + 0.32, y + 0.32, TOP_Z + PM_GAP + PM_PCB + 1.6, M["gold"], 0.05))
 pm_z = TOP_Z + PM_GAP
+# nice!nano v2: 13 pins per side; the top one of each side (USB end) is B+ / B- for a battery:
+# plated holes without a header pin.
+BAT_Y = BOARD_H - (3.81 - 2.54) + OFF
 inside.append(box("promicro", PM_X0, PM_Y0, pm_z, PM_X1, PM_Y1, pm_z + PM_PCB, M["pm_pcb"], 0.2))
+for i, x in enumerate(PIN_ROWS_X):
+    inside.append(cyl(f"bat_pad{i}", x, BAT_Y, pm_z + PM_PCB, 0.03, 1.3, M["gold"], 24))
+    inside.append(cyl(f"bat_hole{i}", x, BAT_Y, pm_z + PM_PCB, 0.05, 0.7, M["chip"], 24))
+for x in PIN_ROWS_X:                           # gold rings of the 12 header pins on the top side
+    for y in PIN_YS:
+        inside.append(cyl("pin_pad", x, y, pm_z + PM_PCB, 0.03, 1.6, M["gold"], 24))
 cx = (PM_X0 + PM_X1) / 2
 inside.append(box("usb", cx - 4.5, PM_Y1 - 7.0, pm_z + PM_PCB, cx + 4.5, PM_Y1 + 0.4, pm_z + PM_PCB + 3.2, M["metal"], 0.6))
 inside.append(box("nrf", cx - 3.5, PM_Y0 + 14, pm_z + PM_PCB, cx + 3.5, PM_Y0 + 21, pm_z + PM_PCB + 0.85, M["chip"], 0.1))

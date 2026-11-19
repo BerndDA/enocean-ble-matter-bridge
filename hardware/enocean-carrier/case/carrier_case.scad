@@ -92,7 +92,7 @@ module rounded_box(w, d, h, r = 1.5) {
     hull() for (x = [r, w - r], y = [r, d - r]) translate([x, y, 0]) cylinder(r = r, h = h);
 }
 
-// pin rows of the Pro Micro headers (board x 2.4 and 17.64, pins y 2.7 .. 30.64)
+// pin rows of the Pro Micro headers (board x 2.4 and 17.64, pins y 3.81 .. 31.75, nice!nano v2)
 PIN_ROWS_X = [2.4, 17.64];
 
 module base() {
@@ -103,7 +103,7 @@ module base() {
         }
         // pockets for the solder joints on the board's underside (trim the pin ends flush)
         for (x = PIN_ROWS_X) {
-            p0 = B(P(x - 1.6, 32.2));
+            p0 = B(P(x - 1.6, 33.0));
             translate([p0[0], p0[1], floor_t - pocket_d]) cube([3.2, 31.0, pocket_d + 1]);
         }
         translate([B(WHIP)[0], B(WHIP)[1], floor_t - pocket_d]) cylinder(d = 5.0, h = pocket_d + 1);   // whip pad 3.2 mm + solder

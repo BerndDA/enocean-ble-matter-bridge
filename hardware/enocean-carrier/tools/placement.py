@@ -29,7 +29,7 @@ RF_NODE_868 = (38.6, RF_Y)
 
 # (x, y, rot, side); the Pro Micro footprint's origin is pad 1 (USB end, left column)
 PLACE = {
-    "U1": (2.4, 2.7, 0, "F"),          # module outline x 1.0..19.0, y 0.0..33.3
+    "U1": (2.4, 3.81, 0, "F"),         # nice!nano v2: module outline x 1.0..19.0, y 0.0..33.02 (B+/B- at y 1.27)
     "U2": (TCM[0], TCM[1], 270, "F"),
     # TCM supply, below the module next to VDD
     "C2": (31.6, 25.9, 270, "F"),      # 100 nF, closest to VDD; rot 270: pad 1 (VDD) on top
