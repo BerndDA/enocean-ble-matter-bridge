@@ -1,5 +1,6 @@
 """Assembly animation for render_case.py: board drops into the base, the push pins follow,
-the lid closes, the whip slides in through the lid; the camera circles slowly.
+the lid closes, the whip slides in through the lid; the camera circles slowly. From the USB end
+the acrylic rod then drops into the light pipe, a USB-C plug goes in and the LED blinks.
 Renders PNG frames with EEVEE into <out>/anim-frames/; render_case.sh turns them into anim.mp4.
 """
 import math
@@ -48,10 +49,13 @@ def ease(obj):
 
 
 def run(scene, cam, cam_data, target, center, lid, pins, whip, board_group, d, out, frames,
-        view="front", plug=None, glow_mat=None):
-    """view "front": the buttons side; "usb": the USB end, and a USB-C plug goes in at the end."""
+        view="front", plug=None, glow_mat=None, rod=None, samples=32):
+    """view "front": the buttons side; "usb": the USB end: the acrylic rod (child of the lid) drops
+    into the light pipe, then a USB-C plug goes in and the LED blinks."""
     base_h, top_z, sw_h = d["BASE_H"], d["TOP_Z"], d["SW_H"]
-    end = END + (48 if view == "usb" else 0)   # usb: plug goes in, then the LED blinks
+    usb = view == "usb"
+    end = END + (72 if usb else 0)        # usb: rod goes in, plug goes in, then the LED blinks
+    plug_in = 224 if usb else 200         # frame the plug is fully in
     pin_z = top_z + sw_h + 0.3
 
     # --- motion (object locations in mm, inside the 0.01-scaled root)
@@ -71,16 +75,22 @@ def run(scene, cam, cam_data, target, center, lid, pins, whip, board_group, d, o
     key(whip, 120, wz + 120.0)
     key(whip, 156, wz)
     movers = [board_group, lid, whip, *pins]
+    if usb and rod is not None:           # drops into the closed lid after the whip (frame 156)
+        rz = rod.location.z               # mounted position, relative to the lid
+        key(rod, 1, rz + 40.0)
+        key(rod, 158, rz + 40.0)
+        key(rod, 186, rz)
+        movers.append(rod)
     if plug is not None:                  # slides in along the case's long axis (+Y = out of the end wall)
         plug.location.y = 45.0
         plug.keyframe_insert("location", index=1, frame=1)
-        plug.keyframe_insert("location", index=1, frame=168)
+        plug.keyframe_insert("location", index=1, frame=plug_in - 32)
         plug.location.y = 0.0
-        plug.keyframe_insert("location", index=1, frame=200)
+        plug.keyframe_insert("location", index=1, frame=plug_in)
         movers.append(plug)
     for o in movers:
         ease(o)
-    if glow_mat is not None:              # three blinks after the plug is in (frame 200)
+    if glow_mat is not None:              # three blinks after the plug is in
         inp = glow_mat.node_tree.nodes["Principled BSDF"].inputs["Emission Strength"]
         inp.default_value = 0.0
         inp.keyframe_insert("default_value", frame=1)
@@ -88,7 +98,7 @@ def run(scene, cam, cam_data, target, center, lid, pins, whip, board_group, d, o
         if light is not None:
             light.energy = 0.0
             light.keyframe_insert("energy", frame=1)
-        for on in (206, 218, 230):
+        for on in (plug_in + 6, plug_in + 18, plug_in + 30):
             inp.default_value = 250.0
             inp.keyframe_insert("default_value", frame=on)
             inp.default_value = 0.0
@@ -124,7 +134,7 @@ def run(scene, cam, cam_data, target, center, lid, pins, whip, board_group, d, o
     # --- EEVEE
     scene.render.engine = "BLENDER_EEVEE"
     ee = scene.eevee
-    for attr, val in (("taa_render_samples", 64), ("use_raytracing", True), ("use_shadows", True),
+    for attr, val in (("taa_render_samples", samples), ("use_raytracing", True), ("use_shadows", True),
                       ("shadow_ray_count", 2), ("shadow_step_count", 8), ("use_gtao", True)):
         if hasattr(ee, attr):
             setattr(ee, attr, val)

@@ -1,8 +1,8 @@
 #!/bin/sh
 # Photo-style renders of the carrier in its case (Blender):
 #   tools/render_case.sh [samples]   stills case/render-{closed,exploded,open}.png (Cycles, default 192 samples)
-#   tools/render_case.sh anim        assembly clip case/anim.mp4 (EEVEE, 8 s, 1280x720), buttons side
-#   tools/render_case.sh anim-usb    the same from the USB end, with a USB-C plug going in: case/anim-usb.mp4 (9 s)
+#   tools/render_case.sh anim [samples]   assembly clip case/anim.mp4 (EEVEE, 8 s, 1280x720), buttons side
+#   tools/render_case.sh anim-usb [samples]   the same from the USB end: acrylic rod and USB-C plug go in, LED blinks: case/anim-usb.mp4 (11 s)
 # Needs OpenSCAD, KiCad, Blender (and ffmpeg for the clip).
 set -e
 cd "$(dirname "$0")/.."
@@ -17,7 +17,7 @@ done
   --include-silkscreen --include-soldermask --user-origin 100x133.4mm \
   -o "$WORK/board.glb" enocean-carrier.kicad_pcb >/dev/null 2>&1
 if [ "$1" = "anim" ] || [ "$1" = "anim-usb" ]; then
-  "$BLENDER" -b -P tools/render_case.py -- "$WORK" "$WORK" 64 "$1" 2>&1 | grep -E "^wrote|Error|Traceback|line [0-9]" || true
+  "$BLENDER" -b -P tools/render_case.py -- "$WORK" "$WORK" "${2:-32}" "$1" 2>&1 | grep -E "^wrote|Error|Traceback|line [0-9]" || true
   ffmpeg -loglevel error -y -framerate 24 -i "$WORK/anim-frames/f%04d.png" \
     -c:v libx264 -pix_fmt yuv420p -crf 18 -movflags +faststart "case/$1.mp4"
   echo "case/$1.mp4"

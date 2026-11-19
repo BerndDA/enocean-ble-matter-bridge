@@ -37,6 +37,10 @@ BASE_H = TOP_Z + INNER_H
 OUT_W, OUT_D = BOARD_W + 2 * GAP + 2 * WALL, BOARD_H + 2 * GAP + 2 * WALL
 OFF = WALL + GAP
 SW_H = 1.5
+LID_T, LED_H = 2.0, 0.8
+ROD_D = 3.0                           # acrylic rod in the light pipe (carrier_case.scad rod_d)
+PIPE_LEN = INNER_H - LED_H - 1.0      # light pipe below the lid
+LED = (41.6, 18.0)                    # D1, KiCad board coordinates
 
 
 def C(x, y):
@@ -83,7 +87,11 @@ M = {
     "copper": mat("copper", (0.95, 0.6, 0.45), 0.3, 1.0),
     "floor": mat("floor", (0.55, 0.56, 0.58), 0.85),
     "led": mat("led", (1.0, 0.75, 0.2), 0.3, 0.0, ((1.0, 0.7, 0.15), 12.0)),
+    "acrylic": mat("acrylic", (0.95, 0.93, 0.85), 0.25),
 }
+_a = M["acrylic"].node_tree.nodes["Principled BSDF"].inputs
+_a["Transmission Weight" if "Transmission Weight" in _a else "Transmission"].default_value = 0.9
+_a["IOR"].default_value = 1.49
 
 
 def box(name, x0, y0, z0, x1, y1, z1, material, bevel=0.15):
@@ -126,6 +134,9 @@ def stl(name, path, material, loc=(0, 0, 0)):
 # ---------------------------------------------------------------- objects (mm)
 base = stl("base", os.path.join(WORK, "base.stl"), M["case"])
 lid = stl("lid", os.path.join(WORK, "lid_asm.stl"), M["lid"], (0, 0, BASE_H))
+# acrylic rod in the light pipe, flush with the lid top, moves with the lid
+rod = cyl("rod", C(*LED)[0], C(*LED)[1], -PIPE_LEN, PIPE_LEN + LID_T, ROD_D, M["acrylic"], 32)
+rod.parent = lid
 pins = [stl(f"pin{i}", os.path.join(WORK, "pin_asm.stl"), M["pin"], (bx, by, TOP_Z + SW_H + 0.3))
         for i, (bx, by) in enumerate(BUTTONS)]
 
@@ -254,6 +265,7 @@ except Exception:
 
 def shot(name, cam_loc, target_loc, lens=70, lid_z=None, pin_lift=0.0, show_lid=True, show_whip=False, fstop=5.6):
     lid.hide_render = not show_lid
+    rod.hide_render = not show_lid
     for p in pins:
         p.hide_render = not show_lid
         p.location.z = TOP_Z + SW_H + 0.3 + pin_lift
@@ -291,12 +303,10 @@ if MODE.startswith("anim"):
         bpy.ops.object.shade_smooth()
         for o in parts + [cable]:
             o.parent = plug
-        # EnOcean LED light at the top of the light pipe, blinks once the cable is in
-        glow_mat = mat("led_glow", (0.25, 0.2, 0.08), 0.4, 0.0, ((1.0, 0.72, 0.15), 0.0))
-        lx, ly = C(41.6, 18.0)
-        glow = cyl("led_glow", 0, 0, 0, 1.9, 2.5, glow_mat, 32)
-        glow.parent = lid
-        glow.location = (lx, ly, 0.15)
+        # EnOcean LED: the acrylic rod in the light pipe lights up, blinks once the cable is in
+        glow_mat = mat("led_glow", (0.6, 0.55, 0.4), 0.3, 0.0, ((1.0, 0.72, 0.15), 0.0))
+        lx, ly = C(*LED)
+        rod.data.materials[0] = glow_mat
         glow_light_data = bpy.data.lights.new("led_light", "POINT")
         glow_light_data.color = (1.0, 0.7, 0.2)
         glow_light_data.energy = 0.0
@@ -309,7 +319,8 @@ if MODE.startswith("anim"):
     anim_case.run(scene, cam, cam_data, target, center, lid, pins, whip, board_group,
                   dict(BASE_H=BASE_H, TOP_Z=TOP_Z, SW_H=SW_H), OUT, FRAMES,
                   view="usb" if MODE == "anim-usb" else "front", plug=plug,
-                  glow_mat=glow_mat if MODE == "anim-usb" else None)
+                  glow_mat=glow_mat if MODE == "anim-usb" else None, rod=rod,
+                  samples=SAMPLES)
     raise SystemExit(0)
 shot("closed", (c.x + 0.95, c.y - 1.05, c.z + 0.75), (c.x, c.y, c.z + 0.02), lens=60, show_whip=True)
 shot("exploded", (c.x + 1.0, c.y - 1.15, c.z + 0.95), (c.x, c.y, c.z + 0.12), lens=55,

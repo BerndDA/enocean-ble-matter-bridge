@@ -23,7 +23,10 @@ usb_z    = pm_gap + pm_pcb + 1.6;               // USB-C centre above the carrie
 // ---------------------------------------------------------------- options
 sma_hole   = false;   // 6.5 mm hole in the right wall for an SMA bulkhead (u.FL pigtail instead of the whip)
 whip_hole  = true;    // hole in the lid above the whip pad: the 86 mm wire goes straight up
-light_pipe = true;    // tube from the lid down to just above the LED
+light_pipe = true;    // tube from the lid down to just above the LED, holds a clear acrylic rod
+rod_d      = 3.0;     // acrylic (PMMA) rod pressed into the light pipe
+pipe_bore  = rod_d + 0.2;   // printed holes come out ~0.1-0.2 mm small: press fit
+pipe_wall  = 0.9;
 
 // ---------------------------------------------------------------- board (from the PCB)
 BOARD_W = 46.5;
@@ -49,6 +52,8 @@ under    = 0.0;     // floor to board bottom
 inner_h  = pm_gap + pm_pcb + pm_parts + 0.8;   // board top to lid underside
 lid_t    = 2.0;
 lip_h    = 3.0;     // lid lip reaching into the base
+pipe_len = inner_h - LED_H - 1.0;          // light pipe below the lid, ends 1 mm above the LED
+rod_len  = pipe_len + lid_t;               // rod flush with the lid top and the pipe end
 fit      = 0.25;    // lip clearance per side
 $fn = 48;
 
@@ -103,12 +108,12 @@ module lid() {
             }
             // light pipe down to just above the LED
             if (light_pipe)
-                translate([B(LED)[0], B(LED)[1], -(inner_h - LED_H - 1.0)]) cylinder(d = 4.6, h = inner_h - LED_H - 1.0);
+                translate([B(LED)[0], B(LED)[1], -pipe_len]) cylinder(d = pipe_bore + 2 * pipe_wall, h = pipe_len);
         }
         // the lip must not cover the USB opening: cut it there
         translate([B([USB_X, 0])[0] - 6.5, OUT_D - wall - 2, -lip_h - 1]) cube([13, 3, lip_h + 1]);
         if (light_pipe)
-            translate([B(LED)[0], B(LED)[1], -inner_h]) cylinder(d = 2.6, h = inner_h + lid_t + 1);
+            translate([B(LED)[0], B(LED)[1], -inner_h]) cylinder(d = pipe_bore, h = inner_h + lid_t + 1);
         // button holes
         for (b = BUTTONS) translate([B(b)[0], B(b)[1], -1]) cylinder(d = 3.8, h = lid_t + 2);
         if (whip_hole) translate([B(WHIP)[0], B(WHIP)[1], -1]) cylinder(d = 2.5, h = lid_t + 2);
@@ -122,6 +127,8 @@ module pin() {
     cylinder(d = 3.3, h = pin_below + lid_t + 1.2);           // shaft: through the lid, 1.2 mm proud
     translate([0, 0, pin_below - collar]) cylinder(d = 6.0, h = collar);
 }
+
+if (light_pipe) echo(str("light pipe: cut a ", rod_d, " mm acrylic rod to ", rod_len, " mm"));
 
 // ---------------------------------------------------------------- parts
 if (part == "base") base();
@@ -138,5 +145,6 @@ else {
     color("tan") translate([B(P(19.9, 23.5))[0], B(P(19.9, 23.5))[1], top_z]) cube([14.7, 19, 3]);
     for (b = BUTTONS) color("black") translate([B(b)[0] - 2.55, B(b)[1] - 2.55, top_z]) cube([5.1, 5.1, SW_H]);
     color("white", 0.8) translate([0, 0, base_h + 12]) lid();
+    if (light_pipe) color("gold", 0.6) translate([B(LED)[0], B(LED)[1], base_h + 12 - pipe_len]) cylinder(d = rod_d, h = rod_len);
     for (b = BUTTONS) color("orange") translate([B(b)[0], B(b)[1], base_h + 12 - pin_below]) pin();
 }

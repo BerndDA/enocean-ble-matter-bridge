@@ -153,13 +153,13 @@ About €110–140 for five, €20–30 per board.
 | --- | --- | --- |
 | ![closed](case/render-closed.png) | ![exploded](case/render-exploded.png) | ![open](case/render-open.png) |
 
-Renders: `tools/render_case.sh` (Blender + Cycles; KiCad's 3D export of the board, the case STLs, and simple stand-ins for the Pro Micro, TCM 515, buttons and whip). Assembly clips: [case/anim.mp4](case/anim.mp4) from the buttons side (`tools/render_case.sh anim`, 8 s) and [case/anim-usb.mp4](case/anim-usb.mp4) from the USB end, where a USB-C cable goes in and the EnOcean LED blinks (`tools/render_case.sh anim-usb`, 10 s). EEVEE, about 5 minutes each.
+Renders: `tools/render_case.sh` (Blender + Cycles; KiCad's 3D export of the board, the case STLs, and simple stand-ins for the Pro Micro, TCM 515, buttons and whip). Assembly clips: [case/anim.mp4](case/anim.mp4) from the buttons side (`tools/render_case.sh anim`, 8 s) and [case/anim-usb.mp4](case/anim-usb.mp4) from the USB end, where the acrylic rod drops into the light pipe, a USB-C cable goes in and the EnOcean LED blinks (`tools/render_case.sh anim-usb`, 11 s). EEVEE at 32 samples, about 2–3 minutes each; pass a sample count as the second argument (e.g. `anim-usb 16` for a quick draft).
 
 - **Size:** 51.3 × 38.2 × 14.6 mm, for the Pro Micro soldered directly on its pin headers (`pm_mount = "direct"`, the default). For a socketed Pro Micro (female headers) set `pm_mount = "socket"`: about 23 mm tall.
 - **Board mounting:** the board lies flat on the 3 mm floor. Pockets 2 mm deep under the two pin rows and the whip pad take the solder joints: trim the pin ends flush after soldering. Two M2 × 6 mm screws go from the top through the board and the floor into M2 hex nuts in traps on the underside. The USB-C notch in the end wall is open at the top, so the board goes in from above with the Pro Micro on it.
 - **Lid:** held by a friction lip.
   - **Buttons:** two holes with captive push pins. Put them in from below before closing; their collar keeps them in, and the tip rests 0.3 mm above the switch.
-  - **LED:** a light pipe from the lid down to just above the LED.
+  - **LED:** a light pipe from the lid down to 1 mm above the LED, with a 3.2 mm bore for a 3 mm clear acrylic (PMMA) rod. Cut the rod to 8.2 mm (6.2 mm pipe + 2 mm lid; `rod_len`, OpenSCAD echoes it) and press it in from the top until it is flush. Printed holes usually come out 0.1–0.2 mm small, which makes it a press fit. If the rod sits loose, fix it with a drop of glue. Sand the rod ends matte to spread the light into an even dot. An opaque, dark lid gives the best contrast.
   - **Whip:** a 2.5 mm hole above the whip pad, so the 86 mm wire stands straight up through the lid.
 - **u.FL variant:** `sma_hole = true` adds a 6.5 mm hole in the side wall for an SMA bulkhead with a u.FL pigtail.
 - **Material:** plastic only near the antennas; no metal parts or metallic filament.
