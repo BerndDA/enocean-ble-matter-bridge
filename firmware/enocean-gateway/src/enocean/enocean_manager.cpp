@@ -14,7 +14,7 @@
 #endif
 
 #ifdef CONFIG_GATEWAY_STATUS_LEDS
-#include "status_leds.h"
+#include "status_leds/status_leds.h"
 #endif
 
 #include <app-common/zap-generated/ids/Attributes.h>
@@ -585,7 +585,7 @@ void EnOceanManager::HandleTelegram(const Telegram &t)
 		return;
 	}
 #ifdef CONFIG_GATEWAY_STATUS_LEDS
-	StatusLeds::TelegramReceived();
+	StatusLeds::PacketReceived();
 #endif
 	UpdateSeen(t, now);
 

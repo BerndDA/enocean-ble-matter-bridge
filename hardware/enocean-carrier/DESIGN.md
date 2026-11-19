@@ -2,7 +2,7 @@
 
 A Pro Micro nRF52840 (nice!nano / SuperMini) soldered onto a small 2-layer board that carries a TCM 515. It replaces the Pro Micro + EnOcean Pi hat with four wires, and is the simpler alternative to the [full custom board](../enocean-bridge-pcb/DESIGN.md).
 
-**Firmware: `make flash APP=enocean-gateway BOARD=enmt`** builds [firmware/enocean-gateway](../../firmware/enocean-gateway/) for this board: the Pro Micro UF2 build plus the three status LEDs ([boards/enmt_carrier.overlay](../../firmware/enocean-gateway/boards/enmt_carrier.overlay)): green LINK = Matter/Thread status, yellow RX = a pulse per received telegram (and Matter Identify), red PWR = on once the TCM answers, blinking while it doesn't. The plain Pro Micro build (`BOARD=promicro-uf2`) runs on it too, with the LEDs dark.
+**Firmware: `make flash APP=enocean-gateway BOARD=enmt`** builds [firmware/enocean-gateway](../../firmware/enocean-gateway/) for this board: the Pro Micro UF2 build plus the three status LEDs ([common/boards/enmt_carrier.overlay](../../firmware/common/boards/enmt_carrier.overlay)): green LINK = Matter/Thread status, yellow RX = a pulse per received telegram (and Matter Identify), red PWR = on once the TCM answers, blinking while it doesn't. The plain Pro Micro build (`BOARD=promicro-uf2`) runs on it too, with the LEDs dark. **The same board without the TCM runs the BLE gateway:** `make flash APP=ble-gateway BOARD=enmt` (RX pulses per BTHome reading, PWR stays on); leave the TCM, its parts and the whip off, or keep them: the BLE gateway doesn't use the UART.
 
 ![Board, top](enocean-carrier-top.png)
 

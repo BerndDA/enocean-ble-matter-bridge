@@ -21,7 +21,7 @@ endif
 #   promicro      Pro Micro nRF52840, flashed over SWD through the DK's Debug Out header
 #   promicro-uf2  Pro Micro nRF52840 with its factory UF2 bootloader, flashed over USB
 #   enmt          EnMT carrier board (hardware/enocean-carrier): promicro-uf2 plus its three status
-#                 LEDs (boards/enmt_carrier.overlay); enocean-gateway only
+#                 LEDs (firmware/common/boards/enmt_carrier.overlay); both apps
 # An exported BOARD from the shell is ignored.
 ifeq ($(origin BOARD),environment)
 BOARD    := dk
@@ -46,10 +46,7 @@ TARGET   := promicro_nrf52840/nrf52840/uf2
 SUFFIX   := -enmt
 UF2      := 1
 PORT     ?= $(firstword $(filter-out /dev/cu.usbmodem000683%,$(wildcard /dev/cu.usbmodem*)))
-BOARD_ARGS := -DEXTRA_DTC_OVERLAY_FILE=boards/enmt_carrier.overlay
-ifeq ($(wildcard $(APP_DIR)/boards/enmt_carrier.overlay),)
-$(error BOARD=enmt needs $(APP_DIR)/boards/enmt_carrier.overlay (only APP=enocean-gateway has one))
-endif
+BOARD_ARGS := -DEXTRA_DTC_OVERLAY_FILE=$(CURDIR)/firmware/common/boards/enmt_carrier.overlay
 else
 $(error BOARD must be dk, promicro, promicro-uf2 or enmt)
 endif

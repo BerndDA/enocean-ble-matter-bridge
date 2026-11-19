@@ -36,9 +36,6 @@ if(CONFIG_GATEWAY_LAMETRIC)
   target_sources_ifdef(CONFIG_SHELL app PRIVATE src/lametric/lametric_shell.cpp)
 endif()
 
-# PWR and RX LEDs of the EnMT carrier board (boards/enmt_carrier.overlay)
-target_sources_ifdef(CONFIG_GATEWAY_STATUS_LEDS app PRIVATE src/status_leds.cpp)
-
 # Status page (firmware/common/web): src/web/index.html and its JSON
 target_sources_ifdef(CONFIG_GATEWAY_WEB app PRIVATE src/web_status.cpp)
 

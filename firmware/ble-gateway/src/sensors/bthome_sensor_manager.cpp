@@ -8,6 +8,9 @@
 #include "bridge_manager.h"
 #include "bridge_storage_manager.h"
 #include "sensor_scanner.h"
+#ifdef CONFIG_GATEWAY_STATUS_LEDS
+#include "status_leds/status_leds.h"
+#endif
 
 #include <app-common/zap-generated/ids/Attributes.h>
 #include <app-common/zap-generated/ids/Clusters.h>
@@ -336,6 +339,9 @@ void BTHomeSensorManager::HandleReading(const bt_addr_le_t &addr, const bthome_r
 		}
 	}
 
+#ifdef CONFIG_GATEWAY_STATUS_LEDS
+	StatusLeds::PacketReceived();
+#endif
 	sensor->mProvider->OnReading(reading, k_uptime_get());
 }
 

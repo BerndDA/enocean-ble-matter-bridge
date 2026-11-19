@@ -54,6 +54,8 @@ target_sources_ifdef(CONFIG_GATEWAY_IDENTITY_FROM_CHIP_ID app PRIVATE
   ${GATEWAY_COMMON_DIR}/identity/chip_id_identity.cpp)
 target_sources_ifdef(CONFIG_SHELL app PRIVATE ${GATEWAY_COMMON_DIR}/identity/identity_shell.cpp)
 target_sources_ifdef(CONFIG_GATEWAY_NET_LOG app PRIVATE ${GATEWAY_COMMON_DIR}/netlog/net_log.cpp)
+# PWR and RX LEDs of the EnMT carrier board (common/boards/enmt_carrier.overlay)
+target_sources_ifdef(CONFIG_GATEWAY_STATUS_LEDS app PRIVATE ${GATEWAY_COMMON_DIR}/status_leds/status_leds.cpp)
 # Status page: the app's src/web/index.html, gzip-compressed at build time and served as is.
 if(CONFIG_GATEWAY_WEB)
   target_sources(app PRIVATE

@@ -27,7 +27,7 @@ Pro Micro nRF52840 soldered onto a 2-layer board with a TCM 515. Design in [hard
 - [x] Function button (SW2, P1.06) and an EnOcean LED (P1.11) added back in the space the rotated TCM freed.
 - [x] Fabrication files: `fab/` (Gerbers + drill zip, BOM and CPL for JLC assembly of the 10 small parts).
 - [x] v0.2: three status LEDs (P1.11 red, P1.13 green, P1.15 yellow, active low, all JLC basic) instead of the single LED; whip hole for wire up to 1.5 mm. v0.1 kept as tag `enocean-carrier-v0.1`.
-- [x] Firmware: `BOARD=enmt` drives the status LEDs (green LINK = Matter status, yellow RX = telegram pulse, red PWR = TCM answers); `promicro-uf2` unchanged. Test on the real board.
+- [x] Firmware: `BOARD=enmt` drives the status LEDs in both apps (green LINK = Matter status, yellow RX = packet pulse, red PWR = on / TCM answers); `promicro-uf2` and `dk` unchanged. Test on the real board, EnOcean and BLE.
 - [ ] Order at JLCPCB: upload the zip, 2 layers 1.6 mm; optionally PCB Assembly (Economic, top) with the BOM/CPL, check the placement preview.
 - [ ] Order 5 × TCM 515 (Digi-Key 1084-TCM515), Pro Micros (with their pin headers; no sockets), 3 mm clear acrylic rod for the three light pipes (3 × 8.7 mm per case), one M2 × 6 mm screw and hex nut per case; passives and buttons only if not assembled by JLC.
 - [ ] Assemble, flash `BOARD=promicro-uf2`, check `enocean info` and range with the whip.

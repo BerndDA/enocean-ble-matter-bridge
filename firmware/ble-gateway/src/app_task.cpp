@@ -24,6 +24,10 @@
 #include "simulated_bridged_device_factory.h"
 #endif /* CONFIG_BRIDGED_DEVICE_BT */
 
+#ifdef CONFIG_GATEWAY_STATUS_LEDS
+#include "status_leds/status_leds.h"
+#endif
+
 #include "app/matter_init.h"
 #include "app/task_executor.h"
 #include "board/board.h"
@@ -259,6 +263,10 @@ CHIP_ERROR AppTask::Init()
 		LOG_ERR("User interface initialization failed.");
 		return CHIP_ERROR_INCORRECT_STATE;
 	}
+#endif
+#ifdef CONFIG_GATEWAY_STATUS_LEDS
+	/* No TCM here: PWR just stays on. */
+	Gateway::StatusLeds::Init();
 #endif
 	/* Register Matter event handler that controls the connectivity status LED based on the captured Matter
 	 * network state. */

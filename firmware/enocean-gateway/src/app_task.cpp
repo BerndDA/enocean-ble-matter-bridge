@@ -20,7 +20,8 @@
 #include "lametric/lametric.h"
 #endif
 #ifdef CONFIG_GATEWAY_STATUS_LEDS
-#include "status_leds.h"
+#include "status_leds/status_leds.h"
+#include "tcm.h"
 #endif
 
 #include "app/matter_init.h"
@@ -140,7 +141,8 @@ CHIP_ERROR AppTask::Init()
 		return CHIP_ERROR_INCORRECT_STATE;
 	}
 #ifdef CONFIG_GATEWAY_STATUS_LEDS
-	Gateway::StatusLeds::Init();
+	/* PWR blinks while the TCM hasn't told its base ID (not answering: wiring, no TCM). */
+	Gateway::StatusLeds::Init([] { return tcm_base_id() != 0; });
 #endif
 
 	/* Register Matter event handler that controls the connectivity status LED based on the captured Matter

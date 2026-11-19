@@ -183,7 +183,7 @@ The Pro Micro (also sold as nice!nano clone or "SuperMini") is a second option n
 
 - **`BOARD=promicro-uf2`**: keeps the UF2 bootloader the board ships with. You flash over USB by copying a file. No wiring needed.
 - **`BOARD=promicro`**: flashed over SWD with the DK as programmer. This erases the UF2 bootloader, and gives a little more flash and a real full erase.
-- **`BOARD=enmt`** (EnOcean gateway only): the [EnMT carrier board](hardware/enocean-carrier/DESIGN.md), a nice!nano with a TCM 515. Same as `promicro-uf2` plus the carrier's three status LEDs ([boards/enmt_carrier.overlay](firmware/enocean-gateway/boards/enmt_carrier.overlay)): green LINK (Matter/Thread status), yellow RX (a pulse per telegram, Identify), red PWR (on once the TCM answers, blinking while it doesn't). `promicro-uf2` also runs on the carrier, with the LEDs dark.
+- **`BOARD=enmt`**: the [EnMT carrier board](hardware/enocean-carrier/DESIGN.md), a nice!nano with a TCM 515 (not fitted for the BLE gateway), for both apps. Same as `promicro-uf2` plus the carrier's three status LEDs ([common/boards/enmt_carrier.overlay](firmware/common/boards/enmt_carrier.overlay), [common/status_leds](firmware/common/status_leds/status_leds.h)): green LINK (Matter/Thread status), yellow RX (a pulse per packet from a bridged device: EnOcean telegram or BTHome reading; Matter Identify blinks it), red PWR (on; the EnOcean gateway blinks it while the TCM doesn't answer). `promicro-uf2` also runs on the carrier, with the LEDs dark.
 
 | | DK | Pro Micro, UF2 | Pro Micro, SWD |
 | --- | --- | --- | --- |
