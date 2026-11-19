@@ -1,6 +1,6 @@
 # EnOcean carrier board
 
-A Pro Micro nRF52840 (nice!nano / SuperMini) plugged onto a small 2-layer board that carries a TCM 515. It replaces the Pro Micro + EnOcean Pi hat with four wires, and is the simpler alternative to the [full custom board](../enocean-bridge-pcb/DESIGN.md).
+A Pro Micro nRF52840 (nice!nano / SuperMini) soldered onto a small 2-layer board that carries a TCM 515. It replaces the Pro Micro + EnOcean Pi hat with four wires, and is the simpler alternative to the [full custom board](../enocean-bridge-pcb/DESIGN.md).
 
 **The Pro Micro build of [firmware/enocean-gateway](../../firmware/enocean-gateway/) runs unchanged** (`BOARD=promicro-uf2`): the carrier uses exactly the pins that build expects.
 
@@ -12,7 +12,7 @@ Status: schematic and board done, fabrication files exported ([fab/](fab/)). ERC
 
 The Pro Micro brings the hard parts: the nRF52840 with its RF match and 2.4 GHz antenna, USB, the 3.3 V regulator and the UF2 bootloader. The carrier only needs the TCM 515 and a handful of 0805 parts. That means 2 layers, no fine pitch, no via in pad and no PCB assembly: everything can be hand-soldered.
 
-Compared with the custom board: about €20–25 per board instead of €40–55, a few dollars for the PCBs, but taller (46.5 × 33.4 mm plus the module on its headers).
+Compared with the custom board: about €20–25 per board instead of €40–55, a few dollars for the PCBs, but bigger (46.5 × 33.4 mm, with the module 2.5 mm above the carrier on its pin headers).
 
 ## Pin map
 
@@ -109,13 +109,13 @@ Freerouting's result can change with small placement changes: moving C2 by 0.6 m
 | Parts placed by JLC | ~$1–2 |
 | Shipping to Germany | ~$10–20 |
 
-That's roughly $30–40 for 5 assembled carriers. Add 5 × TCM 515 (Digi-Key, ~€12.50 each), Pro Micros, 2 × 12-pin female headers each, and wire for the whip.
+That's roughly $30–40 for 5 assembled carriers. Add 5 × TCM 515 (Digi-Key, ~€12.50 each), Pro Micros (their 2 × 12-pin headers usually come with them), and wire for the whip.
 
 ## Parts (per board, hand-soldered)
 
 | Ref | Part | Note |
 | --- | --- | --- |
-| U1 | Pro Micro nRF52840 (nice!nano v2, SuperMini) | UF2 bootloader ≥ 0.6.1; on 2 × 12-pin female headers or soldered directly |
+| U1 | Pro Micro nRF52840 (nice!nano v2, SuperMini) | UF2 bootloader ≥ 0.6.1; soldered onto the carrier with its 2 × 12-pin headers (no socket) |
 | U2 | EnOcean TCM 515 (868 MHz) | Digi-Key 1084-TCM515, about €12.50; MSL 4: solder within 72 h of opening |
 | FB1 | Ferrite bead 0805, 600 Ω at 100 MHz | e.g. Würth 742792040 |
 | C1 | 22 µF 0805 X5R/X7R ≥ 6.3 V | |
@@ -155,8 +155,8 @@ About €110–140 for five, €20–30 per board.
 
 Renders: `tools/render_case.sh` (Blender + Cycles; KiCad's 3D export of the board, the case STLs, and simple stand-ins for the Pro Micro, TCM 515, buttons and whip).
 
-- **Size:** 51.3 × 38.2 mm, about 26 mm tall with the Pro Micro on female headers. With `pm_mount = "direct"` (Pro Micro soldered on pin headers) it's about 17 mm.
-- **Board mounting:** the board sits on two standoffs (M2 self-tapping screws, about 6 mm long) and a 0.8 mm ledge along the edge. The USB-C notch in the end wall is open at the top, so the board goes in from above with the Pro Micro plugged in.
+- **Size:** 51.3 × 38.2 × 17.6 mm, for the Pro Micro soldered directly on its pin headers (`pm_mount = "direct"`, the default). For a socketed Pro Micro (female headers) set `pm_mount = "socket"`: about 26 mm tall.
+- **Board mounting:** the board sits on two standoffs (M2 self-tapping screws, about 6 mm long) and a 0.8 mm ledge along the edge. The USB-C notch in the end wall is open at the top, so the board goes in from above with the Pro Micro on it.
 - **Lid:** held by a friction lip.
   - **Buttons:** two holes with captive push pins. Put them in from below before closing; their collar keeps them in, and the tip rests 0.3 mm above the switch.
   - **LED:** a light pipe from the lid down to just above the LED.
@@ -168,7 +168,7 @@ Renders: `tools/render_case.sh` (Blender + Cycles; KiCad's 3D export of the boar
 
 ## Assembly and bring-up
 
-1. Solder the TCM 515 first (castellated pads, iron or hot air), then the 0805 parts and the button if JLC didn't, then the headers. Leave JP1 open.
+1. Solder the TCM 515 first (castellated pads, iron or hot air), then the 0805 parts and the buttons if JLC didn't. Leave JP1 open.
 2. Solder an 86 mm wire into the WHIP hole, standing upright if possible.
-3. Plug in the Pro Micro: USB end at the board edge, components up, square pad = pin 1.
+3. Solder the Pro Micro on with its pin headers (short ends into the carrier, plastic spacer between the boards): USB end at the board edge, components up, square pad = pin 1. Flash it before soldering if you like; it works either way.
 4. `make flash APP=enocean-gateway BOARD=promicro-uf2`; `enocean info` must show the TCM version and base ID.

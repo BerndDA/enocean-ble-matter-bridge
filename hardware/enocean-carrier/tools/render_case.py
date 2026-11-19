@@ -6,7 +6,7 @@ Inputs in the work folder given after `--`: base.stl, lid_asm.stl, pin_asm.stl (
 mounted orientation) and board.glb (KiCad 3D export, origin at the board's lower-left
 corner). Parts without a KiCad 3D model (Pro Micro on its headers, TCM 515, buttons,
 whip) are modelled here as simple shapes. Dimensions follow carrier_case.scad's
-defaults (pm_mount = "socket"); keep them in step when those change.
+defaults (pm_mount = "direct"); keep them in step when those change.
 
 Output: render-closed.png, render-exploded.png, render-open.png in the output folder.
 """
@@ -24,7 +24,9 @@ SAMPLES = int(args[2]) if len(args) > 2 else 192
 # ---------------------------------------------------------------- dimensions (carrier_case.scad)
 WALL, GAP, FLOOR, UNDER, BOARD_T = 2.0, 0.4, 2.0, 4.0, 1.6
 BOARD_W, BOARD_H = 46.5, 33.4
-PM_GAP, PM_PCB, PM_PARTS = 11.0, 1.2, 3.5
+SOCKET = False                        # carrier_case.scad pm_mount: "direct" (False) or "socket"
+PM_GAP = 11.0 if SOCKET else 2.5
+PM_PCB, PM_PARTS = 1.2, 3.5
 INNER_H = PM_GAP + PM_PCB + PM_PARTS + 0.8
 BOARD_Z = FLOOR + UNDER
 TOP_Z = BOARD_Z + BOARD_T
@@ -136,10 +138,13 @@ board_root.scale = (1000, 1000, 1000)
 board_root.location = (OFF, OFF, BOARD_Z)
 
 inside = []
-# Pro Micro on female headers + male header spacers
+# Pro Micro on its pin headers (plus female sockets when SOCKET)
 for i, x in enumerate(PIN_ROWS_X):
-    inside.append(box(f"socket{i}", x - 1.27, PIN_YS[-1] - 1.27, TOP_Z, x + 1.27, PIN_YS[0] + 1.27, TOP_Z + 8.5, M["header"], 0.1))
-    inside.append(box(f"spacer{i}", x - 1.27, PIN_YS[-1] - 1.27, TOP_Z + 8.5, x + 1.27, PIN_YS[0] + 1.27, TOP_Z + PM_GAP, M["header"], 0.1))
+    z_spacer = TOP_Z
+    if SOCKET:
+        inside.append(box(f"socket{i}", x - 1.27, PIN_YS[-1] - 1.27, TOP_Z, x + 1.27, PIN_YS[0] + 1.27, TOP_Z + 8.5, M["header"], 0.1))
+        z_spacer = TOP_Z + 8.5
+    inside.append(box(f"spacer{i}", x - 1.27, PIN_YS[-1] - 1.27, z_spacer, x + 1.27, PIN_YS[0] + 1.27, TOP_Z + PM_GAP, M["header"], 0.1))
     for y in PIN_YS:
         inside.append(box("pintip", x - 0.32, y - 0.32, TOP_Z + PM_GAP + PM_PCB, x + 0.32, y + 0.32, TOP_Z + PM_GAP + PM_PCB + 1.6, M["gold"], 0.05))
 pm_z = TOP_Z + PM_GAP

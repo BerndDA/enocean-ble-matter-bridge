@@ -12,9 +12,9 @@
 part = "assembly";
 
 // ---------------------------------------------------------------- how the Pro Micro sits
+// "direct": soldered on male pin headers (plastic spacer 2.5 mm)   -> Pro Micro 2.5 mm above the board
 // "socket": female headers (8.5 mm) + male header spacer (2.5 mm) -> Pro Micro 11 mm above the board
-// "direct": soldered on male headers (spacer 2.5 mm)               -> Pro Micro 2.5 mm above the board
-pm_mount = "socket";
+pm_mount = "direct";
 pm_gap   = pm_mount == "socket" ? 11.0 : 2.5;   // carrier top -> Pro Micro bottom
 pm_pcb   = 1.2;                                 // Pro Micro board thickness (SuperMini 1.0-1.2, nice!nano 1.0)
 pm_parts = 3.5;                                 // tallest part on the Pro Micro (USB-C receptacle ~3.2)

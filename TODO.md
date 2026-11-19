@@ -16,7 +16,7 @@ What's left to do and to decide. Tick items off here; the plan behind the steps 
 
 ## EnOcean carrier board
 
-Pro Micro nRF52840 plugged onto a 2-layer board with a TCM 515. Design in [hardware/enocean-carrier/DESIGN.md](hardware/enocean-carrier/DESIGN.md).
+Pro Micro nRF52840 soldered onto a 2-layer board with a TCM 515. Design in [hardware/enocean-carrier/DESIGN.md](hardware/enocean-carrier/DESIGN.md).
 
 - [x] Pro Micro symbol and footprint (with antenna keepout) in `hardware/lib/`; the TCM 515 library moved there too.
 - [x] Schematic: ERC clean, netlist checked.
@@ -28,7 +28,7 @@ Pro Micro nRF52840 plugged onto a 2-layer board with a TCM 515. Design in [hardw
 - [x] Fabrication files: `fab/` (Gerbers + drill zip, BOM and CPL for JLC assembly of the 10 small parts).
 - [ ] Firmware: drive the EnOcean LED on P1.11 (e.g. blink per telegram) in the Pro Micro overlay of `firmware/enocean-gateway`.
 - [ ] Order at JLCPCB: upload the zip, 2 layers 1.6 mm; optionally PCB Assembly (Economic, top) with the BOM/CPL, check the placement preview.
-- [ ] Order 5 × TCM 515 (Digi-Key 1084-TCM515), Pro Micros, 2 × 12-pin female headers per board; passives and buttons only if not assembled by JLC.
+- [ ] Order 5 × TCM 515 (Digi-Key 1084-TCM515), Pro Micros (with their pin headers; no sockets); passives and buttons only if not assembled by JLC.
 - [ ] Assemble, flash `BOARD=promicro-uf2`, check `enocean info` and range with the whip.
 - [x] 3D-printable case (`case/`, OpenSCAD).
 - [ ] Case: measure the Pro Micro height on the real stack, adjust `pm_gap`/`usb_z`, test-print the base.
