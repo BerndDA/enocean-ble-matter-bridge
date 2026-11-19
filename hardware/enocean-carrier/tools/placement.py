@@ -44,7 +44,7 @@ PLACE = {
     "R2": (40.6, RF_Y, 0, "F"),        # to the whip
     "TP1": (44.4, RF_Y, 0, "F"),       # whip hole
     "R3": (38.6, 5.6, 270, "F"),       # to the u.FL (DNP), pad 1 on top
-    "J1": (38.6, 10.6, 270, "F"),      # u.FL (DNP), signal pad on top
+    "J1": (43.9, 9.5, 0, "F"),         # u.FL (DNP) at the right edge, signal pad facing R3
     # reset button, holes
     "SW1": (41.0, 30.0, 0, "F"),
     "H1": (23.5, 30.3, 0, "F"),

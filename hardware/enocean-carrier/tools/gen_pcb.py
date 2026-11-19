@@ -266,10 +266,16 @@ def route_868(board, nets):
     track("/RF_868", [neck, (rf[0], y), node, pad("R2", "1")], RF_W)     # over C4 pad 1
     track("/RF_868", [node, pad("R3", "1")], RF_W)
     track("/ANT_868", [pad("R2", "2"), pad("TP1", "1")], RF_W)
-    track("/RF_UFL", [pad("R3", "2"), pad("J1", "1")], RF_W)
+    r3, j1 = pad("R3", "2"), pad("J1", "1")
+    track("/RF_UFL", [r3, (r3[0], j1[1]), j1], RF_W)              # down, then right to the edge
     gx, gy = pad("C4", "2")
     track("GND", [(gx, gy), (gx, gy + 1.1)], 0.5)
     via(gx, gy + 1.1)
+    # TCM corner GND pads: a fixed via each, so routing can't cut them off the pours
+    for num, (dx, dy) in (("23", (1.55, 0.9)), ("15", (0.0, 2.5)), ("6", (0.0, -1.8))):
+        gx, gy = pad("U2", num)
+        track("GND", [(gx, gy), (gx + dx, gy + dy)], 0.4)
+        via(gx + dx, gy + dy)
 
 
 if __name__ == "__main__":
