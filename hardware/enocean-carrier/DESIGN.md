@@ -43,7 +43,7 @@ The circuit follows the TCM 515 User Manual v1.22; details and sources are in th
   - R3 0 Ω (not fitted) to the u.FL J1 (not fitted), as the alternative.
   - C4 shunt pad (not fitted) for tuning.
   - The line is 1.0 mm wide with a 0.2 mm gap to the pour (~54 Ω on 1.6 mm FR4; 1.2 mm would be 50 Ω), necked to 0.6 mm along the TCM pad.
-- **Two buttons**, small SMD tactile switches (C&K KMR2, 4.2 × 2.8 mm; LCSC C269272): SW1 on the Pro Micro's RST, SW2 on P1.06 (function button).
+- **Two buttons**, SMD tactile switches XKB TS-1187A (5.1 × 5.1 mm; LCSC C318884, the only tactile switch in JLC's basic library): SW1 on the Pro Micro's RST, SW2 on P1.06 (function button).
 - **EnOcean LED:** D1 (yellow 0805, KT-0805Y) with R4 1 kΩ on P1.11, about 1.2 mA. The TCM 515 has no LED output, so the firmware drives it, e.g. a blink per telegram. Until the firmware does, it stays dark.
 - **No test pads.** The TCM's UART can be probed at the Pro Micro pins. TCM TP1–TP3 stay unconnected (EnOcean recommends pads there for their own debugging).
 
@@ -53,7 +53,7 @@ The circuit follows the TCM 515 User Manual v1.22; details and sources are in th
 
 - **The Pro Micro** sits on the left: USB end flush with the top edge, antenna end flush with the bottom edge. Its footprint ([../lib/Modules.pretty](../lib/Modules.pretty)) keeps all copper out from between the header rows under the antenna.
 - **The TCM 515** stands upright next to it (rotated 270°). VDD and UART are at its bottom edge, a few millimetres from the Pro Micro's P0.09/P0.10. RF_50 is at its top edge, facing the whip pad in the top-right corner and the u.FL at the right edge below it (so a pigtail leaves the board directly), as far as possible from the 2.4 GHz antenna. No top copper under the module (keepout in its footprint).
-- **The parts around it:** C1/C2/FB1 below the TCM at VDD; R1/JP1 (nTURBO), the LED with R4, and C3 (nRESET) at its right edge; the two buttons along the bottom edge (FUNC left, RESET right).
+- **The parts around it:** C1/C2/FB1 below the TCM at VDD; R1/JP1 (nTURBO), the LED with R4, and C3 (nRESET) at its right edge; FUNC (SW2, upright) bottom-left under the TCM, RESET (SW1) bottom-right.
 - **Rules:** JLC 2-layer limits with margin: 0.15 mm track/clearance minimum, 0.25 mm default tracks, 0.6/0.3 mm vias.
 
 Pictures: [top](enocean-carrier-top.png), [bottom](enocean-carrier-bottom.png), [top copper](enocean-carrier-layer-top.png), [bottom copper](enocean-carrier-layer-bottom.png), [schematic](enocean-carrier.png).
@@ -93,7 +93,7 @@ Freerouting's result can change with small placement changes: moving C2 by 0.6 m
 **PCB:** 2 layers, FR-4, 1.6 mm, 1 oz, HASL lead-free (or ENIG), any colour. Everything else default; no impedance control or via-in-pad needed.
 
 **Assembly (optional):** "PCB Assembly", Economic, top side.
-- **JLC places 10 parts**: FB1, C1, C2, C3, R1, R2, R4, D1 (all basic parts) and SW1/SW2 (KMR2, the only extended part).
+- **JLC places 10 parts**: FB1, C1, C2, C3, R1, R2, R4, D1 and SW1/SW2, all from JLC's basic library, so there are no extended-part fees.
 - **Not in the order:**
   - U1 (Pro Micro on headers) and U2 (TCM 515): you solder those.
   - R3, J1, C4: not fitted (u.FL option).
@@ -105,7 +105,7 @@ Freerouting's result can change with small placement changes: moving C2 by 0.6 m
 | Item | Cost |
 | --- | --- |
 | PCBs, 2 layers | ~$2–5 |
-| Assembly: $8.18 setup + $1.53 stencil + $3.07 for the KMR2 + $0.45 placement check | ~$13 |
+| Assembly: $8.18 setup + $1.53 stencil + $0.45 placement check (all parts basic, no loading fees) | ~$10 |
 | Parts placed by JLC | ~$1–2 |
 | Shipping to Germany | ~$10–20 |
 
@@ -122,7 +122,7 @@ That's roughly $30–40 for 5 assembled carriers. Add 5 × TCM 515 (Digi-Key, ~�
 | C2, C3 | 100 nF 0805 | |
 | R1 | 10 kΩ 0805 | |
 | R2 | 0 Ω 0805 | whip |
-| SW1, SW2 | C&K KMR221NGLFS, 4.2 × 2.8 mm SMD | reset, function |
+| SW1, SW2 | XKB TS-1187A-B-A-B, 5.1 × 5.1 mm SMD | reset, function |
 | D1 | yellow LED 0805 (KT-0805Y) | EnOcean activity |
 | R4 | 1 kΩ 0805 | LED |
 | — | 86 mm wire | whip antenna, into the WHIP hole |

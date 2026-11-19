@@ -2220,7 +2220,7 @@
 		(uuid "96b19fdf-4fd0-5960-a4e6-7fc0bf58b8b2")
 		(property "Reference" "SW1" (at 36.83 73.66 0) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "RESET" (at 35.56 77.724 0) (effects (font (size 1.27 1.27))))
-		(property "Footprint" "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2"
+		(property "Footprint" "Button_Switch_SMD:SW_Push_1P1T_XKB_TS-1187A"
 			(at 35.56 71.12 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -2229,11 +2229,8 @@
 			(at 35.56 76.2 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(property "LCSC" "C269272" (at 35.56 76.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "MPN" "C&K KMR221NGLFS (4.2 x 2.8 mm)"
-			(at 35.56 76.2 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
-		)
+		(property "LCSC" "C318884" (at 35.56 76.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "MPN" "TS-1187A-B-A-B" (at 35.56 76.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(pin "1" (uuid "1afd2802-c208-587e-9e2f-66b91e5e49c6"))
 		(pin "2" (uuid "89aaa120-2640-5cea-816d-100908a0576d"))
 		(instances
@@ -2278,7 +2275,7 @@
 		(uuid "2c0b6ee6-c314-5439-8d2e-99673d493580")
 		(property "Reference" "SW2" (at 36.83 99.06 0) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "FUNC" (at 35.56 103.124 0) (effects (font (size 1.27 1.27))))
-		(property "Footprint" "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2"
+		(property "Footprint" "Button_Switch_SMD:SW_Push_1P1T_XKB_TS-1187A"
 			(at 35.56 96.52 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -2287,11 +2284,8 @@
 			(at 35.56 101.6 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(property "LCSC" "C269272" (at 35.56 101.6 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "MPN" "C&K KMR221NGLFS (4.2 x 2.8 mm)"
-			(at 35.56 101.6 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
-		)
+		(property "LCSC" "C318884" (at 35.56 101.6 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "MPN" "TS-1187A-B-A-B" (at 35.56 101.6 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(pin "1" (uuid "492b25ef-0d00-572b-8a57-a57c335256c2"))
 		(pin "2" (uuid "71f44646-d469-5bd4-8a5b-086e33648fea"))
 		(instances

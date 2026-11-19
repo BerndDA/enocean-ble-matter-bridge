@@ -89,10 +89,11 @@ part("J1", "Connector:Conn_Coaxial", "U.FL", "Connector_Coaxial:U.FL_Hirose_U.FL
 # ---------------------------------------------------------------- buttons, LED
 # SW1: the Pro Micro's reset (press: reset, double-tap: UF2 bootloader).
 # SW2: the firmware's function button (hold 6 s: factory reset).
-part("SW1", "Switch:SW_Push", "RESET", "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2", 14, 30, {"1": "NRESET", "2": "GND"},
-     lcsc="C269272", mpn="C&K KMR221NGLFS (4.2 x 2.8 mm)")
-part("SW2", "Switch:SW_Push", "FUNC", "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2", 14, 40, {"1": "BTN_FUNC", "2": "GND"},
-     lcsc="C269272", mpn="C&K KMR221NGLFS (4.2 x 2.8 mm)")
+# XKB TS-1187A (5.1 x 5.1 mm): the only tactile switch in JLC's basic library
+part("SW1", "Switch:SW_Push", "RESET", "Button_Switch_SMD:SW_Push_1P1T_XKB_TS-1187A", 14, 30, {"1": "NRESET", "2": "GND"},
+     lcsc="C318884", mpn="TS-1187A-B-A-B")
+part("SW2", "Switch:SW_Push", "FUNC", "Button_Switch_SMD:SW_Push_1P1T_XKB_TS-1187A", 14, 40, {"1": "BTN_FUNC", "2": "GND"},
+     lcsc="C318884", mpn="TS-1187A-B-A-B")
 # EnOcean LED on P1.11, active high: 3.3 V - 2.1 V over 1 k = about 1.2 mA
 R("R4", "1k", 60, 70, "LED_TCM", "LED_A", lcsc="C17513", mpn="0805W8F1001T5E")
 part("D1", "Device:LED", "yellow", "LED_SMD:LED_0805_2012Metric_Pad1.15x1.40mm_HandSolder", 60, 80,

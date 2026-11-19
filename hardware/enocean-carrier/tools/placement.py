@@ -48,9 +48,10 @@ PLACE = {
     # EnOcean LED (P1.11) right of the module, resistor below it: R4 pad 2 under D1 pad 2 (anode)
     "D1": (41.6, 18.0, 0, "F"),
     "R4": (41.6, 20.4, 0, "F"),
-    # buttons: FUNC (P1.06) and RESET side by side at the bottom edge, holes
-    "SW2": (37.0, 30.8, 0, "F"),
-    "SW1": (43.0, 30.8, 0, "F"),
-    "H1": (23.5, 30.3, 0, "F"),
+    # buttons (TS-1187A, 5.1 x 5.1 mm): FUNC (P1.06) bottom-left under the TCM, upright;
+    # RESET bottom-right; holes
+    "SW2": (27.5, 29.4, 90, "F"),
+    "SW1": (41.6, 30.6, 0, "F"),
+    "H1": (22.2, 30.7, 0, "F"),
     "H2": (42.4, 24.2, 0, "F"),
 }

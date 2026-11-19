@@ -31,7 +31,7 @@ PCB = os.path.join(PROJ, "enocean-carrier.kicad_pcb")
 CLI = "/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli"
 ORIGIN = (100.0, 100.0)
 VIA_D, VIA_DRILL = 0.6, 0.3
-STEP = 3.0
+STEP = 2.0
 CLEAR = 0.2                       # copper clearance to other nets (Default/RF class)
 EDGE = 0.6
 
@@ -214,8 +214,80 @@ def main():
         if not done:
             print(f"no room for a via in the GND island at x {x0:.2f}..{x1:.2f}, y {y0:.2f}..{y1:.2f}")
     pcbnew.ZONE_FILLER(board).Fill(board.Zones())
-    pcbnew.SaveBoard(PCB, board)
     added += islands
+
+    # groups of pour pieces joined to each other but not to the main GND: one bridging
+    # via where a piece of such a group lies over main-group copper on the other layer
+    def pour_groups():
+        pieces = []
+        for z in board.Zones():
+            if z.GetIsRuleArea() or z.GetNetname() != "GND":
+                continue
+            for layer in (pcbnew.F_Cu, pcbnew.B_Cu):
+                if z.IsOnLayer(layer):
+                    ps = z.GetFilledPolysList(layer)
+                    pieces += [(layer, ps.Outline(i)) for i in range(ps.OutlineCount())]
+        links = [t.GetPosition() for t in board.GetTracks() if t.GetClass() == "PCB_VIA" and t.GetNetname() == "GND"]
+        links += [p.GetPosition() for fp in board.GetFootprints() for p in fp.Pads()
+                  if p.GetNetname() == "GND" and p.HasHole()]
+        parent = list(range(len(pieces)))
+
+        def root(i):
+            while parent[i] != i:
+                parent[i] = parent[parent[i]]
+                i = parent[i]
+            return i
+        for v in links:
+            inside = [i for i, (_l, ol) in enumerate(pieces) if ol.PointInside(v)]
+            for k in inside[1:]:
+                parent[root(k)] = root(inside[0])
+        groups = {}
+        for i in range(len(pieces)):
+            groups.setdefault(root(i), []).append(pieces[i])
+        return sorted(groups.values(), key=lambda g: -sum(ol.Area() for _l, ol in g))
+
+    def inside_r(ol, p):
+        d = pcbnew.FromMM(r)
+        return ol.PointInside(p) and all(ol.PointInside(pcbnew.VECTOR2I(p.x + dx, p.y + dy))
+                                         for dx, dy in ((d, 0), (-d, 0), (0, d), (0, -d)))
+
+    bridges = 0
+    for _round in range(5):
+        groups = pour_groups()
+        if len(groups) < 2:
+            break
+        main = groups[0]
+        done = False
+        for layer, ol in [pc for g in groups[1:] for pc in g]:
+            others = [o for (l2, o) in main if l2 != layer]
+            bb = ol.BBox()
+            x0, y0 = to_mm(pcbnew.VECTOR2I(bb.GetLeft(), bb.GetTop()))
+            x1, y1 = to_mm(pcbnew.VECTOR2I(bb.GetRight(), bb.GetBottom()))
+            yy = y0
+            while yy <= y1 and not done:
+                xx = x0
+                while xx <= x1 and not done:
+                    p = pcbnew.VECTOR2I(pcbnew.FromMM(ORIGIN[0] + xx), pcbnew.FromMM(ORIGIN[1] + yy))
+                    if inside_r(ol, p) and any(inside_r(o, p) for o in others) and fits(xx, yy):
+                        v = pcbnew.PCB_VIA(board)
+                        v.SetPosition(p)
+                        v.SetWidth(pcbnew.FromMM(VIA_D))
+                        v.SetDrill(pcbnew.FromMM(VIA_DRILL))
+                        v.SetNet(gnd)
+                        board.Add(v)
+                        vias.append((xx, yy))
+                        bridges += 1
+                        done = True
+                    xx += 0.1
+                yy += 0.1
+            if done:
+                break
+        if not done:
+            print(f"{len(groups) - 1} GND pour group(s) still separate: no room for a bridging via")
+            break
+        pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+    added += bridges
+    pcbnew.SaveBoard(PCB, board)
 
     # 3. drop stitching vias that DRC doesn't like
     bad = drc_dangling()
