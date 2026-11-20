@@ -238,8 +238,8 @@ Current result: routed by the first strategy, 0 unconnected, 0 DRC errors, schem
 - **Light pipes:** the carrier's dimensions: 3.2 mm bore for 3 mm acrylic rods, 0.8 mm walls, ending 0.5 mm above the LEDs. Cut three rods to **5.7 mm** (OpenSCAD echoes `rod_len`) and press them in flush. Print the lid in an opaque, dark filament.
 - **Buttons:** captive push pins (collar 5.4 mm, put in from below before closing); the lip is notched around the collars.
 - **Whip:** 3 mm hole in the lid above TP1. TP1's hole is 1.0 mm: use wire up to about 0.9 mm.
-- **SWD:** an opening over J3 (`swd_hole`), so the DK's 10-pin cable plugs in with the lid on.
-- **Labels** engraved in the lid: EnMT logo and name over the TCM, FUNC / RST, PWR / LNK / RX around the LEDs, 868 at the whip, SWD.
+- **SWD:** no opening; take the lid off to flash over J3.
+- **Labels** engraved in the lid: EnMT logo and name over the TCM, FUNC / RST above the buttons, PWR / LINK / RX above the LEDs (turned 90°: at 4 mm pitch words don't fit side by side), 868 at the whip.
 - **Material:** plastic only near the antennas; no metal parts or metallic filament.
 
 ## Cost (JLC quote, 2026-11-20)

@@ -1,7 +1,8 @@
 // 3D-printable case for the EnOcean–Matter bridge board (hardware/enocean-bridge-pcb).
 // Same construction as the EnMT carrier's case (../../enocean-carrier/case/carrier_case.scad):
 // base with walls, lid with a friction lip, light pipes for 3 mm acrylic rods over the LEDs,
-// captive push pins over the buttons, a hole for the whip.
+// captive push pins over the buttons, a hole for the whip. No opening for the SWD header:
+// open the lid to flash.
 //
 // Parts (choose with `part`): "base", "lid", "pin" (two needed), or "assembly" (preview).
 //   openscad -D 'part="base"' -o base.stl bridge_case.scad
@@ -17,7 +18,6 @@ part = "assembly";
 
 // ---------------------------------------------------------------- options
 whip_hole  = true;    // 3 mm hole in the lid above the whip pad: the 86 mm wire goes straight up
-swd_hole   = true;    // opening in the lid over J3: the DK's 10-pin cable plugs in with the lid on
 light_pipe = true;    // one tube per LED from the lid down to just above it, each holds a clear acrylic rod
 rod_d      = 3.0;     // acrylic (PMMA) rods pressed into the light pipes
 pipe_bore  = rod_d + 0.2;   // printed holes come out ~0.1-0.2 mm small: press fit
@@ -44,23 +44,21 @@ BUTTONS = [P(8.5, 23.1), P(17.0, 23.1)];                     // SW2 FUNC, SW1 RE
 LEDS    = [P(44.0, 22.6), P(48.0, 22.6), P(52.0, 22.6)];     // D1 red PWR, D2 green LINK, D3 yellow RX
 WHIP    = P(3.0, 2.2);                                       // TP1, 1.0 mm hole: wire up to about 0.9 mm
 USB_X   = 31.5;                                              // J1 centre line
-SWD     = P(47.635, 16.14);                                  // J3 pin field centre (pins x 47.0 / 48.27, y 13.6 .. 18.68)
 SW_H    = 1.5;                                               // switch height above the board
 LED_H   = 0.8;                                               // 0805 LEDs
 USB_Z   = 1.6;                                               // USB-C centre above the board top (HRO TYPE-C-31-M-12, 3.2 mm tall)
 // posts from the lid down onto bare board: they hold the board on the floor (no screw holes)
 POSTS   = [P(2.5, 14.0), P(31.0, 1.8), P(40.5, 24.6)];
 
-// [text, board x, board y, size, halign]; button labels along the front edge
+// [text, board x, board y, size, halign, angle]: above the buttons; above the LEDs turned 90 deg
+// (reading upwards), since 4 mm LED pitch leaves no room for words side by side
 LABELS = [
-    ["FUNC", 8.5, 26.6, label_h, "center"],
-    ["RST",  17.0, 26.6, label_h, "center"],
-    // 4 mm LED pitch leaves no room for three words in a row: left of, below and right of the row
-    ["PWR",  41.2, 22.6, label_h, "right"],
-    ["LNK",  48.0, 26.6, label_h, "center"],
-    ["RX",   54.8, 22.6, label_h, "left"],
-    ["868",  5.2, 2.2, label_h, "left"],
-    ["SWD",  50.6, 16.1, label_h, "left"],
+    ["FUNC", 8.5, 18.9, label_h, "center", 0],
+    ["RST",  17.0, 18.9, label_h, "center", 0],
+    ["PWR",  44.0, 19.7, label_h, "left", 90],
+    ["LINK", 48.0, 19.7, label_h, "left", 90],
+    ["RX",   52.0, 19.7, label_h, "left", 90],
+    ["868",  5.2, 2.2, label_h, "left", 0],
 ];
 NAME_AT = [15.4, 12.0];                   // board coordinates of the centre of logo + name (over the TCM)
 
@@ -76,7 +74,6 @@ pipe_len = inner_h - LED_H - 0.5;          // light pipes below the lid, end 0.5
 rod_len  = pipe_len + lid_t;               // rod flush with the lid top and the pipe end
 post_d   = 2.5;
 fit      = 0.25;    // lip clearance per side
-swd_open = [4.6, 7.9];                     // lid opening over J3: the 10-pin IDC socket (about 4 x 7.6 mm)
 $fn = 48;
 
 IN_W = BOARD_W + 2 * gap;
@@ -117,8 +114,8 @@ module base() {
     }
 }
 
-module engrave(t, p, size, halign) {
-    translate([B(p)[0], B(p)[1], lid_t - label_d]) linear_extrude(label_d + 1)
+module engrave(t, p, size, halign, angle = 0) {
+    translate([B(p)[0], B(p)[1], lid_t - label_d]) rotate([0, 0, angle]) linear_extrude(label_d + 1)
         offset(delta = label_grow) text(t, size = size, font = label_font, halign = halign, valign = "center");
 }
 
@@ -172,10 +169,8 @@ module lid() {
             for (l = LEDS) translate([B(l)[0], B(l)[1], -inner_h]) cylinder(d = pipe_bore, h = inner_h + lid_t + 1);
         for (b = BUTTONS) translate([B(b)[0], B(b)[1], -1]) cylinder(d = 3.8, h = lid_t + 2);
         if (whip_hole) translate([B(WHIP)[0], B(WHIP)[1], -1]) cylinder(d = 3.0, h = lid_t + 2);
-        if (swd_hole) translate([B(SWD)[0] - swd_open[0] / 2, B(SWD)[1] - swd_open[1] / 2, -1])
-            cube([swd_open[0], swd_open[1], lid_t + 2]);
         if (labels) {
-            for (l = LABELS) engrave(l[0], P(l[1], l[2]), l[3], l[4]);
+            for (l = LABELS) engrave(l[0], P(l[1], l[2]), l[3], l[4], l[5]);
             if (name != "" || logo) translate([B(P(NAME_AT[0], NAME_AT[1]))[0], B(P(NAME_AT[0], NAME_AT[1]))[1], lid_t - label_d])
                 linear_extrude(label_d + 1) brand2d();
         }
@@ -206,7 +201,7 @@ else {
     color("darkgreen") translate([wall + gap, wall + gap, board_z]) cube([BOARD_W, BOARD_H, BOARD_T]);
     color("tan") translate([B(P(5.9, 19.35))[0], B(P(5.9, 19.35))[1], top_z]) cube([19.0, 14.7, 3.0]);       // TCM 515
     color("silver") translate([B([USB_X - 4.5, 0])[0], wall + gap - 0.5, top_z]) cube([9, 7.3, 3.2]);        // USB-C
-    color("black") translate([B(SWD)[0] - 1.6, B(SWD)[1] - 3.2, top_z]) cube([3.2, 6.4, 4.0]);               // SWD header
+    color("black") translate([B(P(47.635, 16.14))[0] - 1.6, B(P(47.635, 16.14))[1] - 3.2, top_z]) cube([3.2, 6.4, 4.0]);   // SWD header J3
     for (b = BUTTONS) color("black") translate([B(b)[0] - 2.55, B(b)[1] - 2.55, top_z]) cube([5.1, 5.1, SW_H]);
     color("white", 0.8) translate([0, 0, base_h + 12]) lid();
     if (light_pipe) for (l = LEDS) color("gold", 0.6) translate([B(l)[0], B(l)[1], base_h + 12 - pipe_len]) cylinder(d = rod_d, h = rod_len);
