@@ -33,7 +33,7 @@ Simplified from the first version (67.2 × 26 mm, 62 parts): no u.FL, no test pa
 | Function button | P1.06 (R24) | Push button to GND (internal pull-up) | `sw0`, hold 6 s = factory reset |
 | Reset | P0.18/nRESET (AC13) | Push button to GND; double-tap = UF2 bootloader | `gpio-as-nreset` |
 | USB | D+ (AD6), D− (AD4), VBUS (AD2) | USB-C via ESD array | USB CDC console |
-| SWD | SWDIO (AC24), SWDCLK (AA24) | Tag-Connect TC2030 pads | Bootloader flashing, `BOARD=promicro` |
+| SWD | SWDIO (AC24), SWDCLK (AA24), SWO (AD22), nRESET (AC13) | J3, 2 × 5 pin header 1.27 mm (ARM Cortex 10-pin) | Bootloader flashing from the DK's Debug out (P19), `BOARD=promicro` |
 | TCM reset (new) | P0.20 (AD16) | TCM 515 pin 24 nRESET | Unused by today's firmware: the pin floats as an input and the TCM's internal pull-up wins. Lets later firmware reset a stuck TCM |
 
 Everything else stays unconnected. The firmware doesn't use P0.13 either, the nice!nano's VCC switch pin.
@@ -50,7 +50,7 @@ Everything else stays unconnected. The firmware doesn't use P0.13 either, the ni
 | C15 | 1.0 µF | DEC4 (B5) + DEC6 (E24), tied together | C10 (to GND) not mounted |
 | — | — | DEC5 (N24) | unconnected: the 820 pF (PS C9) isn't needed on Fxx silicon (JLC stocks NRF52840-QIAA-**F**-R7) |
 | C20 | 4.7 µF | DECUSB (AC5) | |
-| C21 | 4.7 µF X7S | VBUS (AD2) | 2.2 Ω series resistor from USB VBUS (Nordic's recommended transient protection) |
+| C21 | 4.7 µF X7S | VBUS (AD2) | R4 in series from USB VBUS: 0 Ω. Nordic suggests 2.2 Ω as transient protection, but no 2.2 Ω is in JLC's basic library; the footprint stays for it |
 | C14 | 1.0 µF | VDD (B1) | |
 | C12, C7, C8 | 100 nF | VDD (A22), VDD (AD14), VDD (AD23) | one per VDD pin, at the pin |
 | C6 | 4.7 µF | VDD (W1) | VDDH (Y2) tied to VDD: normal-voltage mode |
@@ -85,14 +85,14 @@ C3's ground goes to VSS_PA (F23) as in the reference. The match sits right at th
 
 - USB-C receptacle HRO TYPE-C-31-M-12 (C165948): CC1/CC2 each 5.1 kΩ to GND (USB 2.0 sink), shield to GND through 1 MΩ ∥ 10 nF.
 - ESD: USBLC6-2SC6 on D+/D− and VBUS, placed at the connector.
-- 5 V → 3.3 V LDO, ≥ 300 mA, SOT-23-5 (AP2112K-3.3 or ME6211C33, whichever JLC has in stock at order time). 4.7 µF in, 4.7 µF out. Budget: nRF52840 ≈ 15 mA (radio + USB) + TCM 515 25 mA RX/TX + LED ⇒ < 60 mA.
+- 5 V → 3.3 V LDO: XC6206P332MR (C5446, SOT-23-3, JLC basic), 200 mA, no enable pin, input up to 6 V (USB 5 V, clamped by the ESD array). 4.7 µF in, 4.7 µF out. Budget: nRF52840 ≈ 15 mA (radio + USB) + TCM 515 25 mA RX/TX + LED ⇒ < 60 mA.
 - No polyfuse: USB hosts and chargers limit their own port current, and the LDO has current limiting and thermal shutdown (the Pro Micro has none either).
 
 ### UI and debug
 
-- Buttons RESET (P0.18) and FUNC (P1.06): small SMD tactile switches to GND.
-- Three 0805 LEDs as on the EnMT carrier, all JLC basic: red D1 (NCD0805R1, C84256) with R9 1 kΩ on P1.11, green D2 (KT-0805G, C2297) with R10 330 Ω on P1.13, yellow D3 (KT-0805Y, C2296) with R11 1 kΩ on P1.15. Anodes on 3.3 V; a pin pulled low lights its LED. In a row 4 mm apart, one light pipe each.
-- SWD: Tag-Connect TC2030-IDC-NL footprint (VDD, SWDIO, nRESET, SWDCLK, GND). The DK's Debug Out (P20) can drive it through a TC2030 cable, or through pogo pins on the TC2030 pads.
+- Buttons RESET (P0.18) and FUNC (P1.06): XKB TS-1187A (5.1 × 5.1 mm, C318884, JLC basic, as on the EnMT carrier) to GND.
+- Three 0805 LEDs as on the EnMT carrier, all JLC basic: red D1 (NCD0805R1, C84256) with R9 1 kΩ on P1.11, green D2 (KT-0805G, C2297) with R10 330 Ω on P1.13, yellow D3 (KT-0805Y, C2296) with R11 1 kΩ on P1.15. Anodes on 3.3 V; a pin pulled low lights its LED. In a row 4.0 mm apart and 3.4 mm from the bottom edge, like the carrier, so its light pipes (3.2 mm bore for 3 mm acrylic rods, 0.8 mm walls) fit; the resistors sit outside the pipes at the right edge. `gen_pcb.py` checks that no other part sits under a pipe (`LIGHT_PIPE_D` in `placement.py`).
+- SWD: J3, a 2 × 5 THT pin header with 1.27 mm pitch, hand-soldered, in the ARM Cortex 10-pin layout of the nRF52840 DK's Debug out (P19), so the DK's 10-pin flat cable plugs straight in. Pins: 1 VTref = +3V3 (the DK senses the target voltage; the board must be powered over USB while flashing), 2 SWDIO, 3/5 GND, 4 SWDCLK, 6 SWO, 7 key (no pin needed), 8 NC, 9 GND detect = GND (tells the DK a target is connected), 10 nRESET. An unshrouded header can take the cable either way round: pin 1 is marked on the silkscreen; check the cable's red wire against it.
 - No test pads.
 
 ## Board outline and layout
@@ -104,7 +104,7 @@ C3's ground goes to VSS_PA (F23) as in the reference. The match sits right at th
  │ o   │       TCM 515         │     nRF52840 ─ match┤GHz │  │
  │     │   (no copper under    │ LDO                 │ant.│ 26 mm
  │     │    module, top+bottom)│ CC  ESD caps    ┌───┴────┤  │
- │     │  FUNC  RESET          │                 │TC2030  │  │
+ │     │  FUNC  RESET          │          SWD    │        │  │
  │     │                       │      ESD     LED LED LED │  │
  └─────┴───────────────────────┴──[USB-C]─────────────────┘  ↓
 ```
@@ -134,7 +134,7 @@ Passives come from JLC's basic library at BOM time. The remaining LCSC numbers a
 
 ## Bring-up
 
-1. JLC delivers a blank nRF52840. Flash the nice!nano UF2 bootloader (Adafruit `nice_nano_bootloader-<ver>_s140_6.1.1.hex`, ≥ 0.6.1) over SWD from the DK's Debug Out, as in the README's SWD section.
+1. JLC delivers a blank nRF52840. Flash the nice!nano UF2 bootloader (Adafruit `nice_nano_bootloader-<ver>_s140_6.1.1.hex`, ≥ 0.6.1) over SWD: solder the 2 × 5 header J3, power the board over USB, and connect the DK's Debug out (P19) with the 10-pin flat cable (pin 1 to pin 1).
 2. The board now enumerates as a UF2 drive. Then `make flash APP=enocean-gateway BOARD=enmt`: red PWR must stay on (blinking = no answer from the TCM).
 3. `enocean info` in the shell must show the TCM version and base ID. If it doesn't, check that the nTURBO jumper is open and probe the UART at the TCM's castellated pins 20/21 (57600 baud).
 
@@ -185,7 +185,7 @@ The board is routed by a pipeline, not by hand:
 
 1. `gen_pcb.py` places the parts and draws everything that must not be left to the router:
    - both RF paths;
-   - power fanout: one via per nRF52840 VDD pin into the In2 +3V3 plane, one via per capacitor GND / +3V3 pad and per CC/shield resistor GND pad, and one via for every other +3V3 pad (LDO output, FB1, TC2030);
+   - power fanout: one via per nRF52840 VDD pin into the In2 +3V3 plane, one via per capacitor GND / +3V3 pad and per CC/shield resistor GND pad, and one via for every other SMD +3V3 pad (LDO output, FB1; through-hole pins reach the planes themselves);
    - the 9 vias in the exposed pad;
    - vias in the pads of AC5 (DECUSB), AC13 (nRESET) and B19 (P1.11, red LED): inner-row pads whose outer neighbours leave no reliable escape.
    All of these tracks and vias are locked.
@@ -196,7 +196,7 @@ KPY=/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/
 $KPY tools/gen_pcb.py --force && python3 tools/route.py
 ```
 
-Current result: routed by the first strategy, 0 unconnected, 0 DRC errors, schematic parity clean, 7 silkscreen warnings. Signal tracks: 370 mm on top, 203 mm on the bottom, 30 signal vias; no tracks on In1 or In2, none under the TCM 515. Pictures: [top](enocean-bridge-layer-top.png), [In1](enocean-bridge-layer-in1.png), [In2](enocean-bridge-layer-in2.png), [bottom](enocean-bridge-layer-bottom.png) copper, 3D [top](enocean-bridge-top.png) and [bottom](enocean-bridge-bottom.png).
+Current result: routed by the first strategy, 0 unconnected, 0 DRC errors, schematic parity clean, 9 silkscreen warnings. Signal tracks: 379 mm on top, 206 mm on the bottom, 35 signal vias; no tracks on In1 or In2, none under the TCM 515. Pictures: [top](enocean-bridge-layer-top.png), [In1](enocean-bridge-layer-in1.png), [In2](enocean-bridge-layer-in2.png), [bottom](enocean-bridge-layer-bottom.png) copper, 3D [top](enocean-bridge-top.png) and [bottom](enocean-bridge-bottom.png).
 
 **Ordering note:** the three vias in the pads of AC5/AC13/B19 are 0.25/0.15 mm. Order with epoxy-filled and capped vias (JLC "via in pad"), which applies to every via on the board.
 
@@ -207,32 +207,27 @@ Current result: routed by the first strategy, 0 unconnected, 0 DRC errors, schem
 | File | Use |
 | --- | --- |
 | [enocean-bridge-gerbers.zip](fab/enocean-bridge-gerbers.zip) | Gerbers (4 copper layers, mask, paste, silkscreen, outline) + Excellon drill; upload this as the PCB |
-| [enocean-bridge-bom.csv](fab/enocean-bridge-bom.csv) | BOM for assembly, 28 lines / 42 parts (JLC columns: Comment, Designator, Footprint, LCSC Part #) |
+| [enocean-bridge-bom.csv](fab/enocean-bridge-bom.csv) | BOM for assembly, 27 lines / 42 parts (JLC columns: Comment, Designator, Footprint, LCSC Part #) |
 | [enocean-bridge-cpl.csv](fab/enocean-bridge-cpl.csv) | Placement for assembly (Designator, Mid X, Mid Y, Layer, Rotation), top side only |
 
 **PCB:** 4 layers, 1.6 mm, stackup **JLC04161H-7628** (the 50 Ω lines are calculated for it), impedance control on, **epoxy-filled and capped vias** (via in pad at AC5, AC13 and B19 of the nRF52840), ENIG surface finish (flat pads for the 0.5 mm aQFN73 and the filled vias).
 
-**Assembly:** top side; JLC places everything except U4. Not in the BOM: U4 (TCM 515, hand-soldered after assembly), AE1 (antenna), JP1 (solder jumper), J3 (TC2030 pads), TP1 (whip hole): copper only.
+**Assembly:** top side; JLC places everything except U4. Not in the BOM: U4 (TCM 515, hand-soldered after assembly), AE1 (antenna), JP1 (solder jumper), TP1 (whip hole): copper only; J3 (SWD pin header, any 2 × 5 1.27 mm THT header): hand-soldered.
 
 **Check in JLC's placement preview before confirming:**
-- the rotations of U1 (nRF52840, pin 1 marker), U2/U3 (SOT-23-5/6), Y1 and J1;
+- the rotations of U1 (nRF52840, pin 1 marker), U2 (SOT-23-3), U3 (SOT-23-6), Y1 (turned 180°) and J1;
 - LED polarity: the cathode (pad 1) of D1–D3 is on the left; the anodes (right) go to +3V3.
 
-## Cost estimate (2026-11-18)
-
-5 assembled boards at JLCPCB, rough, before the real quote:
+## Cost (JLC quote, 2026-11-20)
 
 | Item | Cost |
 | --- | --- |
-| Bare board, 4 layers, 57 × 26 mm | ~$10–20 |
-| Via in pad on 4 layers (free only from 6 layers) | maybe +$15–40 |
-| Parts from JLC stock (LCSC prices; the five nRF52840s are $31.50 of it, $6.30 each) | ~$45 |
-| Assembly, Economic, top side only: $8.18 setup + $1.53 stencil + extended-part fees ($3.07 each) | ~$40 |
-| Assembly, if Standard is needed: $25.56 setup + $8.21 stencil + ≥ $14.93 handling + $1.53 per distinct part | ~$90 |
-| Shipping (DHL), import VAT 19 % + customs handling | ~€45–75 |
-| 5 × TCM 515 (Digi-Key, before VAT) | ~€63 |
+| PCB, 4 layers, 57 × 26 mm (special offer) | $8.00 |
+| Economic PCBA: setup $8.24, stencil $1.55, components (28 lines) $52.71, extended-part fee $33.99 (11 × $3.09), SMT $1.85, X-ray (aQFN) $8.25, nitrogen reflow $0.91 | $107.50 |
 
-Total about €200–290, i.e. €40–55 per board. Setup, stencil and part fees are paid once per order, so 10–20 boards cost much less each.
+Economic assembly takes the aQFN73 (with X-ray inspection). After that quote three parts moved to JLC's basic library: buttons (TS-1187A), LDO (XC6206) and R4 (0 Ω); 8 extended parts remain (nRF52840, 32 MHz crystal, L1, L2, C19, C20, USB-C, USBLC6), so the extended-part fee drops to $24.72 and the PCBA to about $98.
+
+**The quote showed "Via Covering: $0.00".** The board needs epoxy-filled and capped vias (via in pad at AC5, AC13, B19); select that option, which likely adds to the PCB price. Not included: shipping, import VAT and customs, and the TCM 515 modules (5 × about €12.50 at Digi-Key).
 
 ## Next steps
 

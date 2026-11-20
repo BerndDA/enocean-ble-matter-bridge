@@ -47,13 +47,14 @@ nRF52840 + TCM 515 + USB-C, pin-compatible with the Pro Micro build. Design, scr
 - [ ] Review the autorouted board, especially USB D+/D− (90 Ω pair, short, ESD at the connector), the decoupling paths at the nRF52840, and that nothing crosses the RF areas.
 - [ ] From here on edit the board in KiCad only: don't rerun `gen_pcb.py --force` / `route.py`, they start from scratch.
 - [x] LCSC part for C20: C85877, Murata GJM1555C1H1R2CB01D (±0.25 pF; tighter ones aren't stocked).
-- [ ] Optional: fewer extended parts ($3.07 each at JLC): buttons and crystal from the basic library, or hand-solder the buttons.
-- [ ] Cosmetics: 7 silkscreen warnings on the board (J1 outline and JP1/AE1 references at the edge, U3/J3 references over pads).
+- [x] Fewer extended parts: buttons (TS-1187A), LDO (XC6206) and R4 (0 Ω) from JLC's basic library; 8 extended parts left, none of them replaceable.
+- [ ] Cosmetics: 9 silkscreen warnings on the board (J1 outline and JP1/AE1 references at the edge, references over pads, SW1/SW2 labels on the TCM outline).
 - [x] Fabrication outputs: Gerbers, drill, BOM and CPL in JLC format (`tools/export_fab.py`, TCM 515 not assembled).
-- [ ] Get the exact JLC quote: JLC04161H-7628 stackup, impedance control, via in pad (epoxy-filled, capped; needed for AC5/AC13/B19). Check whether Economic assembly takes the aQFN73 or Standard is needed. Estimate: €200–290 for 5 boards incl. TCM 515 modules, shipping and VAT (DESIGN.md, "Cost estimate").
+- [x] JLC quote (2026-11-20): PCB $8, Economic PCBA $107.50 (takes the aQFN73, with X-ray); about $98 after the basic-part swaps (DESIGN.md, "Cost").
+- [ ] Before ordering: select epoxy-filled and capped vias (the quote showed "Via Covering $0.00"); JLC04161H-7628 stackup with impedance control; ENIG.
 - [ ] Check JLC stock of the nRF52840 (C3606858, 241 on 2026-11-18) right before ordering.
 - [ ] Order 5 × TCM 515 (Digi-Key 1084-TCM515, about €12.50 each).
-- [ ] Bring-up: solder the TCM 515, flash the nice!nano UF2 bootloader over SWD (Tag-Connect TC2030), then `make flash APP=enocean-gateway BOARD=enmt`, `enocean info`.
+- [ ] Bring-up: solder the TCM 515, solder the SWD header J3, flash the nice!nano UF2 bootloader over SWD (DK Debug out P19, 10-pin flat cable), then `make flash APP=enocean-gateway BOARD=enmt`, `enocean info`.
 - [ ] Later: own board definition in `firmware/boards/` once pins change (e.g. TCM reset on P0.20).
 
 ## Step 4: one thermostat

@@ -35,7 +35,7 @@ PLACE = {
     # --- USB, power
     "J1": (31.5, 22.35, 0, "F"),       # front flush with the bottom edge
     "U3": (39.4, 20.4, 0, "F"),        # ESD
-    "U2": (29.3, 13.2, 0, "F"),        # LDO
+    "U2": (29.3, 13.2, 0, "F"),        # LDO (SOT-23-3)
     "C2": (26.4, 13.2, 90, "F"),
     "C3": (32.3, 13.4, 90, "F"),
     # all parts on top: one-sided assembly
@@ -56,9 +56,11 @@ PLACE = {
     "C8": (40.4, 16.6, 90, "F"),       # DECUSB
     "C11": (41.9, 16.4, 90, "F"),      # VDD AD14
     "C12": (43.2, 16.4, 90, "F"),      # VDD AD23
-    "Y1": (43.2, 3.4, 0, "F"),         # 32 MHz
-    "C15": (46.3, 2.0, 0, "F"),
-    "C16": (46.3, 4.4, 0, "F"),
+    # 32 MHz crystal turned 180 deg: XC2 pad bottom-left above the nRF's XC2 (A23), XC1 pad
+    # top-right towards XC1 (B24) and C15, so the two lines don't cross
+    "Y1": (43.2, 3.4, 180, "F"),       # 32 MHz
+    "C15": (46.3, 2.0, 0, "F"),        # XC1 load cap, right of the crystal
+    "C16": (40.9, 1.2, 180, "F"),      # XC2 load cap, top left; pad 1 (XC2) faces the crystal
     # --- 2.4 GHz RF along y = RF_Y from ANT (42.25, 9.0) to the antenna feed (ANT_FEED): 45 deg down right after L2, straight down, 45 deg into the feed.
     # RF_Y = 8.75 is the middle of the free channel between pads E24 and J24.
     # Series parts on the line, shunts below it with pad 1 on the line;
@@ -69,18 +71,20 @@ PLACE = {
     "L2": (48.77, 8.75, 0, "F"),       # 2.2 nH
     "AE1": (ANT_FEED[0], ANT_FEED[1], 270, "F"),   # feed pad 1 here, short pad 2 at y + 2.1
     # --- UI, debug
-    "J3": (47.5, 18.1, 0, "F"),        # Tag-Connect TC2030, below the antenna's lower end
+    "J3": (47.0, 13.6, 0, "F"),        # SWD 2 x 5 header (1.27 mm), upright between C12 and the antenna; origin = pin 1
     # buttons below the TCM: only two lines (nRESET, P1.06) cross the board to them
-    "SW1": (17.0, 23.4, 0, "F"),       # RESET
-    "SW2": (10.0, 23.4, 0, "F"),       # FUNC
+    "SW1": (17.0, 23.1, 0, "F"),       # RESET (TS-1187A, courtyard 7.6 x 5.7 mm)
+    "SW2": (8.5, 23.1, 0, "F"),        # FUNC
     # status LEDs in a row at the bottom edge near the nRF52840 (P1.11/13/15 are balls B19,
-    # A16, A14 on its top edge), 4 mm apart: one light pipe each, as on the carrier
-    "D1": (45.0, 23.6, 0, "F"),        # red, PWR
-    "D2": (49.0, 23.6, 0, "F"),        # green, LINK
-    "D3": (53.0, 23.6, 0, "F"),        # yellow, RX
-    "R9": (45.0, 21.3, 0, "F"),
-    "R10": (49.0, 21.3, 0, "F"),
-    "R11": (53.0, 21.3, 0, "F"),
+    # A16, A14 on its top edge): 4.0 mm apart and 3.4 mm from the edge, like the EnMT carrier,
+    # so its case's light pipes (3 mm acrylic rods) fit. See LIGHT_PIPE_D.
+    "D1": (44.0, 22.6, 0, "F"),        # red, PWR
+    "D2": (48.0, 22.6, 0, "F"),        # green, LINK
+    "D3": (52.0, 22.6, 0, "F"),        # yellow, RX
+    # their resistors outside the light pipes, in the strip at the right edge
+    "R9": (55.6, 24.1, 90, "F"),
+    "R10": (55.6, 21.1, 90, "F"),
+    "R11": (55.6, 18.1, 90, "F"),
 }
 
 # Board areas of the schematic's blocks (design.GROUPS, by title): one or more
@@ -90,9 +94,15 @@ BLOCKS = {
     "TCM 515, 868 MHz": (0.0, 0.0, 30.0, 20.0),
     "USB-C, ESD, 3.3 V LDO": (22.0, 10.5, 42.0, BOARD_H),
     "nRF52840 (PS config 3), 32 MHz crystal, 2.4 GHz match": (30.0, 0.0, BOARD_W, 18.0),
-    "Buttons, LEDs, SWD": [(42.0, 13.0, BOARD_W, BOARD_H),     # buttons, TC2030
+    "Buttons, LEDs, SWD": [(42.0, 13.0, BOARD_W, BOARD_H),     # buttons, SWD header
                            (5.0, 20.0, 24.0, BOARD_H)],          # buttons below the TCM
 }
+
+# Light pipes over the LEDs, as in the carrier's case (case/carrier_case.scad): 3.2 mm bore
+# for a 3 mm acrylic rod plus 0.8 mm walls. gen_pcb.py keeps every other part out of the
+# circle of this diameter around each LED.
+LIGHT_PIPE_D = 3.2 + 2 * 0.8
+LIGHT_PIPE_LEDS = ("D1", "D2", "D3")
 
 RF_Y = 8.75
 RF_NODE_868 = (3.0, 7.05)   # TCM pin 2 RF_50 is at (6.5, 7.05)

@@ -913,7 +913,7 @@
 				)
 			)
 		)
-		(symbol "Regulator_Linear:AP2112K-3.3"
+		(symbol "Regulator_Linear:XC6206PxxxMR"
 			(embedded_fonts no)
 			(pin_names (offset 0.254))
 			(exclude_from_sim no)
@@ -922,91 +922,78 @@
 			(in_pos_files yes)
 			(duplicate_pin_numbers_are_jumpers no)
 			(property "Reference" "U"
-				(at -5.08 5.715 0)
+				(at -3.81 3.175 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects (font (size 1.27 1.27)))
+			)
+			(property "Value" "XC6206PxxxMR"
+				(at 0 3.175 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(effects (font (size 1.27 1.27)) (justify left))
 			)
-			(property "Value" "AP2112K-3.3"
+			(property "Footprint" "Package_TO_SOT_SMD:SOT-23-3"
 				(at 0 5.715 0)
 				(show_name no)
 				(do_not_autoplace no)
-				(effects (font (size 1.27 1.27)) (justify left))
-			)
-			(property "Footprint" "Package_TO_SOT_SMD:SOT-23-5"
-				(at 0 8.255 0)
-				(show_name no)
-				(do_not_autoplace no)
 				(hide yes)
-				(effects (font (size 1.27 1.27)))
+				(effects (font (size 1.27 1.27) (italic yes)))
 			)
-			(property "Datasheet" "https://www.diodes.com/assets/Datasheets/AP2112.pdf"
-				(at 0 2.54 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects (font (size 1.27 1.27)))
-			)
-			(property "Description" "600mA low dropout linear regulator, with enable pin, 3.8V-6V input voltage range, 3.3V fixed positive output, SOT-23-5"
+			(property "Datasheet" "https://www.torexsemi.com/file/xc6206/XC6206.pdf"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(hide yes)
 				(effects (font (size 1.27 1.27)))
 			)
-			(property "ki_keywords" "linear regulator ldo fixed positive"
+			(property "Description" "Positive 60-250mA Low Dropout Regulator, Fixed Output, SOT-23"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(hide yes)
 				(effects (font (size 1.27 1.27)))
 			)
-			(property "ki_fp_filters" "SOT?23?5*"
+			(property "ki_keywords" "Torex LDO Voltage Regulator Fixed Positive"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(hide yes)
 				(effects (font (size 1.27 1.27)))
 			)
-			(symbol "AP2112K-3.3_0_1"
+			(property "ki_fp_filters" "SOT?23?3*"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects (font (size 1.27 1.27)))
+			)
+			(symbol "XC6206PxxxMR_0_1"
 				(rectangle
-					(start -5.08 4.445)
+					(start -5.08 1.905)
 					(end 5.08 -5.08)
 					(stroke (width 0.254) (type default))
 					(fill (type background))
 				)
 			)
-			(symbol "AP2112K-3.3_1_1"
-				(pin power_in line
-					(at -7.62 2.54 0)
-					(length 2.54)
-					(name "VIN" (effects (font (size 1.27 1.27))))
-					(number "1" (effects (font (size 1.27 1.27))))
-				)
+			(symbol "XC6206PxxxMR_1_1"
 				(pin power_in line
 					(at 0 -7.62 90)
 					(length 2.54)
 					(name "GND" (effects (font (size 1.27 1.27))))
-					(number "2" (effects (font (size 1.27 1.27))))
-				)
-				(pin input line
-					(at -7.62 0 0)
-					(length 2.54)
-					(name "EN" (effects (font (size 1.27 1.27))))
-					(number "3" (effects (font (size 1.27 1.27))))
-				)
-				(pin no_connect line
-					(at 5.08 0 180)
-					(length 2.54)
-					(hide yes)
-					(name "NC" (effects (font (size 1.27 1.27))))
-					(number "4" (effects (font (size 1.27 1.27))))
+					(number "1" (effects (font (size 1.27 1.27))))
 				)
 				(pin power_out line
-					(at 7.62 2.54 180)
+					(at 7.62 0 180)
 					(length 2.54)
-					(name "VOUT" (effects (font (size 1.27 1.27))))
-					(number "5" (effects (font (size 1.27 1.27))))
+					(name "VO" (effects (font (size 1.27 1.27))))
+					(number "2" (effects (font (size 1.27 1.27))))
+				)
+				(pin power_in line
+					(at -7.62 0 0)
+					(length 2.54)
+					(name "VI" (effects (font (size 1.27 1.27))))
+					(number "3" (effects (font (size 1.27 1.27))))
 				)
 			)
 		)
@@ -2517,7 +2504,7 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "Connector_Generic:Conn_02x03_Odd_Even"
+		(symbol "Connector_Generic:Conn_02x05_Odd_Even"
 			(pin_names (offset 1.016) (hide yes))
 			(exclude_from_sim no)
 			(in_bom yes)
@@ -2525,13 +2512,13 @@
 			(in_pos_files yes)
 			(duplicate_pin_numbers_are_jumpers no)
 			(property "Reference" "J"
-				(at 1.27 5.08 0)
+				(at 1.27 7.62 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(effects (font (size 1.27 1.27)))
 			)
-			(property "Value" "Conn_02x03_Odd_Even"
-				(at 1.27 -5.08 0)
+			(property "Value" "Conn_02x05_Odd_Even"
+				(at 1.27 -7.62 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(effects (font (size 1.27 1.27)))
@@ -2550,7 +2537,7 @@
 				(hide yes)
 				(effects (font (size 1.27 1.27)))
 			)
-			(property "Description" "Generic connector, double row, 02x03, odd/even pin numbering scheme (row 1 odd numbers, row 2 even numbers), script generated (kicad-library-utils/schlib/autogen/connector/)"
+			(property "Description" "Generic connector, double row, 02x05, odd/even pin numbering scheme (row 1 odd numbers, row 2 even numbers), script generated (kicad-library-utils/schlib/autogen/connector/)"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -2571,12 +2558,18 @@
 				(hide yes)
 				(effects (font (size 1.27 1.27)))
 			)
-			(symbol "Conn_02x03_Odd_Even_1_1"
+			(symbol "Conn_02x05_Odd_Even_1_1"
 				(rectangle
-					(start -1.27 3.81)
-					(end 3.81 -3.81)
+					(start -1.27 6.35)
+					(end 3.81 -6.35)
 					(stroke (width 0.254) (type default))
 					(fill (type background))
+				)
+				(rectangle
+					(start -1.27 5.207)
+					(end 0 4.953)
+					(stroke (width 0.1524) (type default))
+					(fill (type none))
 				)
 				(rectangle
 					(start -1.27 2.667)
@@ -2593,6 +2586,18 @@
 				(rectangle
 					(start -1.27 -2.413)
 					(end 0 -2.667)
+					(stroke (width 0.1524) (type default))
+					(fill (type none))
+				)
+				(rectangle
+					(start -1.27 -4.953)
+					(end 0 -5.207)
+					(stroke (width 0.1524) (type default))
+					(fill (type none))
+				)
+				(rectangle
+					(start 3.81 5.207)
+					(end 2.54 4.953)
 					(stroke (width 0.1524) (type default))
 					(fill (type none))
 				)
@@ -2614,41 +2619,71 @@
 					(stroke (width 0.1524) (type default))
 					(fill (type none))
 				)
+				(rectangle
+					(start 3.81 -4.953)
+					(end 2.54 -5.207)
+					(stroke (width 0.1524) (type default))
+					(fill (type none))
+				)
 				(pin passive line
-					(at -5.08 2.54 0)
+					(at -5.08 5.08 0)
 					(length 3.81)
 					(name "Pin_1" (effects (font (size 1.27 1.27))))
 					(number "1" (effects (font (size 1.27 1.27))))
 				)
 				(pin passive line
-					(at 7.62 2.54 180)
+					(at 7.62 5.08 180)
 					(length 3.81)
 					(name "Pin_2" (effects (font (size 1.27 1.27))))
 					(number "2" (effects (font (size 1.27 1.27))))
 				)
 				(pin passive line
-					(at -5.08 0 0)
+					(at -5.08 2.54 0)
 					(length 3.81)
 					(name "Pin_3" (effects (font (size 1.27 1.27))))
 					(number "3" (effects (font (size 1.27 1.27))))
 				)
 				(pin passive line
-					(at 7.62 0 180)
+					(at 7.62 2.54 180)
 					(length 3.81)
 					(name "Pin_4" (effects (font (size 1.27 1.27))))
 					(number "4" (effects (font (size 1.27 1.27))))
 				)
 				(pin passive line
-					(at -5.08 -2.54 0)
+					(at -5.08 0 0)
 					(length 3.81)
 					(name "Pin_5" (effects (font (size 1.27 1.27))))
 					(number "5" (effects (font (size 1.27 1.27))))
 				)
 				(pin passive line
-					(at 7.62 -2.54 180)
+					(at 7.62 0 180)
 					(length 3.81)
 					(name "Pin_6" (effects (font (size 1.27 1.27))))
 					(number "6" (effects (font (size 1.27 1.27))))
+				)
+				(pin passive line
+					(at -5.08 -2.54 0)
+					(length 3.81)
+					(name "Pin_7" (effects (font (size 1.27 1.27))))
+					(number "7" (effects (font (size 1.27 1.27))))
+				)
+				(pin passive line
+					(at 7.62 -2.54 180)
+					(length 3.81)
+					(name "Pin_8" (effects (font (size 1.27 1.27))))
+					(number "8" (effects (font (size 1.27 1.27))))
+				)
+				(pin passive line
+					(at -5.08 -5.08 0)
+					(length 3.81)
+					(name "Pin_9" (effects (font (size 1.27 1.27))))
+					(number "9" (effects (font (size 1.27 1.27))))
+				)
+				(pin passive line
+					(at 7.62 -5.08 180)
+					(length 3.81)
+					(name "Pin_10" (effects (font (size 1.27 1.27))))
+					(number "10" (effects (font (size 1.27 1.27))))
 				)
 			)
 			(embedded_fonts no)
@@ -2782,24 +2817,44 @@
 		(uuid "320a7d1b-8a6a-5dd1-b840-1a28305561e4")
 	)
 	(wire
-		(pts (xy 35.56 129.54) (xy 33.02 129.54))
+		(pts (xy 35.56 127) (xy 33.02 127))
 		(stroke (width 0) (type default))
-		(uuid "e6374183-bc02-56ea-bbee-4e3ce5d6063f")
+		(uuid "1bda2635-ddc6-5aa3-b4c4-5d973364ec72")
 	)
 	(wire
-		(pts (xy 33.02 129.54) (xy 33.02 127))
+		(pts (xy 33.02 127) (xy 33.02 124.46))
 		(stroke (width 0) (type default))
-		(uuid "95b0b991-6066-567f-b324-df5a64274922")
+		(uuid "b632e361-7a50-535a-b512-0fc56fb192d2")
 	)
 	(wire
-		(pts (xy 35.56 134.62) (xy 33.02 134.62))
+		(pts (xy 35.56 129.54) (xy 30.48 129.54))
 		(stroke (width 0) (type default))
-		(uuid "cce1174b-c052-5dcc-b1b8-549dbf08b2bb")
+		(uuid "37888bd5-73aa-5bc6-98a1-d51be372dbb7")
 	)
 	(wire
-		(pts (xy 33.02 134.62) (xy 33.02 137.16))
+		(pts (xy 35.56 132.08) (xy 30.48 132.08))
 		(stroke (width 0) (type default))
-		(uuid "44b24d18-5e63-5010-914d-c4b039daf244")
+		(uuid "d542cd80-4329-5e23-8402-df2136736d84")
+	)
+	(wire
+		(pts (xy 35.56 137.16) (xy 30.48 137.16))
+		(stroke (width 0) (type default))
+		(uuid "822ff65f-85ab-557f-9951-7c99c7ce5e71")
+	)
+	(wire
+		(pts (xy 30.48 129.54) (xy 30.48 132.08))
+		(stroke (width 0) (type default))
+		(uuid "90cc1a9d-8ca3-5444-beee-b5d79fc565c7")
+	)
+	(wire
+		(pts (xy 30.48 132.08) (xy 30.48 137.16))
+		(stroke (width 0) (type default))
+		(uuid "ceacde66-7734-574b-b891-c47efad8f55b")
+	)
+	(wire
+		(pts (xy 30.48 137.16) (xy 30.48 139.7))
+		(stroke (width 0) (type default))
+		(uuid "84529517-ed25-508b-928e-934cb23e58bf")
 	)
 	(wire
 		(pts (xy 223.52 76.2) (xy 223.52 53.34))
@@ -3127,14 +3182,9 @@
 		(uuid "0bca0057-9f1d-512a-937d-1ae61101d4e0")
 	)
 	(wire
-		(pts (xy 368.3 157.48) (xy 373.38 157.48))
+		(pts (xy 368.3 157.48) (xy 375.92 157.48))
 		(stroke (width 0) (type default))
-		(uuid "71919bfe-ba6b-580f-982f-71feb91fbc3a")
-	)
-	(wire
-		(pts (xy 373.38 157.48) (xy 375.92 157.48))
-		(stroke (width 0) (type default))
-		(uuid "9db24323-79a5-5e51-b555-7d442ddd298a")
+		(uuid "5472542f-a09e-5ecb-90bf-67959d1dcbcb")
 	)
 	(wire
 		(pts (xy 347.98 157.48) (xy 347.98 165.1))
@@ -3145,16 +3195,6 @@
 		(pts (xy 368.3 157.48) (xy 368.3 161.29))
 		(stroke (width 0) (type default))
 		(uuid "62d6c43e-05d3-5a04-a420-76397b2aa3b1")
-	)
-	(wire
-		(pts (xy 375.92 160.02) (xy 373.38 160.02))
-		(stroke (width 0) (type default))
-		(uuid "241ad7e5-b1eb-5b8d-b199-be1a50896d42")
-	)
-	(wire
-		(pts (xy 373.38 160.02) (xy 373.38 157.48))
-		(stroke (width 0) (type default))
-		(uuid "81a65a84-6864-58b6-8a08-0aa574a0ea7a")
 	)
 	(wire
 		(pts (xy 391.16 157.48) (xy 398.78 157.48))
@@ -3261,6 +3301,18 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "f2fcdca6-b620-5d89-bead-40f97bebcaaf")
+	)
+	(junction
+		(at 30.48 132.08)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "4d080423-1689-55d1-912e-f315af4caf72")
+	)
+	(junction
+		(at 30.48 137.16)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "084fa514-d0b7-560f-8629-4fee34b43fb2")
 	)
 	(junction
 		(at 152.4 101.6)
@@ -3377,12 +3429,6 @@
 		(uuid "41008246-e283-5050-9d55-ab006a464c5d")
 	)
 	(junction
-		(at 373.38 157.48)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "04ee6657-fa44-5f53-bb42-dbc03d2b453b")
-	)
-	(junction
 		(at 398.78 157.48)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -3450,18 +3496,18 @@
 	)
 	(symbol
 		(lib_id "power:+3V3")
-		(at 33.02 127 0)
+		(at 33.02 124.46 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "5edd5823-71b6-54c5-a733-3f53bdf4cfd0")
-		(property "Reference" "#PWR004" (at 33.02 127 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Value" "+3V3" (at 33.02 123.5 0) (effects (font (size 1.27 1.27))))
-		(property "Footprint" "" (at 33.02 127 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Datasheet" "" (at 33.02 127 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(pin "1" (uuid "28dc49c5-9623-519b-9a85-c6757ec2f2de"))
+		(uuid "47c54d81-5c8b-59da-a5e6-3c3df895b5e5")
+		(property "Reference" "#PWR004" (at 33.02 124.46 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "+3V3" (at 33.02 120.96 0) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 33.02 124.46 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 33.02 124.46 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "2c3d7157-0547-52b0-94a7-4f878fd4b2dd"))
 		(instances
 			(project "enocean-bridge"
 				(path "/4eaf9f70-27cb-510b-ade9-9dfdaecf34c7" (reference "#PWR004") (unit 1))
@@ -3470,18 +3516,18 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 33.02 137.16 0)
+		(at 30.48 139.7 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "d7d3ffe1-aa08-5fbc-a8b9-b47a889aa7b1")
-		(property "Reference" "#PWR005" (at 33.02 137.16 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Value" "GND" (at 33.02 140.66 0) (effects (font (size 1.27 1.27))))
-		(property "Footprint" "" (at 33.02 137.16 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Datasheet" "" (at 33.02 137.16 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(pin "1" (uuid "9a1c72cf-5ac9-52ef-ab9b-94b3e74179c5"))
+		(uuid "f9c14d14-865b-596e-8d1f-88cf8ee0164c")
+		(property "Reference" "#PWR005" (at 30.48 139.7 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 30.48 143.2 0) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 30.48 139.7 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 30.48 139.7 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "64a90dde-b912-5bcf-b4c8-38c37eafac24"))
 		(instances
 			(project "enocean-bridge"
 				(path "/4eaf9f70-27cb-510b-ade9-9dfdaecf34c7" (reference "#PWR005") (unit 1))
@@ -4043,59 +4089,54 @@
 		(uuid "c947e86b-b204-5d91-bd8f-02e6b640a7f7")
 	)
 	(symbol
-		(lib_id "Regulator_Linear:AP2112K-3.3")
-		(at 383.54 160.02 0)
+		(lib_id "Regulator_Linear:XC6206PxxxMR")
+		(at 383.54 157.48 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "464fd6d6-5e71-5dbf-b0a2-78cfb6757668")
-		(property "Reference" "U2" (at 378.46 154.305 0) (effects (font (size 1.27 1.27)) (justify left)))
-		(property "Value" "AP2112K-3.3"
+		(property "Reference" "U2" (at 379.73 154.305 0) (effects (font (size 1.27 1.27))))
+		(property "Value" "XC6206P332MR"
 			(at 383.54 154.305 0)
 			(effects (font (size 1.27 1.27)) (justify left))
 		)
-		(property "Footprint" "Package_TO_SOT_SMD:SOT-23-5"
+		(property "Footprint" "Package_TO_SOT_SMD:SOT-23-3"
 			(at 383.54 151.765 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
+			(effects (font (size 1.27 1.27) (italic yes)) (hide yes))
 		)
-		(property "Datasheet" "https://www.diodes.com/assets/Datasheets/AP2112.pdf"
+		(property "Datasheet" "https://www.torexsemi.com/file/xc6206/XC6206.pdf"
 			(at 383.54 157.48 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(property "Description" "600mA low dropout linear regulator, with enable pin, 3.8V-6V input voltage range, 3.3V fixed positive output, SOT-23-5"
-			(at 383.54 160.02 0)
+		(property "Description" "Positive 60-250mA Low Dropout Regulator, Fixed Output, SOT-23"
+			(at 383.54 157.48 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(property "LCSC" "C51118" (at 383.54 160.02 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "MPN" "AP2112K-3.3TRG1"
-			(at 383.54 160.02 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
-		)
+		(property "LCSC" "C5446" (at 383.54 157.48 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "MPN" "XC6206P332MR-G" (at 383.54 157.48 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(pin "1" (uuid "3b75ecd7-f16f-5c16-8c95-f60720f49971"))
 		(pin "2" (uuid "5667b193-b660-54d8-adc9-39a9ee657015"))
 		(pin "3" (uuid "9dce0d06-b8e8-5418-ad04-7928d45467e1"))
-		(pin "4" (uuid "50f0f5c3-da0b-533e-80c2-d405b753b3f2"))
-		(pin "5" (uuid "27a8d552-b0af-55d3-b43c-bbeabe51bf20"))
 		(instances
 			(project "enocean-bridge" (path "/4eaf9f70-27cb-510b-ade9-9dfdaecf34c7" (reference "U2") (unit 1)))
 		)
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 383.54 167.64 0)
+		(at 383.54 165.1 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "ddcee52b-2a3e-5a78-9434-2e72050f985f")
-		(property "Reference" "#PWR017" (at 383.54 167.64 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Value" "GND" (at 383.54 171.14 0) (effects (font (size 1.27 1.27))))
-		(property "Footprint" "" (at 383.54 167.64 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Datasheet" "" (at 383.54 167.64 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(pin "1" (uuid "7cc84f69-2051-58f2-9543-349181a28163"))
+		(uuid "d2a45890-0525-5eaa-9fdc-6be0395ee8a4")
+		(property "Reference" "#PWR017" (at 383.54 165.1 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 383.54 168.6 0) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 383.54 165.1 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 383.54 165.1 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "297c28b6-8a73-5051-8b99-b857059ffe14"))
 		(instances
 			(project "enocean-bridge"
 				(path "/4eaf9f70-27cb-510b-ade9-9dfdaecf34c7" (reference "#PWR017") (unit 1))
@@ -4208,7 +4249,7 @@
 		(dnp no)
 		(uuid "0fd48a1b-1ab2-569c-9002-10496023f4a9")
 		(property "Reference" "R4" (at 350.012 198.12 90) (effects (font (size 1.27 1.27))))
-		(property "Value" "2.2" (at 347.98 198.12 90) (effects (font (size 1.27 1.27))))
+		(property "Value" "0" (at 347.98 198.12 90) (effects (font (size 1.27 1.27))))
 		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 346.202 198.12 90)
 			(effects (font (size 1.27 1.27)) (hide yes))
@@ -4218,8 +4259,8 @@
 			(at 347.98 198.12 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(property "LCSC" "C2909330" (at 347.98 198.12 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "MPN" "FRC0402F2R20TS" (at 347.98 198.12 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "LCSC" "C17168" (at 347.98 198.12 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "MPN" "0402WGF0000TCE" (at 347.98 198.12 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(pin "1" (uuid "773176cb-6c59-5d24-b2ba-e367704ca99d"))
 		(pin "2" (uuid "78fefdb9-e7f3-5101-9516-0a84c6896abf"))
 		(instances
@@ -5776,7 +5817,7 @@
 		(uuid "3fe772ae-7ece-5498-9b7c-ad9c6b1fa74c")
 		(property "Reference" "SW1" (at 36.83 48.26 0) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "RESET" (at 35.56 52.324 0) (effects (font (size 1.27 1.27))))
-		(property "Footprint" "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2"
+		(property "Footprint" "Button_Switch_SMD:SW_Push_1P1T_XKB_TS-1187A"
 			(at 35.56 45.72 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -5785,8 +5826,8 @@
 			(at 35.56 50.8 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(property "LCSC" "C269272" (at 35.56 50.8 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "MPN" "KMR221NGLFS" (at 35.56 50.8 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "LCSC" "C318884" (at 35.56 50.8 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "MPN" "TS-1187A-B-A-B" (at 35.56 50.8 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(pin "1" (uuid "6a404ce5-927e-5293-82b5-d48b9fd9c439"))
 		(pin "2" (uuid "ed2d2296-830e-5489-a58a-188459bc0d3e"))
 		(instances
@@ -5811,7 +5852,7 @@
 		(uuid "e5aa379c-d8c6-5be8-bdda-d66b69a1955c")
 		(property "Reference" "SW2" (at 36.83 68.58 0) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "FUNC" (at 35.56 72.644 0) (effects (font (size 1.27 1.27))))
-		(property "Footprint" "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2"
+		(property "Footprint" "Button_Switch_SMD:SW_Push_1P1T_XKB_TS-1187A"
 			(at 35.56 66.04 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -5820,8 +5861,8 @@
 			(at 35.56 71.12 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(property "LCSC" "C269272" (at 35.56 71.12 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "MPN" "KMR221NGLFS" (at 35.56 71.12 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "LCSC" "C318884" (at 35.56 71.12 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "MPN" "TS-1187A-B-A-B" (at 35.56 71.12 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(pin "1" (uuid "70034daa-73a9-54e1-9115-e179ae46e8a9"))
 		(pin "2" (uuid "50ce5fd7-c12e-5e99-b8dc-4ad1553a83d8"))
 		(instances
@@ -6026,7 +6067,7 @@
 		)
 	)
 	(symbol
-		(lib_id "Connector_Generic:Conn_02x03_Odd_Even")
+		(lib_id "Connector_Generic:Conn_02x05_Odd_Even")
 		(at 40.64 132.08 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -6034,14 +6075,14 @@
 		(on_board yes)
 		(dnp no)
 		(uuid "2aacf0ef-5663-588f-8ecf-a01963373c37")
-		(property "Reference" "J3" (at 41.91 127 0) (effects (font (size 1.27 1.27))))
-		(property "Value" "TC2030 SWD" (at 41.91 137.16 0) (effects (font (size 1.27 1.27))))
-		(property "Footprint" "Connector:Tag-Connect_TC2030-IDC-NL_2x03_P1.27mm_Vertical"
+		(property "Reference" "J3" (at 41.91 124.46 0) (effects (font (size 1.27 1.27))))
+		(property "Value" "SWD 10-pin" (at 41.91 139.7 0) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "Connector_PinHeader_1.27mm:PinHeader_2x05_P1.27mm_Vertical"
 			(at 40.64 132.08 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 		(property "Datasheet" "" (at 40.64 132.08 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Description" "Generic connector, double row, 02x03, odd/even pin numbering scheme (row 1 odd numbers, row 2 even numbers), script generated (kicad-library-utils/schlib/autogen/connector/)"
+		(property "Description" "Generic connector, double row, 02x05, odd/even pin numbering scheme (row 1 odd numbers, row 2 even numbers), script generated (kicad-library-utils/schlib/autogen/connector/)"
 			(at 40.64 132.08 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -6053,29 +6094,35 @@
 		(pin "4" (uuid "3ec9825e-fd43-5ed8-a78a-a056192bb46d"))
 		(pin "5" (uuid "19e26692-43a9-57c8-9d28-3caab750b771"))
 		(pin "6" (uuid "b2896e42-7d3d-5499-be95-2f2e0496c17f"))
+		(pin "7" (uuid "22b1b8d1-66a1-506c-b1c7-278f002e00b8"))
+		(pin "8" (uuid "fb2db0cc-9f2b-523c-b3b8-f5c0497a84e9"))
+		(pin "9" (uuid "f908c2cd-affa-5bee-b603-aff21f032d38"))
+		(pin "10" (uuid "bf1ca707-0b2c-504f-a51a-ae682666dae7"))
 		(instances
 			(project "enocean-bridge" (path "/4eaf9f70-27cb-510b-ade9-9dfdaecf34c7" (reference "J3") (unit 1)))
 		)
 	)
 	(label "SWDIO"
-		(at 48.26 129.54 0)
+		(at 48.26 127 0)
 		(effects (font (size 1.27 1.27)) (justify left bottom))
-		(uuid "a9a615b4-cd52-5641-8b21-08f5131c72ac")
-	)
-	(label "NRESET"
-		(at 35.56 132.08 180)
-		(effects (font (size 1.27 1.27)) (justify right bottom))
-		(uuid "52d66dcd-66ea-535f-983a-740d3c401479")
+		(uuid "2242e45b-cb76-5474-b308-89f5f7c2bc3c")
 	)
 	(label "SWDCLK"
-		(at 48.26 132.08 0)
+		(at 48.26 129.54 0)
 		(effects (font (size 1.27 1.27)) (justify left bottom))
-		(uuid "a3683221-4258-56f5-9714-4e664b708efa")
+		(uuid "7ddbc9a5-f9ad-5eee-8a21-f3beb3386778")
 	)
 	(label "SWO"
-		(at 48.26 134.62 0)
+		(at 48.26 132.08 0)
 		(effects (font (size 1.27 1.27)) (justify left bottom))
-		(uuid "3a12ac5c-10f4-5622-858f-787fb7f7bc94")
+		(uuid "53c907c9-eff6-55c0-a4cb-93e305bde5a7")
+	)
+	(no_connect (at 35.56 134.62) (uuid "f0db2cce-dcee-50cc-a4e8-e5f56b021059"))
+	(no_connect (at 48.26 134.62) (uuid "b2274f25-d401-549f-b166-802b465166b1"))
+	(label "NRESET"
+		(at 48.26 137.16 0)
+		(effects (font (size 1.27 1.27)) (justify left bottom))
+		(uuid "8e6f2c44-069b-5443-98e5-5b16502975b2")
 	)
 	(symbol
 		(lib_id "power:PWR_FLAG")

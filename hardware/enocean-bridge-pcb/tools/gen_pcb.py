@@ -216,7 +216,7 @@ def route_rf(board, nets):
         track("GND", [(gx, gy), (gx, gy - 1.15)], 0.3)
         via(gx, gy - 1.15)
     # 32 MHz crystal ground pads straight to In1
-    for num, (dx, dy) in (("4", (0.0, -1.0)), ("2", (0.95, 0.0))):
+    for num, (dx, dy) in (("2", (0.0, -1.0)), ("4", (0.0, 1.0))):     # Y1 turned 180 deg
         gx, gy = pad("Y1", num)
         track("GND", [(gx, gy), (gx + dx, gy + dy)], 0.3)
         via(gx + dx, gy + dy)
@@ -261,8 +261,8 @@ def route_rf(board, nets):
         c = fp.GetPosition()
         for p in fp.Pads():
             net = p.GetNetname()
-            if net not in fanout_nets:
-                continue
+            if net not in fanout_nets or p.GetAttribute() == pcbnew.PAD_ATTRIB_PTH:
+                continue        # through-hole pads reach the planes themselves
             px, py = pcbnew.ToMM(p.GetPosition().x) - ORIGIN[0], pcbnew.ToMM(p.GetPosition().y) - ORIGIN[1]
             ax, ay = pcbnew.ToMM(p.GetPosition().x - c.x), pcbnew.ToMM(p.GetPosition().y - c.y)
             n = math.hypot(ax, ay) or 1.0
@@ -322,6 +322,30 @@ def check_blocks():
                 bad.append(f"{p['ref']} at ({x}, {y}) is outside '{title}' {areas}")
     if bad:
         sys.exit("placement outside its block:\n  " + "\n  ".join(bad))
+
+
+def check_light_pipes(board):
+    """No other part under the light pipes over the status LEDs (placement.LIGHT_PIPE_D)."""
+    r = placement.LIGHT_PIPE_D / 2
+    bad = []
+    for led in placement.LIGHT_PIPE_LEDS:
+        lx, ly = placement.PLACE[led][:2]
+        for fp in board.GetFootprints():
+            if fp.GetReference() in placement.LIGHT_PIPE_LEDS:
+                continue        # neighbouring LEDs share a pipe wall at 4 mm pitch, as on the carrier
+            bb = fp.GetCourtyard(pcbnew.F_Cu).BBox()
+            if bb.GetWidth() == 0:
+                continue
+            x0, y0 = pcbnew.ToMM(bb.GetLeft()) - ORIGIN[0], pcbnew.ToMM(bb.GetTop()) - ORIGIN[1]
+            x1, y1 = pcbnew.ToMM(bb.GetRight()) - ORIGIN[0], pcbnew.ToMM(bb.GetBottom()) - ORIGIN[1]
+            dx = max(x0 - lx, 0, lx - x1)
+            dy = max(y0 - ly, 0, ly - y1)
+            if math.hypot(dx, dy) < r:
+                bad.append(f"{fp.GetReference()} under the light pipe of {led}")
+        if not (r <= lx <= placement.BOARD_W - r and r <= ly <= placement.BOARD_H - r):
+            bad.append(f"light pipe of {led} reaches past the board edge")
+    if bad:
+        sys.exit("light pipes:\n  " + "\n  ".join(bad))
 
 
 def write_dru():
@@ -490,6 +514,7 @@ def main():
     if missing:
         sys.exit("no placement for: " + " ".join(missing))
     check_blocks()
+    check_light_pipes(board)
 
     # No tracks on the bottom under the TCM 515 either (manual 12.1: route nothing under the
     # module; the top is kept free by the keepout in its footprint), nor between the module and

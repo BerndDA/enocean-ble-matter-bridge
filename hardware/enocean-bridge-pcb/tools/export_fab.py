@@ -6,8 +6,8 @@
 4 copper layers (F, In1, In2, B). Gerbers follow JLC's KiCad recommendations (no X2,
 Protel extensions, solder mask subtracted from silkscreen); drill is one Excellon file in mm. The BOM and CPL list
 only the parts JLC assembles: everything with an LCSC number that isn't DNP.
-The TCM 515 (U4) is soldered by hand; the antenna (AE1), solder jumper (JP1), TC2030
-pads (J3) and whip hole (TP1) are copper only.
+The TCM 515 (U4) and the SWD pin header (J3) are soldered by hand; the antenna (AE1),
+solder jumper (JP1) and whip hole (TP1) are copper only.
 """
 import collections
 import csv

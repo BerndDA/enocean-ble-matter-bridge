@@ -107,6 +107,12 @@ def main():
         out.append(f'<text x="{cx:.1f}" y="{cyy + 4:.1f}" font-size="{fs}" text-anchor="middle" '
                    f'font-weight="bold" fill="#222">{fp.GetReference()}</text>')
 
+    # light pipes over the status LEDs
+    for led in getattr(placement, "LIGHT_PIPE_LEDS", ()):
+        lx, ly = placement.PLACE[led][:2]
+        out.append(f'<circle cx="{lx * S + M:.1f}" cy="{ly * S + M:.1f}" r="{placement.LIGHT_PIPE_D / 2 * S:.1f}" '
+                   f'fill="none" stroke="#7a3db8" stroke-width="2" stroke-dasharray="5 3"/>')
+
     # tracks and vias gen_pcb.py placed (RF paths, fanout)
     for t in board.GetTracks():
         if t.GetClass() == "PCB_VIA":

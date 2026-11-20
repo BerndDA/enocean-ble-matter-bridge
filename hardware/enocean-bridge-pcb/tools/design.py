@@ -66,11 +66,12 @@ C("C1", "10nF", 121, 83, "USB_SHIELD", "GND")
 part("U3", "Power_Protection:USBLC6-2SC6", "USBLC6-2SC6", "Package_TO_SOT_SMD:SOT-23-6", 137, 67,
      {"1": "USB_DM", "6": "USB_DM", "3": "USB_DP", "4": "USB_DP", "5": "VBUS", "2": "GND"},
      lcsc="C3029034", mpn="USBLC6-2SC6")
-part("U2", "Regulator_Linear:AP2112K-3.3", "AP2112K-3.3", "Package_TO_SOT_SMD:SOT-23-5", 151, 63,
-     {"1": "VBUS", "3": "VBUS", "2": "GND", "4": None, "5": "+3V3"}, lcsc="C51118", mpn="AP2112K-3.3TRG1")
+# XC6206 (JLC basic, no EN pin): 200 mA, max 6 V in; plenty for USB 5 V and < 60 mA
+part("U2", "Regulator_Linear:XC6206PxxxMR", "XC6206P332MR", "Package_TO_SOT_SMD:SOT-23-3", 151, 62,
+     {"3": "VBUS", "1": "GND", "2": "+3V3"}, lcsc="C5446", mpn="XC6206P332MR-G")
 C("C2", "4.7uF", 145, 65, "VBUS", fp=FP_C0603)
 C("C3", "4.7uF", 157, 65, "+3V3", fp=FP_C0603)
-R("R4", "2.2", 137, 78, "VBUS", "VBUS_NRF")             # series R on the nRF's VBUS (PS)
+R("R4", "0", 137, 78, "VBUS", "VBUS_NRF")               # 0 ohm: the PS's optional 2.2 ohm VBUS series R is no JLC basic part
 C("C14", "4.7uF", 141, 84, "VBUS_NRF", fp=FP_C0603)     # C21
 
 # ---------------------------------------------------------------- nRF52840
@@ -145,10 +146,11 @@ R("R7", "0", 150, 20, "RF_868", "ANT_868", rot=90)      # whip
 TP("TP1", "ANT_868", 156, 17, fp="TestPoint:TestPoint_THTPad_D2.0mm_Drill1.0mm", value="WHIP 86mm")
 
 # ---------------------------------------------------------------- UI, debug
-part("SW1", "Switch:SW_Push", "RESET", "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2", 14, 20,
-     {"1": "NRESET", "2": "GND"})
-part("SW2", "Switch:SW_Push", "FUNC", "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2", 14, 28,
-     {"1": "BTN_FUNC", "2": "GND"})
+# XKB TS-1187A (5.1 x 5.1 mm): JLC basic, the same buttons as the EnMT carrier
+part("SW1", "Switch:SW_Push", "RESET", "Button_Switch_SMD:SW_Push_1P1T_XKB_TS-1187A", 14, 20,
+     {"1": "NRESET", "2": "GND"}, lcsc="C318884", mpn="TS-1187A-B-A-B")
+part("SW2", "Switch:SW_Push", "FUNC", "Button_Switch_SMD:SW_Push_1P1T_XKB_TS-1187A", 14, 28,
+     {"1": "BTN_FUNC", "2": "GND"}, lcsc="C318884", mpn="TS-1187A-B-A-B")
 # Status LEDs, the same parts and wiring as the EnMT carrier (all JLC basic): anodes on 3.3 V,
 # cathodes through the resistors to the pins; a pin pulled low lights its LED.
 R("R9", "1k", 21, 34, "LED_R", "LED_RK", fp=FP_R0603, lcsc="C21190", mpn="0603WAF1001T5E", rot=270)
@@ -157,9 +159,13 @@ R("R11", "1k", 21, 42, "LED_Y", "LED_YK", fp=FP_R0603, lcsc="C21190", mpn="0603W
 part("D1", "Device:LED", "RED", FP_LED, 13, 34, {"1": "LED_RK", "2": "+3V3"}, lcsc="C84256", mpn="NCD0805R1", rot=180)
 part("D2", "Device:LED", "GREEN", FP_LED, 13, 38, {"1": "LED_GK", "2": "+3V3"}, lcsc="C2297", mpn="KT-0805G", rot=180)
 part("D3", "Device:LED", "YELLOW", FP_LED, 13, 42, {"1": "LED_YK", "2": "+3V3"}, lcsc="C2296", mpn="KT-0805Y", rot=180)
-part("J3", "Connector_Generic:Conn_02x03_Odd_Even", "TC2030 SWD",
-     "Connector:Tag-Connect_TC2030-IDC-NL_2x03_P1.27mm_Vertical", 16, 52,
-     {"1": "+3V3", "2": "SWDIO", "3": "NRESET", "4": "SWDCLK", "5": "GND", "6": "SWO"})
+# SWD: 2 x 5 pin header, 1.27 mm (ARM Cortex 10-pin), for the flat cable from the nRF52840 DK's
+# Debug out (P19). Pin 1 VTref (the DK senses the target voltage), pin 9 GND detect (tells the DK
+# a target is connected), pin 7 key. Hand-soldered.
+part("J3", "Connector_Generic:Conn_02x05_Odd_Even", "SWD 10-pin",
+     "Connector_PinHeader_1.27mm:PinHeader_2x05_P1.27mm_Vertical", 16, 52,
+     {"1": "+3V3", "2": "SWDIO", "3": "GND", "4": "SWDCLK", "5": "GND", "6": "SWO",
+      "7": None, "8": None, "9": "GND", "10": "NRESET"})
 
 
 # ---------------------------------------------------------------- sheet layout
@@ -190,8 +196,11 @@ WIRES = [
     ["D1.1", "R9.2"],
     ["D2.1", "R10.2"],
     ["D3.1", "R11.2"],
-    ["J3.1", (13, 51), (13, 50)],
-    ["J3.5", (13, 53), (13, 54)],
+    ["J3.1", (13, 50), (13, 49)],
+    ["J3.3", (12, 51)],
+    ["J3.5", (12, 52)],
+    ["J3.9", (12, 54)],
+    [(12, 51), (12, 55)],
     # --- nRF52840 decoupling: DEC pins to the caps on the left, VDD/VDDH to the right
     ["U1.C1", (88, 21), (83, 21), "C4.1"],
     ["U1.D23", (90, 20), (80, 20), "C5.1"],
@@ -224,11 +233,10 @@ WIRES = [
     ["R6.2", "JP1.1"],
     [(122, 38.5), (125, 38.5)],
     # --- USB-C: VBUS rail to ESD, C2 and the LDO; D+/D- pairs to the ESD array
-    ["J1.A4", "U2.1"],
+    ["J1.A4", "U2.3"],
     [(137, 62), "U3.5"],
     [(145, 62), "C2.1"],
-    ["U2.3", (147, 63), (147, 62)],
-    ["U2.5", (159, 62)],
+    ["U2.2", (159, 62)],
     [(157, 62), "C3.1"],
     ["J1.A7", "U3.1"],
     ["J1.B7", (131, 68), (131, 67)],
@@ -244,7 +252,7 @@ WIRES = [
 # power symbol, others a label. Untagged signal clusters get an automatic label.
 TAGS = [
     ("GND", (18, 21), 270), ("GND", (18, 29), 270), ("+3V3", (9, 34), 90),
-    ("+3V3", (13, 50), 90), ("GND", (13, 54), 270),
+    ("+3V3", (13, 49), 90), ("GND", (12, 55), 270),
     ("+3V3", (96, 21), 90), ("GND", (96, 88), 270),
     ("+3V3", (120, 14), 90),
     ("TCM_NTURBO", (125, 38.5), 0), ("VDD_TCM", (125, 14), 0),
@@ -278,11 +286,8 @@ JLC = {
     ("1k", FP_R0402): ("C11702", "0402WGF1001TCE"),           # basic
     ("1M", FP_R0402): ("C26083", "0402WGF1004TCE"),           # basic
     ("0", FP_R0402): ("C17168", "0402WGF0000TCE"),            # basic
-    ("2.2", FP_R0402): ("C2909330", "FRC0402F2R20TS"),
     ("600R@100MHz", FP_L0603): ("C1002", "GZ1608D601TF"),     # basic, 600 ohm @ 100 MHz, 200 mA
     ("LED", "LED_SMD:LED_0603_1608Metric"): ("C2286", "KT-0603R"),   # basic, red
-    ("RESET", "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2"): ("C269272", "KMR221NGLFS"),
-    ("FUNC", "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2"): ("C269272", "KMR221NGLFS"),
 }
 for _p in PARTS:
     if not _p["lcsc"] and (_p["value"], _p["footprint"]) in JLC:
