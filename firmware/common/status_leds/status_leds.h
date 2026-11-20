@@ -1,12 +1,13 @@
 /*
- * PWR and RX LEDs of the EnMT carrier board (common/boards/enmt_carrier.overlay, `make BOARD=enmt`).
+ * PWR and RX LEDs of the EnMT carrier board (common/boards/enmt_carrier.overlay, `make BOARD=enmt`)
+ * and of the nRF52840 DK (LED3, LED2; common/boards/nrf52840dk_status_leds.dtsi).
  * LINK is Nrf::Board's status LED (LED1) and needs nothing here.
  *
  *   PWR (red, LED3)    on; blinks while the app's health check fails (EnOcean: the TCM hasn't
  *                      answered yet; the BLE gateway has no check, PWR just stays on)
  *   RX  (yellow, LED2) a short pulse per radio packet from a bridged or known device
  *
- * Built only with CONFIG_GATEWAY_STATUS_LEDS, which the overlay turns on.
+ * Built only with CONFIG_GATEWAY_STATUS_LEDS, which the led_pwr label turns on.
  */
 
 #pragma once

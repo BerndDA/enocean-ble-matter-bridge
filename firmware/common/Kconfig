@@ -41,7 +41,7 @@ config GATEWAY_UF2_BOOTLOADER_CMD
 	  BOARD=promicro-uf2 uses it, so no double tap on RST is needed.
 
 config GATEWAY_STATUS_LEDS
-	bool "PWR and RX LEDs of the EnMT carrier board"
+	bool "PWR and RX status LEDs (EnMT carrier, nRF52840 DK)"
 	depends on NCS_SAMPLE_MATTER_LEDS
 	default $(dt_nodelabel_exists,led_pwr)
 	help
@@ -49,7 +49,8 @@ config GATEWAY_STATUS_LEDS
 	  EnOcean gateway: TCM not answering). Yellow RX (LED2): a short pulse per
 	  packet from a bridged device. Green LINK is Nrf::Board's status LED
 	  (LED1). On by default when the devicetree has the carrier's LEDs
-	  (common/boards/enmt_carrier.overlay, `make BOARD=enmt`). See
+	  (common/boards/enmt_carrier.overlay, `make BOARD=enmt`;
+	  common/boards/nrf52840dk_status_leds.dtsi on the DK). See
 	  status_leds/status_leds.h.
 
 config GATEWAY_NET_LOG

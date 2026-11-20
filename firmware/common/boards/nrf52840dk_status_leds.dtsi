@@ -1,0 +1,20 @@
+/*
+ * Status LEDs on the nRF52840 DK, the same roles as on the EnMT carrier (enmt_carrier.overlay).
+ * Included by both apps' boards/nrf52840dk_nrf52840.overlay.
+ *
+ * The DK's LED1..4 (P0.13..16, active low) already are DK_LED1..4 of the DK library = LED1..4 of
+ * Nrf::Board, so only the labels are added; led_pwr turns on CONFIG_GATEWAY_STATUS_LEDS:
+ *   LED1  P0.13  LINK  Matter/Thread status (Nrf::Board)
+ *   LED2  P0.14  RX    short pulse per packet from a bridged device; Matter Identify blinks it
+ *   LED3  P0.15  PWR   on; blinks while the app's health check fails (EnOcean: TCM silent)
+ *   LED4  P0.16  unused
+ * See common/status_leds/.
+ */
+
+led_rx: &led1 {
+	label = "RX LED (LED2)";
+};
+
+led_pwr: &led2 {
+	label = "PWR LED (LED3)";
+};
