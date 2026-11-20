@@ -88,6 +88,21 @@ def add_keepout(board, outline, name):
     board.Add(z)
 
 
+def add_track_keepout(board, outline, layer, name):
+    """Rule area: no tracks on one layer; vias and the zone fill stay allowed."""
+    z = pcbnew.ZONE(board)
+    z.SetIsRuleArea(True)
+    z.SetLayer(layer)
+    z.SetDoNotAllowTracks(True)
+    z.SetDoNotAllowVias(False)
+    z.SetDoNotAllowZoneFills(False)
+    z.SetDoNotAllowPads(False)
+    z.SetDoNotAllowFootprints(False)
+    z.Outline().AddOutline(outline)
+    z.SetZoneName(name)
+    board.Add(z)
+
+
 def load_netlist():
     """{'pins': {(ref, pad): net}, 'fields': {ref: {name: value}}} from kicad-cli's netlist."""
     import subprocess
@@ -159,8 +174,15 @@ def route_rf(board, nets):
     track("/RF_ANT", [ant, (ant[0] + (ant[1] - y), y), (43.1, y)], 0.15)
     track("/RF_ANT", [(43.1, y), pad("L1", "1")], W)               # over C19 pad 1
     track("/RF_M1", [pad("L1", "2"), pad("L2", "1")], W)           # over C20 pad 1
+    # after L2: 45 deg down, straight down beside the antenna's ground edge, 45 deg into the
+    # feed. Turning right after the match keeps the board short.
     feed = pad("AE1", "1")
-    track("/RF_ANT_2G4", [pad("L2", "2"), (feed[0] - 1.0, y), (feed[0], y - 1.0), feed], W)
+    l2 = pad("L2", "2")
+    bend = l2[0] + 0.2                              # end of the straight part on y
+    xv = bend + 0.8                                 # the vertical part
+    track("/RF_ANT_2G4", [l2, (bend, y), (xv, y + 0.8), (xv, feed[1] - 0.5), (xv + 0.5, feed[1]), feed], W)
+    if feed[0] < xv + 0.7:
+        sys.exit(f"antenna feed at x {feed[0]} too close to the RF line's vertical part at x {xv}")
     # VSS_PA (inner pad) to the exposed pad, as in Nordic's reference
     vss = pad("U1", "F23")
     track("GND", [vss, (vss[0] - 0.4, vss[1])], 0.15)
@@ -169,7 +191,7 @@ def route_rf(board, nets):
     track("GND", [b7, (b7[0], b7[1] + 0.45)], 0.15)
     # inner-row pads with no escape gap between their outer neighbours: via in pad
     # (JLC minimum 0.25/0.15 mm, order with epoxy-filled and capped vias), routed on B.Cu
-    for num, vnet in (("AC5", "/DECUSB"), ("AC13", "/NRESET")):
+    for num, vnet in (("AC5", "/DECUSB"), ("AC13", "/NRESET"), ("B19", "/LED_R")):
         vx, vy = pad("U1", num)
         via(vx, vy, net=vnet, d=0.25, drill=0.15)
     # VDD pins: each one straight out to its own via into the In2 +3V3 plane
@@ -229,12 +251,17 @@ def route_rf(board, nets):
 
     for fp in board.GetFootprints():
         ref = fp.GetReference()
-        if not ref.startswith("C") or ref in ("C19", "C20"):
+        # capacitors, plus the USB-C CC/shield resistors under the connector: there the
+        # router's USB tracks can otherwise cut a pad's GND thermal down to one spoke
+        # Every other +3V3 pad (LDO output, FB1, SWD header) also gets its via: In2 is a
+        # plane the autorouter doesn't route on, so nothing else would connect them.
+        if ref == "U1" or ref in ("C19", "C20"):
             continue
+        fanout_nets = ("GND", "+3V3") if ref.startswith("C") or ref in ("R1", "R2", "R3") else ("+3V3",)
         c = fp.GetPosition()
         for p in fp.Pads():
             net = p.GetNetname()
-            if net not in ("GND", "+3V3"):
+            if net not in fanout_nets:
                 continue
             px, py = pcbnew.ToMM(p.GetPosition().x) - ORIGIN[0], pcbnew.ToMM(p.GetPosition().y) - ORIGIN[1]
             ax, ay = pcbnew.ToMM(p.GetPosition().x - c.x), pcbnew.ToMM(p.GetPosition().y - c.y)
@@ -261,8 +288,10 @@ def route_rf(board, nets):
         gx, gy = pad(ref, "2")
         track("GND", [(gx, gy), (gx, gy + 0.75)], 0.3)
         via(gx, gy + 0.75)
-    for x in (44.6, 46.0, 47.4, 48.8, 50.2, 51.6, 53.0):
+    x = 44.6
+    while x <= bend:               # fence along the straight part of the line
         via(x, y - 0.8)
+        x += 1.4
 
     # 868 MHz: TCM RF_50 -> node; node -> R7 -> whip hole
     node = placement.RF_NODE_868
@@ -274,6 +303,25 @@ def route_rf(board, nets):
         gx, gy = pad("U4", num)
         track("GND", [(gx, gy), (gx - 1.5, gy)], 0.3)
         via(gx - 1.5, gy)
+
+
+def check_blocks():
+    """Every part sits in the board area of its schematic block (design.GROUPS)."""
+    bad = []
+    for title, gx0, gy0, gx1, gy1 in design.GROUPS:
+        areas = placement.BLOCKS[title]
+        if isinstance(areas, tuple):
+            areas = [areas]
+        for p in design.PARTS:
+            if not any(p["nets"].values()):
+                continue                # parts without pins
+            if not (gx0 * design.G <= p["x"] <= gx1 * design.G and gy0 * design.G <= p["y"] <= gy1 * design.G):
+                continue
+            x, y = placement.PLACE[p["ref"]][:2]
+            if not any(a[0] <= x <= a[2] and a[1] <= y <= a[3] for a in areas):
+                bad.append(f"{p['ref']} at ({x}, {y}) is outside '{title}' {areas}")
+    if bad:
+        sys.exit("placement outside its block:\n  " + "\n  ".join(bad))
 
 
 def write_dru():
@@ -418,8 +466,8 @@ def main():
             fp.SetField(fname, fval)
             if fname not in ("Reference", "Value"):
                 fp.GetField(fname).SetVisible(False)
-        # small passives, crystals and test pads: reference only on the fab layer
-        if ref.rstrip("0123456789") in ("C", "R", "L", "FB", "TP", "Y", "H", "F"):
+        # small passives, LEDs, crystals and test pads: reference only on the fab layer
+        if ref.rstrip("0123456789") in ("C", "R", "L", "FB", "TP", "Y", "H", "F", "D"):
             fp.Reference().SetVisible(False)
         else:
             fp.Reference().SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(0.8), pcbnew.FromMM(0.8)))
@@ -441,6 +489,15 @@ def main():
                 pad.SetNet(nets[net])
     if missing:
         sys.exit("no placement for: " + " ".join(missing))
+    check_blocks()
+
+    # No tracks on the bottom under the TCM 515 either (manual 12.1: route nothing under the
+    # module; the top is kept free by the keepout in its footprint), nor between the module and
+    # the left/top board edges, where the 868 MHz RF pin and the whip are. GND stitching vias stay.
+    cy = board.FindFootprintByReference("U4").GetCourtyard(pcbnew.F_Cu).BBox()
+    add_track_keepout(board, rect_poly(0.0, 0.0,
+                                       pcbnew.ToMM(cy.GetRight()) - ORIGIN[0], pcbnew.ToMM(cy.GetBottom()) - ORIGIN[1]),
+                      pcbnew.B_Cu, "no tracks under TCM 515 and its RF corner")
 
     # zones: In1 is the solid GND reference under both radios, In2 the +3V3 plane
     # (decoupling caps and VDD pins reach it with one via), GND pours on top and bottom
@@ -459,8 +516,10 @@ def main():
         t.SetLayer(layer)
         t.SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(size), pcbnew.FromMM(size)))
         t.SetTextThickness(pcbnew.FromMM(size * 0.15))
+        t.SetMirrored(layer == pcbnew.B_SilkS)
         board.Add(t)
-    text("EnOcean-Matter bridge v0.1", 15.4, 24.6, 0.8)
+    # the name goes on the bottom, which carries no parts
+    text("EnOcean-Matter bridge v0.1", W / 2, H / 2, 1.2, pcbnew.B_SilkS)
 
     route_rf(board, nets)
 

@@ -26,7 +26,9 @@ PROJ = os.path.dirname(HERE)
 PCB = os.path.join(PROJ, "enocean-bridge.kicad_pcb")
 VERSION = "2.5.0"
 JAR = os.path.expanduser(f"~/.cache/freerouting/freerouting-{VERSION}.jar")
-PLANE_LAYERS = os.environ.get("PLANE_LAYERS", "In1")
+# Inner layers the router must not use for signals: In1 is the GND plane, In2 the +3V3
+# plane (signal tracks there cut pieces off it). PLANE_LAYERS=In1 lets signals use In2.
+PLANE_LAYERS = os.environ.get("PLANE_LAYERS", "In1|In2")
 URL = f"https://github.com/freerouting/freerouting/releases/download/v{VERSION}/freerouting-{VERSION}.jar"
 
 
@@ -62,7 +64,7 @@ def main():
         normal = [n for n in names if "250:150" not in n]
         return "(via " + " ".join(normal) + ")"
     text = re.sub(r"\(via ((?:\s*\"?Via[^()]*?)+)\)", keep_normal, text, count=1)
-    # In1 (GND) is a pure plane; In2 (+3V3 pour) may take signals.
+    # plane layers become "power" layers in the DSN: Freerouting puts no tracks there
     text = re.sub(r"(\(layer (?:%s)\.Cu\s*\(type )signal\)" % PLANE_LAYERS, r"\1power)", text)
     open(dsn, "w").write(text)
 

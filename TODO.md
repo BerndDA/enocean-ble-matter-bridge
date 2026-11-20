@@ -43,17 +43,17 @@ nRF52840 + TCM 515 + USB-C, pin-compatible with the Pro Micro build. Design, scr
 - [x] TCM 515 footprint and symbol from the EnOcean manual.
 - [x] Schematic, generated from `tools/design.py`: ERC clean, netlist checked pin by pin.
 - [x] PCB: placement, both RF paths, power fanout, autorouting (Freerouting), GND stitching: 0 DRC errors.
-- [ ] Close the 2 open +3V3 connections by hand in KiCad: W1/Y2 + C13 island, AD14 fanout via (positions in DESIGN.md, "Routing").
+- [x] Simplified: no u.FL, test pads, polyfuse, RF tuning pads, DEC5 cap or mounting holes; antenna along the right edge; 57 × 26 mm, all parts on top; three status LEDs wired as on the EnMT carrier (`BOARD=enmt`); no tracks under the TCM 515 on either side; signals on top/bottom only, In2 an unbroken +3V3 plane; fully routed, 0 unconnected.
 - [ ] Review the autorouted board, especially USB D+/D− (90 Ω pair, short, ESD at the connector), the decoupling paths at the nRF52840, and that nothing crosses the RF areas.
 - [ ] From here on edit the board in KiCad only: don't rerun `gen_pcb.py --force` / `route.py`, they start from scratch.
-- [ ] Find an LCSC part for C20 (1.2 pF ±0.1 pF C0G 0402, Murata GJM1555C1H1R2…); add it to `JLC` in `design.py`.
+- [x] LCSC part for C20: C85877, Murata GJM1555C1H1R2CB01D (±0.25 pF; tighter ones aren't stocked).
 - [ ] Optional: fewer extended parts ($3.07 each at JLC): buttons and crystal from the basic library, or hand-solder the buttons.
-- [ ] Cosmetics: 6 silkscreen warnings on the board; overlapping labels at U2, U3, J3, SW1/SW2 in the schematic.
+- [ ] Cosmetics: 7 silkscreen warnings on the board (J1 outline and JP1/AE1 references at the edge, U3/J3 references over pads).
 - [ ] Fabrication outputs: Gerbers, drill, BOM and CPL in JLC format (TCM 515 not assembled).
-- [ ] Get the exact JLC quote: JLC04161H-7628 stackup, impedance control, via in pad (epoxy-filled, capped; needed for AC5/AC13). Check whether Economic assembly takes the aQFN73 or Standard is needed. Estimate: €200–290 for 5 boards incl. TCM 515 modules, shipping and VAT (DESIGN.md, "Cost estimate").
+- [ ] Get the exact JLC quote: JLC04161H-7628 stackup, impedance control, via in pad (epoxy-filled, capped; needed for AC5/AC13/B19). Check whether Economic assembly takes the aQFN73 or Standard is needed. Estimate: €200–290 for 5 boards incl. TCM 515 modules, shipping and VAT (DESIGN.md, "Cost estimate").
 - [ ] Check JLC stock of the nRF52840 (C3606858, 241 on 2026-11-18) right before ordering.
 - [ ] Order 5 × TCM 515 (Digi-Key 1084-TCM515, about €12.50 each).
-- [ ] Bring-up: solder the TCM 515, flash the nice!nano UF2 bootloader over SWD (Tag-Connect TC2030), then `make flash APP=enocean-gateway BOARD=promicro-uf2`, `enocean info`.
+- [ ] Bring-up: solder the TCM 515, flash the nice!nano UF2 bootloader over SWD (Tag-Connect TC2030), then `make flash APP=enocean-gateway BOARD=enmt`, `enocean info`.
 - [ ] Later: own board definition in `firmware/boards/` once pins change (e.g. TCM reset on P0.20).
 
 ## Step 4: one thermostat

@@ -20,6 +20,8 @@ FP_C0603 = "Capacitor_SMD:C_0603_1608Metric"
 FP_C0805 = "Capacitor_SMD:C_0805_2012Metric"
 FP_L0402 = "Inductor_SMD:L_0402_1005Metric"
 FP_L0603 = "Inductor_SMD:L_0603_1608Metric"
+FP_R0603 = "Resistor_SMD:R_0603_1608Metric"
+FP_LED = "LED_SMD:LED_0805_2012Metric"
 FP_TP = "TestPoint:TestPoint_Pad_D1.0mm"
 
 PARTS = []
@@ -86,7 +88,9 @@ NRF = {
     # Pro Micro pin contract (firmware/enocean-gateway/boards/promicro_nrf52840_common.dtsi)
     "L24": "TCM_RX",        # P0.09 UART0 TX -> TCM UART_RX
     "J24": "TCM_TX",        # P0.10 UART0 RX <- TCM UART_TX
-    "AD10": "LED",          # P0.15 led0
+    "B19": "LED_R",         # P1.11 / P1.13 / P1.15: status LEDs red / green / yellow, active low,
+    "A16": "LED_G",         # as on the EnMT carrier: BOARD=enmt drives them (PWR / LINK / RX)
+    "A14": "LED_Y",
     "R24": "BTN_FUNC",      # P1.06 sw0
     "AC13": "NRESET",       # P0.18 nRESET
     "AD16": "TCM_NRESET",   # P0.20, new: TCM reset from firmware
@@ -119,7 +123,7 @@ C("C19", "1.0pF", 70, 43, "RF_ANT")                     # C3
 L("L1", "4.7nH", 64, 40, "RF_ANT", "RF_M1", lcsc="C97989", mpn="LQG15HN4N7S02D", rot=270)
 C("C20", "1.2pF", 60, 43, "RF_M1")                      # C4
 L("L2", "2.2nH", 56, 40, "RF_M1", "RF_ANT_2G4", lcsc="C162540", mpn="LQG15HS2N2B02D", rot=270)   # L5
-part("AE1", "Device:Antenna_Shield", "2.4GHz PCB", "RF_Antenna:Texas_SWRA117D_2.4GHz_Right", 48, 34,
+part("AE1", "Device:Antenna_Shield", "2.4GHz PCB", "RF_Antenna:Texas_SWRA117D_2.4GHz_Left", 48, 34,
      {"1": "RF_ANT_2G4", "2": "GND"})
 
 # ---------------------------------------------------------------- TCM 515
@@ -145,24 +149,29 @@ part("SW1", "Switch:SW_Push", "RESET", "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR
      {"1": "NRESET", "2": "GND"})
 part("SW2", "Switch:SW_Push", "FUNC", "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2", 14, 28,
      {"1": "BTN_FUNC", "2": "GND"})
-R("R9", "1k", 14, 36, "LED", "LED_A", rot=90)
-part("D1", "Device:LED", "LED", "LED_SMD:LED_0603_1608Metric", 21, 36, {"2": "LED_A", "1": "GND"}, rot=180)
+# Status LEDs, the same parts and wiring as the EnMT carrier (all JLC basic): anodes on 3.3 V,
+# cathodes through the resistors to the pins; a pin pulled low lights its LED.
+R("R9", "1k", 21, 34, "LED_R", "LED_RK", fp=FP_R0603, lcsc="C21190", mpn="0603WAF1001T5E", rot=270)
+R("R10", "330", 21, 38, "LED_G", "LED_GK", fp=FP_R0603, lcsc="C23138", mpn="0603WAF3300T5E", rot=270)
+R("R11", "1k", 21, 42, "LED_Y", "LED_YK", fp=FP_R0603, lcsc="C21190", mpn="0603WAF1001T5E", rot=270)
+part("D1", "Device:LED", "RED", FP_LED, 13, 34, {"1": "LED_RK", "2": "+3V3"}, lcsc="C84256", mpn="NCD0805R1", rot=180)
+part("D2", "Device:LED", "GREEN", FP_LED, 13, 38, {"1": "LED_GK", "2": "+3V3"}, lcsc="C2297", mpn="KT-0805G", rot=180)
+part("D3", "Device:LED", "YELLOW", FP_LED, 13, 42, {"1": "LED_YK", "2": "+3V3"}, lcsc="C2296", mpn="KT-0805Y", rot=180)
 part("J3", "Connector_Generic:Conn_02x03_Odd_Even", "TC2030 SWD",
-     "Connector:Tag-Connect_TC2030-IDC-NL_2x03_P1.27mm_Vertical", 16, 46,
+     "Connector:Tag-Connect_TC2030-IDC-NL_2x03_P1.27mm_Vertical", 16, 52,
      {"1": "+3V3", "2": "SWDIO", "3": "NRESET", "4": "SWDCLK", "5": "GND", "6": "SWO"})
 
-part("H1", "Mechanical:MountingHole", "M2", "MountingHole:MountingHole_2.2mm_M2", 10, 55, {})
-part("H2", "Mechanical:MountingHole", "M2", "MountingHole:MountingHole_2.2mm_M2", 16, 55, {})
 
 # ---------------------------------------------------------------- sheet layout
 # Frames around the functional blocks: (title, x0, y0, x1, y1) in grid units.
 GROUPS = [
-    ("Buttons, LED, SWD", 5, 12, 36, 60),
+    ("Buttons, LEDs, SWD", 5, 12, 36, 60),
     ("nRF52840 (PS config 3), 32 MHz crystal, 2.4 GHz match", 42, 12, 117, 92),
     ("TCM 515, 868 MHz", 118, 8, 160, 47),
     ("USB-C, ESD, 3.3 V LDO", 118, 50, 160, 97),
 ]
 NOTES = [
+    ("LEDs active low, as on the EnMT carrier: BOARD=enmt", 6, 46.5),
     ("Match at the ANT pin (PS config 7), then 50 ohm to the PCB antenna", 44, 49),
     ("No 32.768 kHz crystal: LF clock from the RC oscillator", 44, 77),
     ("open: 57600 baud", 126, 42.6),
@@ -174,10 +183,15 @@ WIRES = [
     # --- buttons, LED, SWD
     ["SW1.2", (18, 20), (18, 21)],
     ["SW2.2", (18, 28), (18, 29)],
-    ["R9.2", "D1.2"],
-    ["D1.1", (24, 36), (24, 37)],
-    ["J3.1", (13, 45), (13, 44)],
-    ["J3.5", (13, 47), (13, 48)],
+    [(9, 34), (9, 42)],
+    [(9, 34), "D1.2"],
+    [(9, 38), "D2.2"],
+    [(9, 42), "D3.2"],
+    ["D1.1", "R9.2"],
+    ["D2.1", "R10.2"],
+    ["D3.1", "R11.2"],
+    ["J3.1", (13, 51), (13, 50)],
+    ["J3.5", (13, 53), (13, 54)],
     # --- nRF52840 decoupling: DEC pins to the caps on the left, VDD/VDDH to the right
     ["U1.C1", (88, 21), (83, 21), "C4.1"],
     ["U1.D23", (90, 20), (80, 20), "C5.1"],
@@ -229,8 +243,8 @@ WIRES = [
 # Net names put on wires: (net, point, outward direction in degrees). Power nets get a
 # power symbol, others a label. Untagged signal clusters get an automatic label.
 TAGS = [
-    ("GND", (18, 21), 270), ("GND", (18, 29), 270), ("GND", (24, 37), 270),
-    ("+3V3", (13, 44), 90), ("GND", (13, 48), 270),
+    ("GND", (18, 21), 270), ("GND", (18, 29), 270), ("+3V3", (9, 34), 90),
+    ("+3V3", (13, 50), 90), ("GND", (13, 54), 270),
     ("+3V3", (96, 21), 90), ("GND", (96, 88), 270),
     ("+3V3", (120, 14), 90),
     ("TCM_NTURBO", (125, 38.5), 0), ("VDD_TCM", (125, 14), 0),
@@ -239,7 +253,7 @@ TAGS = [
 
 # Nets that need a PWR_FLAG (no power-output pin drives them); placed at (x, y) mm.
 PWR_FLAGS = {
-    "GND": (26 * G, 56 * G),
+    "GND": (30 * G, 57 * G),
     "VBUS": (141 * G, 62 * G),
     "VBUS_NRF": (144 * G, 81 * G),
     "VDD_TCM": (133 * G, 14 * G),
@@ -255,7 +269,7 @@ JLC = {
     ("12pF", FP_C0402): ("C1547", "0402CG120J500NT"),         # basic
     ("820pF", FP_C0402): ("C2929132", "FN15N821J500PNG"),     # DNP anyway
     ("1.0pF", FP_C0402): ("C72134", "GJM1555C1H1R0WB01D"),    # +-0.05 pF
-    ("1.2pF", FP_C0402): ("", "GJM1555C1H1R2WB01D (not found at JLC search; any 1.2 pF +-0.1 pF C0G 0402)"),
+    ("1.2pF", FP_C0402): ("C85877", "GJM1555C1H1R2CB01D"),  # +-0.25 pF, Murata high-Q (+-0.1/0.05 pF not stocked)
     ("1uF", FP_C0603): ("C15849", "CL10A105KB8NNNC"),         # basic
     ("4.7uF", FP_C0603): ("C19666", "CL10A475KO8NNNC"),       # basic
     ("22uF", FP_C0805): ("C45783", "CL21A226MAQNNNE"),        # basic, 25 V
@@ -276,6 +290,6 @@ for _p in PARTS:
         _p["mpn"] = _p["mpn"] or _mpn
 
 # Footprint-only parts (copper, holes, test pads): not in the BOM, not assembled.
-NOT_IN_BOM = {"AE1", "JP1", "J3", "H1", "H2"} | {p["ref"] for p in PARTS if p["ref"].startswith("TP")}
+NOT_IN_BOM = {"AE1", "JP1", "J3"} | {p["ref"] for p in PARTS if p["ref"].startswith("TP")}
 for _p in PARTS:
     _p["in_bom"] = _p["ref"] not in NOT_IN_BOM
