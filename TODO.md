@@ -55,6 +55,7 @@ nRF52840 + TCM 515 + USB-C, pin-compatible with the Pro Micro build. Design, scr
 - [ ] Check JLC stock of the nRF52840 (C3606858, 241 on 2026-11-18) right before ordering.
 - [ ] Order 5 × TCM 515 (Digi-Key 1084-TCM515, about €12.50 each).
 - [ ] Bring-up: solder the TCM 515, solder the SWD header J3, flash the nice!nano UF2 bootloader over SWD (DK Debug out P19, 10-pin flat cable), then `make flash APP=enocean-gateway BOARD=enmt`, `enocean info`.
+- [x] 3D-printed case (`hardware/enocean-bridge-pcb/case/`): like the carrier's, light pipes for 3 mm rods, SWD opening, no screws.
 - [ ] Later: own board definition in `firmware/boards/` once pins change (e.g. TCM reset on P0.20).
 
 ## Step 4: one thermostat

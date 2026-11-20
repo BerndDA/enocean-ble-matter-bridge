@@ -218,6 +218,30 @@ Current result: routed by the first strategy, 0 unconnected, 0 DRC errors, schem
 - the rotations of U1 (nRF52840, pin 1 marker), U2 (SOT-23-3), U3 (SOT-23-6), Y1 (turned 180°) and J1;
 - LED polarity: the cathode (pad 1) of D1–D3 is on the left; the anodes (right) go to +3V3.
 
+## Case (3D-printed)
+
+[case/bridge_case.scad](case/bridge_case.scad) (OpenSCAD), built like the [EnMT carrier's case](../enocean-carrier/DESIGN.md#case-3d-printed): base, lid with a friction lip, two captive push pins. `tools/export_case.sh` writes the STLs and OpenSCAD previews; `tools/render_case.sh` the photo renders (Blender + Cycles, KiCad's 3D export of the board, simple stand-ins for the TCM 515, buttons and whip).
+
+| Closed | Exploded | Open |
+| --- | --- | --- |
+| ![closed](case/render-closed.png) | ![exploded](case/render-exploded.png) | ![open](case/render-open.png) |
+
+| Part | Print |
+| --- | --- |
+| [bridge_case-base.stl](case/bridge_case-base.stl) | upright, no supports |
+| [bridge_case-lid.stl](case/bridge_case-lid.stl) | already turned upside down, no supports |
+| [bridge_case-pin.stl](case/bridge_case-pin.stl) | 2×, collar down |
+
+- **Size:** 61.8 × 30.8 × 11.6 mm. Inside, 5 mm above the board (SWD header pins about 4 mm, TCM 515 about 3 mm, USB-C 3.2 mm: estimates, measure before printing and adjust `inner_h`).
+- **Board mounting:** no screw holes. The board lies on the 3 mm floor between the walls (0.4 mm gap); three posts from the lid hold it down at bare spots (left edge, top edge, bottom right). Pockets in the floor take the through-hole joints of the whip, the USB-C shell legs and the SWD header.
+- **USB-C:** opening in the front wall, open at the top; the lid's lip is cut away there.
+- **Light pipes:** the carrier's dimensions: 3.2 mm bore for 3 mm acrylic rods, 0.8 mm walls, ending 0.5 mm above the LEDs. Cut three rods to **5.7 mm** (OpenSCAD echoes `rod_len`) and press them in flush. Print the lid in an opaque, dark filament.
+- **Buttons:** captive push pins (collar 5.4 mm, put in from below before closing); the lip is notched around the collars.
+- **Whip:** 3 mm hole in the lid above TP1. TP1's hole is 1.0 mm: use wire up to about 0.9 mm.
+- **SWD:** an opening over J3 (`swd_hole`), so the DK's 10-pin cable plugs in with the lid on.
+- **Labels** engraved in the lid: EnMT logo and name over the TCM, FUNC / RST, PWR / LNK / RX around the LEDs, 868 at the whip, SWD.
+- **Material:** plastic only near the antennas; no metal parts or metallic filament.
+
 ## Cost (JLC quote, 2026-11-20)
 
 | Item | Cost |
