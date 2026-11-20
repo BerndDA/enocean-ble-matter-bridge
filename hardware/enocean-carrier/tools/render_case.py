@@ -9,6 +9,8 @@ whip) are modelled here as simple shapes. Dimensions follow carrier_case.scad's
 defaults (pm_mount = "direct"); keep them in step when those change.
 
 Output: render-closed.png, render-exploded.png, render-open.png in the output folder.
+Mode "glb" (tools/render_case.sh glb): instead writes the scene as a glTF model to the file
+given as output (enocean-carrier.glb), for hardware/pcb-viewer.html.
 """
 import math
 import os
@@ -21,7 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # for anim_case
 args = sys.argv[sys.argv.index("--") + 1:]
 WORK, OUT = args[0], args[1]
 SAMPLES = int(args[2]) if len(args) > 2 else 192
-MODE = args[3] if len(args) > 3 else "stills"        # "stills", "anim" (front view) or "anim-usb" (USB side)
+MODE = args[3] if len(args) > 3 else "stills"        # "stills", "anim" (front view), "anim-usb" (USB side) or "glb"
 FRAMES = args[4] if len(args) > 4 else ""            # anim: comma list of frames to render (test), default all
 
 # ---------------------------------------------------------------- dimensions (carrier_case.scad)
@@ -155,6 +157,22 @@ pins = [stl(f"pin{i}", os.path.join(WORK, "pin_asm.stl"), M["pin"], (bx, by, TOP
 before = set(bpy.data.objects)
 bpy.ops.import_scene.gltf(filepath=os.path.join(WORK, "board.glb"))
 board_parts = [o for o in bpy.data.objects if o not in before]
+# KiCad exports silkscreen (white) and solder mask (green) as see-through layers: the pale FR4
+# shows through and, in real-time viewers, the layers can draw in the wrong order and wash the
+# silkscreen out. Silkscreen opaque white; mask darker and denser (traces still show a little).
+for m in {s.material for o in board_parts for s in getattr(o, "material_slots", []) if s.material}:
+    p = next((n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED"), None) if m.use_nodes else None
+    if p is None or p.inputs["Alpha"].is_linked or p.inputs["Alpha"].default_value >= 1.0:
+        continue
+    r, g, b, _ = p.inputs["Base Color"].default_value
+    if min(r, g, b) > 0.9:                                   # silkscreen
+        p.inputs["Alpha"].default_value = 1.0
+        p.inputs["Roughness"].default_value = 0.7
+        m.blend_method = "OPAQUE"
+    elif g > r and g > b:                                    # solder mask
+        p.inputs["Base Color"].default_value = (0.02, 0.11, 0.045, 1.0)
+        p.inputs["Alpha"].default_value = 0.93
+        p.inputs["Roughness"].default_value = 0.35
 board_root = bpy.data.objects.new("board", None)
 scene.collection.objects.link(board_root)
 for o in board_parts:
@@ -174,25 +192,216 @@ for i, x in enumerate(PIN_ROWS_X):
     for y in PIN_YS:
         inside.append(box("pintip", x - 0.32, y - 0.32, TOP_Z + PM_GAP + PM_PCB, x + 0.32, y + 0.32, TOP_Z + PM_GAP + PM_PCB + 1.6, M["gold"], 0.05))
 pm_z = TOP_Z + PM_GAP
-# nice!nano v2: 13 pins per side; the top one of each side (USB end) is B+ / B- for a battery:
-# plated holes without a header pin.
-BAT_Y = BOARD_H - (3.81 - 2.54) + OFF
-inside.append(box("promicro", PM_X0, PM_Y0, pm_z, PM_X1, PM_Y1, pm_z + PM_PCB, M["pm_pcb"], 0.2))
-for i, x in enumerate(PIN_ROWS_X):
-    inside.append(cyl(f"bat_pad{i}", x, BAT_Y, pm_z + PM_PCB, 0.03, 1.3, M["gold"], 24))
-    inside.append(cyl(f"bat_hole{i}", x, BAT_Y, pm_z + PM_PCB, 0.05, 0.7, M["chip"], 24))
-for x in PIN_ROWS_X:                           # gold rings of the 12 header pins on the top side
-    for y in PIN_YS:
-        inside.append(cyl("pin_pad", x, y, pm_z + PM_PCB, 0.03, 1.6, M["gold"], 24))
+# ---- stand-ins for the two modules, after product photos (not exact, but recognisable):
+# nice!nano v2 (circuitpython.org/board/nice_nano) and TCM 515 (EnOcean product photo).
+FONT_DIR = "/System/Library/Fonts/Supplemental"
+
+
+def font(name):
+    path = os.path.join(FONT_DIR, name)
+    return bpy.data.fonts.load(path, check_existing=True) if os.path.exists(path) else None
+
+
+FONTS = {"bold": font("Arial Bold.ttf"), "regular": font("Arial.ttf"), "narrow": font("Arial Narrow.ttf")}
+
+
+def text(name, body, x, y, z, size, material, rot=0.0, align="CENTER", style="regular", depth=0.01):
+    """Flat raised text (glTF has no text: converted to a mesh). rot: text direction, radians from +X."""
+    bpy.ops.object.text_add(location=(x, y, z + depth))
+    o = bpy.context.object
+    o.name = name
+    o.data.body = body
+    o.data.size = size
+    o.data.align_x = align
+    o.data.align_y = "CENTER"
+    o.data.extrude = depth
+    o.data.resolution_u = 3          # few segments per glyph curve: keeps the GLB small
+    if FONTS.get(style):
+        o.data.font = FONTS[style]
+    o.rotation_euler = (0, 0, rot)
+    bpy.ops.object.convert(target="MESH")
+    o.data.materials.append(material)
+    return o
+
+
+def rects(name, rs, z, material):
+    """One flat mesh from many rectangles (x0, y0, x1, y1): pads, data matrix cells."""
+    verts, faces = [], []
+    for x0, y0, x1, y1 in rs:
+        i = len(verts)
+        verts += [(x0, y0, z), (x1, y0, z), (x1, y1, z), (x0, y1, z)]
+        faces.append((i, i + 1, i + 2, i + 3))
+    me = bpy.data.meshes.new(name)
+    me.from_pydata(verts, [], faces)
+    o = bpy.data.objects.new(name, me)
+    scene.collection.objects.link(o)
+    o.data.materials.append(material)
+    return o
+
+
+M.update({
+    "nn_pcb": mat("nn_pcb", (0.42, 0.02, 0.02), 0.45),          # red solder mask (the real one is black)
+    "silk": mat("silk", (0.9, 0.9, 0.88), 0.6),
+    "nrf_pkg": mat("nrf_pkg", (0.035, 0.035, 0.04), 0.35),
+    "marking": mat("marking", (0.32, 0.32, 0.34), 0.5),
+    "cap": mat("cap", (0.5, 0.36, 0.22), 0.45),
+    "res": mat("res", (0.03, 0.03, 0.03), 0.5),
+    "term": mat("term", (0.85, 0.85, 0.86), 0.3, 1.0),
+    "led_body": mat("led_body", (0.92, 0.9, 0.82), 0.3),
+    "xtal": mat("xtal", (0.82, 0.82, 0.84), 0.25, 1.0),
+    "tcm_pcb": mat("tcm_pcb", (0.08, 0.3, 0.1), 0.45),
+    "shield": mat("shield", (0.78, 0.76, 0.72), 0.3, 1.0),        # tin-plated can
+    "sticker": mat("sticker", (0.96, 0.96, 0.95), 0.55),
+    "ink": mat("ink", (0.04, 0.04, 0.05), 0.5),
+    "usb_in": mat("usb_in", (0.02, 0.02, 0.02), 0.6),
+    "tongue": mat("tongue", (0.12, 0.12, 0.13), 0.5),
+})
+
+# ---------------- nice!nano v2: red board (black in the photo), gold rings, mid-mount USB-C, nRF52840 towards the far end
+# Module coordinates: d = mm from the USB end, f = fraction of the width from the +X edge
+# (RAW/GND/RST/VCC side). The case (carrier_case.scad usb_z) assumes a top-mounted receptacle;
+# the nice!nano's sits in a notch of its board, centred on the PCB.
+USB_MID = True
+PM_W = PM_X1 - PM_X0
+
+
+def nn(d, f):
+    return (PM_X1 - f * PM_W, PM_Y1 - d)
+
+
+top = pm_z + PM_PCB
+inside.append(box("promicro", PM_X0, PM_Y0, pm_z, PM_X1, PM_Y1, top, M["nn_pcb"], 0.25))
+# 13 gold rings per side: B+ / B- at 1.27 mm from the USB end (no pin), then the 12 header pins
+ring_ys = [PM_Y1 - 1.27] + PIN_YS
+for side, x in enumerate(PIN_ROWS_X):
+    for j, y in enumerate(ring_ys):
+        for z, n in ((top, "top"), (pm_z - 0.03, "bot")):
+            inside.append(cyl(f"ring{side}_{j}_{n}", x, y, z, 0.03, 1.65, M["gold"], 20))
+        if j == 0:   # battery pads: plated hole, no pin
+            inside.append(cyl(f"bat_hole{side}", x, y, top, 0.04, 0.9, M["chip"], 20))
+# the three inner pads near the far end (P1.07, P1.02, P1.01)
+for i, f in enumerate((0.47, 0.62, 0.78)):
+    x, y = nn(26.3, f)
+    inside.append(cyl(f"inner_pad{i}", x, y, top, 0.03, 1.4, M["gold"], 20))
+    inside.append(cyl(f"inner_hole{i}", x, y, top, 0.04, 0.7, M["chip"], 20))
+# pin labels, white silkscreen inside the rows (as on the board: RAW, GND, RST, VCC ...)
+LABELS_R = ["B+", "RAW", "GND", "RST", "VCC", "031", "029", "002", "115", "113", "111", "010", "009"]
+LABELS_L = ["B-", "006", "008", "GND", "GND", "017", "020", "022", "024", "100", "011", "104", "106"]
+for j, y in enumerate(ring_ys):
+    inside.append(text(f"lbl_r{j}", LABELS_R[j], PIN_ROWS_X[1] - 1.15, y, top, 0.72, M["silk"], align="RIGHT", style="narrow", depth=0.005))
+    inside.append(text(f"lbl_l{j}", LABELS_L[j], PIN_ROWS_X[0] + 1.15, y, top, 0.72, M["silk"], align="LEFT", style="narrow", depth=0.005))
+# logo across the far end
+lx, ly = nn(29.6, 0.5)
+inside.append(text("nn_logo", "nice!nano", lx, ly, top, 1.7, M["silk"], style="bold", depth=0.005))
+lx, ly = nn(31.6, 0.5)
+inside.append(text("nn_ver", "v2.0", lx, ly, top, 0.9, M["silk"], depth=0.005))
+# nRF52840 (aQFN73, 7 x 7 mm) with its marking
+cx_, cy_ = nn(20.1, 0.5)
+inside.append(box("nrf", cx_ - 3.5, cy_ - 3.5, top, cx_ + 3.5, cy_ + 3.5, top + 0.85, M["nrf_pkg"], 0.08))
+inside.append(text("nrf_mark", "N52840\nQIAAD0", cx_, cy_, top + 0.85, 0.75, M["marking"], depth=0.003))
+# 32 MHz crystal next to it, the regulator and the inductor near the USB end
+x, y = nn(23.6, 0.17)
+inside.append(box("xtal", x - 1.0, y - 0.8, top, x + 1.0, y + 0.8, top + 0.55, M["xtal"], 0.08))
+for name, d, f, w, l, h in (("ldo", 13.6, 0.36, 1.6, 2.9, 0.9), ("ind", 10.6, 0.58, 2.0, 2.0, 1.0),
+                            ("chg", 14.6, 0.62, 2.0, 2.0, 0.75)):
+    x, y = nn(d, f)
+    inside.append(box(name, x - w / 2, y - l / 2, top, x + w / 2, y + l / 2, top + h, M["nrf_pkg"], 0.06))
+# two 0603 LEDs at the USB end (charge, user)
+for i, f in enumerate((0.3, 0.7)):
+    x, y = nn(8.6, f)
+    inside.append(box(f"nn_led{i}", x - 0.4, y - 0.8, top, x + 0.4, y + 0.8, top + 0.45, M["led_body"], 0.05))
+# 0402 passives (caps tan, resistors black), positions read off the photo
+PASSIVES = [(9.2, 0.33), (9.2, 0.45), (10.4, 0.72), (11.8, 0.28), (11.8, 0.7), (12.6, 0.48),
+            (15.6, 0.3), (15.6, 0.42), (16.0, 0.72), (16.0, 0.8), (24.9, 0.4), (24.9, 0.55),
+            (25.1, 0.72), (18.9, 0.25), (21.3, 0.25), (18.7, 0.76), (21.5, 0.76)]
+for i, (d, f) in enumerate(PASSIVES):
+    x, y = nn(d, f)
+    m_body = M["cap"] if i % 3 else M["res"]
+    inside.append(box(f"p{i}", x - 0.25, y - 0.5, top, x + 0.25, y + 0.5, top + 0.35, m_body, 0.03))
+    for s in (-1, 1):
+        inside.append(box(f"p{i}t", x - 0.26, y + s * 0.5 - 0.13, top, x + 0.26, y + s * 0.5 + 0.13, top + 0.36, M["term"], 0.02))
+# USB-C receptacle (8.94 x 7.35 x 3.2 mm), front about flush with the module edge
 cx = (PM_X0 + PM_X1) / 2
-inside.append(box("usb", cx - 4.5, PM_Y1 - 7.0, pm_z + PM_PCB, cx + 4.5, PM_Y1 + 0.4, pm_z + PM_PCB + 3.2, M["metal"], 0.6))
-inside.append(box("nrf", cx - 3.5, PM_Y0 + 14, pm_z + PM_PCB, cx + 3.5, PM_Y0 + 21, pm_z + PM_PCB + 0.85, M["chip"], 0.1))
-inside.append(box("ldo", cx - 1.5, PM_Y0 + 23.5, pm_z + PM_PCB, cx + 1.5, PM_Y0 + 25, pm_z + PM_PCB + 1.0, M["chip"], 0.05))
-inside.append(box("pm_led", cx + 4.5, PM_Y0 + 23.5, pm_z + PM_PCB, cx + 5.5, PM_Y0 + 24.1, pm_z + PM_PCB + 0.4, M["chip"], 0.02))
-# TCM 515 (upright next to the Pro Micro)
-tx0, ty0 = C(19.85, 23.5)
-inside.append(box("tcm", tx0, ty0, TOP_Z, tx0 + 14.7, ty0 + 19.0, TOP_Z + 1.0, M["tcm"], 0.1))
-inside.append(box("tcm_label", tx0 + 1.5, ty0 + 3.0, TOP_Z + 1.0, tx0 + 13.2, ty0 + 16.0, TOP_Z + 1.05, M["label"], 0.0))
+uz = pm_z + PM_PCB / 2 if USB_MID else top + 1.6
+inside.append(box("usb", cx - 4.47, PM_Y1 - 7.35 + 0.3, uz - 1.6, cx + 4.47, PM_Y1 + 0.3, uz + 1.6, M["metal"], 1.1))
+inside.append(box("usb_mouth", cx - 3.9, PM_Y1 + 0.29, uz - 1.05, cx + 3.9, PM_Y1 + 0.33, uz + 1.05, M["usb_in"], 0.0))
+inside.append(box("usb_tongue", cx - 3.3, PM_Y1 + 0.32, uz - 0.35, cx + 3.3, PM_Y1 + 0.36, uz + 0.35, M["tongue"], 0.0))
+
+# ---------------- TCM 515: green module PCB with 31 castellated pads, tin shield can, white label
+# Position and pads from the KiCad footprint EnOcean:TCM515 (at 27.6 / 14.0 on the board, -90 deg):
+# footprint x (19 mm) runs along the board's y, footprint y (14.7 mm) against the board's x.
+TCM_AT = (27.6, 14.0)
+
+
+def tcm(lx, ly):
+    """Footprint coordinates -> case coordinates."""
+    return C(TCM_AT[0] - ly, TCM_AT[1] + lx)
+
+
+def tbox(name, lx0, ly0, lx1, ly1, z0, z1, material, bevel=0.05):
+    (ax, ay), (bx, by) = tcm(lx0, ly0), tcm(lx1, ly1)
+    return box(name, min(ax, bx), min(ay, by), z0, max(ax, bx), max(ay, by), z1, material, bevel)
+
+
+T_PCB, T_H = 0.8, 3.0
+inside.append(tbox("tcm", -9.5, -7.35, 9.5, 7.35, TOP_Z, TOP_Z + T_PCB, M["tcm_pcb"], 0.05))
+# castellations: gold pads wrapping the board edge, 0.7 mm wide (TCM 515 User Manual, Figure 15)
+pads = ([(-9.5, y) for y in (-5.95, -4.95, -3.95, 3.95, 4.95, 5.95)] + [(9.5, y) for y in range(-3, 4)]
+        + [(x + 0.1, s * 7.35) for x in range(0, 9) for s in (-1, 1)])
+for i, (px, py) in enumerate(pads):
+    if abs(px) == 9.5:
+        inside.append(tbox(f"cast{i}", px - 0.75 * (px > 0) - 0.03 * (px < 0), py - 0.35, px + 0.03 * (px > 0) + 0.75 * (px < 0), py + 0.35,
+                           TOP_Z - 0.01, TOP_Z + T_PCB + 0.01, M["gold"], 0.0))
+    else:
+        s = 1 if py > 0 else -1
+        inside.append(tbox(f"cast{i}", px - 0.35, py - 0.75 * s, px + 0.35, py + 0.03 * s,
+                           TOP_Z - 0.01, TOP_Z + T_PCB + 0.01, M["gold"], 0.0))
+# shield can, 0.4 mm inside the board edge, with the four corner tabs of the photo
+inside.append(tbox("shield", -9.1, -6.95, 9.1, 6.95, TOP_Z + T_PCB, TOP_Z + T_H, M["shield"], 0.12))
+for sx in (-1, 1):
+    for sy in (-1, 1):
+        inside.append(tbox("tab", sx * 9.0 - 0.2, sy * 6.85 - 0.2, sx * 9.0 + 0.2, sy * 6.85 + 0.2,
+                           TOP_Z + T_PCB - 0.3, TOP_Z + T_H - 0.1, M["shield"], 0.02))
+# label: text runs along the module's long side (footprint +x), its top towards footprint -y
+lt = TOP_Z + T_H
+inside.append(tbox("tcm_label", -8.5, -6.35, 8.5, 6.35, lt, lt + 0.02, M["sticker"], 0.0))
+lt += 0.02
+rot = math.atan2(tcm(1, 0)[1] - tcm(0, 0)[1], tcm(1, 0)[0] - tcm(0, 0)[0])
+
+
+def lbl(u, v):
+    return tcm(u, -v)
+
+
+x, y = lbl(-7.1, 3.6)                                      # logo: black square with a white fin
+inside.append(rects("tcm_logo", [(x - 1.2, y - 1.2, x + 1.2, y + 1.2)], lt + 0.002, M["ink"]))
+fin = [lbl(-7.1 + du, 3.6 + dv) for du, dv in ((-0.8, -0.7), (0.9, -0.7), (0.4, 0.8))]
+me = bpy.data.meshes.new("tcm_fin")
+me.from_pydata([(fx, fy, lt + 0.004) for fx, fy in fin], [], [(0, 1, 2)])
+o = bpy.data.objects.new("tcm_fin", me)
+scene.collection.objects.link(o)
+o.data.materials.append(M["sticker"])
+inside.append(o)
+for name, body, u, v, size, style in (("tcm_brand", "DOLPHIN", -5.5, 3.6, 2.6, "bold"),
+                                      ("tcm_model", "Model: TCM 515    CA 46/16", -7.9, 0.5, 1.05, "regular"),
+                                      ("tcm_part", "S3003-K515.1", -7.9, -1.4, 1.05, "regular"),
+                                      ("tcm_sn", "416001000070", -7.9, -3.3, 1.05, "regular")):
+    x, y = lbl(u, v)
+    inside.append(text(name, body, x, y, lt, size, M["ink"], rot, align="LEFT", style=style, depth=0.003))
+# data matrix (12 x 12, 0.27 mm cells): solid L finder on two edges, clock pattern on the others
+import random  # noqa: E402
+rng = random.Random(515)
+cells = []
+N, CELL = 12, 0.27
+u0, v0 = 4.6, -4.9
+for i in range(N):
+    for j in range(N):
+        on = (i == 0 or j == 0) or (j == N - 1 and i % 2 == 0) or (i == N - 1 and j % 2 == 0) or \
+             (0 < i < N - 1 and 0 < j < N - 1 and rng.random() < 0.5)
+        if on:
+            (ax, ay), (bx, by) = lbl(u0 + i * CELL, v0 + j * CELL), lbl(u0 + (i + 1) * CELL, v0 + (j + 1) * CELL)
+            cells.append((min(ax, bx), min(ay, by), max(ax, bx), max(ay, by)))
+inside.append(rects("tcm_dmc", cells, lt + 0.002, M["ink"]))
 # buttons (XKB TS-1187A)
 for i, (bx, by) in enumerate(BUTTONS):
     inside.append(box(f"sw{i}", bx - 2.55, by - 2.55, TOP_Z, bx + 2.55, by + 2.55, TOP_Z + 1.0, M["metal"], 0.1))
@@ -219,6 +428,26 @@ for o in list(scene.objects):
         o.parent = root
 root.scale = (0.01, 0.01, 0.01)
 center = Vector((OUT_W / 2, OUT_D / 2, BASE_H / 2)) * 0.01
+
+if MODE == "glb":
+    # 3D model for viewing (hardware/pcb-viewer.html, Blender, any glTF viewer): the board with
+    # its KiCad parts and the stand-ins above, in the closed case. glTF works in metres, so
+    # 1 mm = 0.001. Top-level nodes for the viewer's toggles: base, lid (with the light-pipe
+    # rods), pin0/pin1 (button push pins), board_group (board + parts), whip.
+    bpy.data.objects.remove(floor)
+    root.scale = (0.001, 0.001, 0.001)
+    # Hints for pcb-viewer.html (glTF extras): name in the parts list, hidden at first (it opens
+    # on the bare board), left out when framing the view (the whip is twice the case height).
+    for o, label, hidden in [(board_group, "Board with parts", False), (whip, "868 MHz whip", False),
+                             (base, "Case base", True), (lid, "Lid with light pipes", True),
+                             (pins[0], "Push pin FUNC", True), (pins[1], "Push pin RST", True)]:
+        o["viewer_label"] = label
+        o["viewer_hidden"] = hidden
+    whip["viewer_noframe"] = True
+    bpy.ops.export_scene.gltf(filepath=OUT, export_format="GLB", export_apply=True, export_yup=True,
+                              export_extras=True)
+    print("wrote", OUT)
+    sys.exit(0)
 
 # ---------------------------------------------------------------- lights, world, render
 world = bpy.data.worlds.new("world")
