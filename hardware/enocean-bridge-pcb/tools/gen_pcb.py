@@ -159,9 +159,8 @@ def route_rf(board, nets):
     track("/RF_ANT", [ant, (ant[0] + (ant[1] - y), y), (43.1, y)], 0.15)
     track("/RF_ANT", [(43.1, y), pad("L1", "1")], W)               # over C19 pad 1
     track("/RF_M1", [pad("L1", "2"), pad("L2", "1")], W)           # over C20 pad 1
-    track("/RF_2G4", [pad("L2", "2"), pad("R5", "1")], W)          # over C21 pad 1
     feed = pad("AE1", "1")
-    track("/RF_ANT_2G4", [pad("R5", "2"), (feed[0] - 1.0, y), (feed[0], y - 1.0), feed], W)  # over C22 pad 1
+    track("/RF_ANT_2G4", [pad("L2", "2"), (feed[0] - 1.0, y), (feed[0], y - 1.0), feed], W)
     # VSS_PA (inner pad) to the exposed pad, as in Nordic's reference
     vss = pad("U1", "F23")
     track("GND", [vss, (vss[0] - 0.4, vss[1])], 0.15)
@@ -230,7 +229,7 @@ def route_rf(board, nets):
 
     for fp in board.GetFootprints():
         ref = fp.GetReference()
-        if not ref.startswith("C") or ref in ("C19", "C20", "C21", "C22", "C26"):
+        if not ref.startswith("C") or ref in ("C19", "C20"):
             continue
         c = fp.GetPosition()
         for p in fp.Pads():
@@ -258,24 +257,19 @@ def route_rf(board, nets):
         for dy in (-1.5, 0.0, 1.5):
             via(ep[0] + dx, ep[1] + dy, d=0.4, drill=0.2)
     # ground: a via at every shunt's ground pad, and a fence above the line
-    for ref in ("C19", "C20", "C21", "C22"):
+    for ref in ("C19", "C20"):
         gx, gy = pad(ref, "2")
         track("GND", [(gx, gy), (gx, gy + 0.75)], 0.3)
         via(gx, gy + 0.75)
     for x in (44.6, 46.0, 47.4, 48.8, 50.2, 51.6, 53.0):
         via(x, y - 0.8)
 
-    # 868 MHz: TCM RF_50 -> node; node -> R7 -> whip hole, node -> R8 -> u.FL, C26 shunt at the node
+    # 868 MHz: TCM RF_50 -> node; node -> R7 -> whip hole
     node = placement.RF_NODE_868
     rf = pad("U4", "2")
-    track("/RF_868", [rf, node, pad("C26", "1")], W)
+    track("/RF_868", [rf, node], W)
     track("/RF_868", [node, pad("R7", "1")], W)
-    track("/RF_868", [node, pad("R8", "1")], W)
     track("/ANT_868", [pad("R7", "2"), pad("TP1", "1")], W)
-    track("/RF_UFL", [pad("R8", "2"), pad("J2", "1")], W)
-    gx, gy = pad("C26", "2")
-    track("GND", [(gx, gy), (gx, gy + 0.9)], 0.3)
-    via(gx, gy + 0.9)
     for num in ("1", "3"):          # TCM ground pads next to RF_50, stitched to the planes
         gx, gy = pad("U4", num)
         track("GND", [(gx, gy), (gx - 1.5, gy)], 0.3)
