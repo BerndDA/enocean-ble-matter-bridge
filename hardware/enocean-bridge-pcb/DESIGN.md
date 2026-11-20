@@ -200,6 +200,24 @@ Current result: routed by the first strategy, 0 unconnected, 0 DRC errors, schem
 
 **Ordering note:** the three vias in the pads of AC5/AC13/B19 are 0.25/0.15 mm. Order with epoxy-filled and capped vias (JLC "via in pad"), which applies to every via on the board.
 
+## Ordering at JLCPCB
+
+`python3 tools/export_fab.py` writes [fab/](fab/):
+
+| File | Use |
+| --- | --- |
+| [enocean-bridge-gerbers.zip](fab/enocean-bridge-gerbers.zip) | Gerbers (4 copper layers, mask, paste, silkscreen, outline) + Excellon drill; upload this as the PCB |
+| [enocean-bridge-bom.csv](fab/enocean-bridge-bom.csv) | BOM for assembly, 28 lines / 42 parts (JLC columns: Comment, Designator, Footprint, LCSC Part #) |
+| [enocean-bridge-cpl.csv](fab/enocean-bridge-cpl.csv) | Placement for assembly (Designator, Mid X, Mid Y, Layer, Rotation), top side only |
+
+**PCB:** 4 layers, 1.6 mm, stackup **JLC04161H-7628** (the 50 Ω lines are calculated for it), impedance control on, **epoxy-filled and capped vias** (via in pad at AC5, AC13 and B19 of the nRF52840), ENIG surface finish (flat pads for the 0.5 mm aQFN73 and the filled vias).
+
+**Assembly:** top side; JLC places everything except U4. Not in the BOM: U4 (TCM 515, hand-soldered after assembly), AE1 (antenna), JP1 (solder jumper), J3 (TC2030 pads), TP1 (whip hole): copper only.
+
+**Check in JLC's placement preview before confirming:**
+- the rotations of U1 (nRF52840, pin 1 marker), U2/U3 (SOT-23-5/6), Y1 and J1;
+- LED polarity: the cathode (pad 1) of D1–D3 is on the left; the anodes (right) go to +3V3.
+
 ## Cost estimate (2026-11-18)
 
 5 assembled boards at JLCPCB, rough, before the real quote:

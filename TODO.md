@@ -49,7 +49,7 @@ nRF52840 + TCM 515 + USB-C, pin-compatible with the Pro Micro build. Design, scr
 - [x] LCSC part for C20: C85877, Murata GJM1555C1H1R2CB01D (±0.25 pF; tighter ones aren't stocked).
 - [ ] Optional: fewer extended parts ($3.07 each at JLC): buttons and crystal from the basic library, or hand-solder the buttons.
 - [ ] Cosmetics: 7 silkscreen warnings on the board (J1 outline and JP1/AE1 references at the edge, U3/J3 references over pads).
-- [ ] Fabrication outputs: Gerbers, drill, BOM and CPL in JLC format (TCM 515 not assembled).
+- [x] Fabrication outputs: Gerbers, drill, BOM and CPL in JLC format (`tools/export_fab.py`, TCM 515 not assembled).
 - [ ] Get the exact JLC quote: JLC04161H-7628 stackup, impedance control, via in pad (epoxy-filled, capped; needed for AC5/AC13/B19). Check whether Economic assembly takes the aQFN73 or Standard is needed. Estimate: €200–290 for 5 boards incl. TCM 515 modules, shipping and VAT (DESIGN.md, "Cost estimate").
 - [ ] Check JLC stock of the nRF52840 (C3606858, 241 on 2026-11-18) right before ordering.
 - [ ] Order 5 × TCM 515 (Digi-Key 1084-TCM515, about €12.50 each).
