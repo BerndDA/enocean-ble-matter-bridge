@@ -49,7 +49,8 @@ config GATEWAY_STATUS_LEDS
 	  EnOcean gateway: TCM not answering). Yellow RX (LED2): a short pulse per
 	  packet from a bridged device. Green LINK is Nrf::Board's status LED
 	  (LED1). On by default when the devicetree has the carrier's LEDs
-	  (common/boards/enmt_carrier.overlay, `make BOARD=enmt`;
+	  (common/boards/enmt_carrier.overlay, `make BOARD=enmt`; enmt_dk.overlay,
+	  `make BOARD=enmt-dk`;
 	  common/boards/nrf52840dk_status_leds.dtsi on the DK). See
 	  status_leds/status_leds.h.
 

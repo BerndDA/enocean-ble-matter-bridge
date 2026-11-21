@@ -1,7 +1,8 @@
 # Shortcuts for building, flashing and testing the gateways. `make` lists the targets.
 # Every target sets up the SDK itself (scripts/ncs-env.sh); no need to source it first.
 # Add APP=enocean-gateway for the EnOcean gateway (default: the BLE gateway), and
-# BOARD=promicro or BOARD=promicro-uf2 for the Pro Micro nRF52840, BOARD=enmt for the EnMT carrier.
+# BOARD=promicro or BOARD=promicro-uf2 for the Pro Micro nRF52840, BOARD=enmt for the EnMT carrier,
+# BOARD=enmt-dk for the carrier build on a DK with the EnMT bootloader.
 
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
@@ -22,6 +23,9 @@ endif
 #   promicro-uf2  Pro Micro nRF52840 with its factory UF2 bootloader, flashed over USB
 #   enmt          EnMT carrier board (hardware/enocean-carrier): promicro-uf2 plus its three status
 #                 LEDs (firmware/common/boards/enmt_carrier.overlay); both apps
+#   enmt-dk       the enmt build on an nRF52840 DK with the EnMT bootloader (firmware/bootloader,
+#                 enmt_dk): status LEDs on LED1-3, Button 1 as function button, flashed over the
+#                 DK's nRF USB port (firmware/common/boards/enmt_dk.overlay); both apps
 # An exported BOARD from the shell is ignored.
 ifeq ($(origin BOARD),environment)
 BOARD    := dk
@@ -47,8 +51,14 @@ SUFFIX   := -enmt
 UF2      := 1
 PORT     ?= $(firstword $(filter-out /dev/cu.usbmodem000683%,$(wildcard /dev/cu.usbmodem*)))
 BOARD_ARGS := -DEXTRA_DTC_OVERLAY_FILE=$(CURDIR)/firmware/common/boards/enmt_carrier.overlay
+else ifeq ($(BOARD),enmt-dk)
+TARGET   := promicro_nrf52840/nrf52840/uf2
+SUFFIX   := -enmt-dk
+UF2      := 1
+PORT     ?= $(firstword $(filter-out /dev/cu.usbmodem000683%,$(wildcard /dev/cu.usbmodem*)))
+BOARD_ARGS := -DEXTRA_DTC_OVERLAY_FILE=$(CURDIR)/firmware/common/boards/enmt_dk.overlay
 else
-$(error BOARD must be dk, promicro, promicro-uf2 or enmt)
+$(error BOARD must be dk, promicro, promicro-uf2, enmt or enmt-dk)
 endif
 
 # Flash a build folder: west flash, or for promicro-uf2 the .uf2 copied to the bootloader drive

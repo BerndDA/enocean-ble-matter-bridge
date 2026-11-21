@@ -1,0 +1,51 @@
+/*
+ * nRF52840 DK standing in for the EnMT carrier: the carrier's UF2 build (promicro_nrf52840/nrf52840/uf2,
+ * the same as BOARD=enmt) with its status LEDs and function button on the DK's own LEDs and Button 1.
+ * For a DK with the EnMT bootloader for the DK (firmware/bootloader, board enmt_dk), flashed over
+ * the DK's nRF USB port (J3). `make BOARD=enmt-dk`.
+ *
+ * The DK's LEDs are active low, like the carrier's:
+ *   LED1  P0.13  green LINK  Matter/Thread status (Nrf::Board)
+ *   LED2  P0.14  yellow RX   short pulse per packet from a bridged device; Matter Identify blinks it
+ *   LED3  P0.15  red PWR     on; blinks while the app's health check fails
+ *   LED4  P0.16  stands in for the nice!nano's own LED
+ * Button 1 (P0.11) is the function button: held for 6 s, factory reset. P0.11 is i2c0's SCL in the
+ * Pro Micro board files; i2c0 is disabled in the apps' promicro_nrf52840_common.dtsi.
+ * See enmt_carrier.overlay and common/status_leds/.
+ */
+
+/* led0 keeps its label: the board's aliases (led0, mcuboot-led0) point at it. */
+&led0 {
+	gpios = <&gpio0 13 GPIO_ACTIVE_LOW>;
+	label = "LINK LED (green, LED1)";
+};
+
+&button0 {
+	gpios = <&gpio0 11 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+	label = "Function button (Button 1)";
+};
+
+/ {
+	leds {
+		led_rx: led_1 {
+			gpios = <&gpio0 14 GPIO_ACTIVE_LOW>;
+			label = "RX LED (yellow, LED2)";
+		};
+
+		led_pwr: led_2 {
+			gpios = <&gpio0 15 GPIO_ACTIVE_LOW>;
+			label = "PWR LED (red, LED3)";
+		};
+
+		led_module: led_3 {
+			gpios = <&gpio0 16 GPIO_ACTIVE_LOW>;
+			label = "LED4";
+		};
+	};
+
+	aliases {
+		led1 = &led_rx;
+		led2 = &led_pwr;
+		led3 = &led_module;
+	};
+};
