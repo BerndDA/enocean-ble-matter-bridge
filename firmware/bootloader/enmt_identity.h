@@ -51,7 +51,9 @@ void enmt_qr_payload(const enmt_product_t* product, const enmt_identity_t* id, c
 bool enmt_factory_data_parse(const uint8_t* data, size_t len, enmt_product_t* product);
 
 // Fills the two files (buffers of ENMT_FILE_MAX + 1 and ENMT_QR_HTM_MAX + 1).
-// product may be NULL (no factory data: no QR code).
-void enmt_identity_format(const enmt_identity_t* id, const enmt_product_t* product, char* matter_txt, char* qr_htm);
+// product may be NULL (no factory data: no QR code). ext_addr is the Thread extended address
+// (the status page's hostname), NULL if the gateway hasn't joined a Thread network.
+void enmt_identity_format(const enmt_identity_t* id, const enmt_product_t* product, const uint8_t* ext_addr,
+                          char* matter_txt, char* qr_htm);
 
 #endif // ENMT_IDENTITY_H

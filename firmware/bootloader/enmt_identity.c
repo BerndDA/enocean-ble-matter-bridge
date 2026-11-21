@@ -9,7 +9,8 @@
  *   discriminator  = first 2 bytes of h("discriminator"), big endian, & 0xFFF
  *   setup code     = 1 + (first 4 bytes of h("passcode<n>"), big endian) % 99999998,
  *                    n = 0, 1, ... until it isn't one of the codes Matter forbids
- * Vendor ID, product ID and product name come from the app's factory data (0xE9000).
+ * Vendor ID, product ID and product name come from the app's factory data (0xE9000), the status
+ * page's hostname (the Thread extended address) from its settings (enmt_settings.c).
  * The QR payload and manual code follow the Matter core spec 5.1.3 and 5.1.4; BLE discovery,
  * standard commissioning flow, like the codes the factory data generator prints.
  * Changing the derivation in the app means changing it here too: test/identity_test.c checks it.
@@ -317,7 +318,8 @@ static void add_manual_code(text_t* t, const char* code) {
   add(t, s);
 }
 
-void enmt_identity_format(const enmt_identity_t* id, const enmt_product_t* product, char* matter_txt, char* qr_htm) {
+void enmt_identity_format(const enmt_identity_t* id, const enmt_product_t* product, const uint8_t* ext_addr,
+                          char* matter_txt, char* qr_htm) {
   char manual[ENMT_MANUAL_CODE_LEN + 1];
   char qr[ENMT_QR_PAYLOAD_LEN + 1];
   bool const has_name = product && product->product_name[0];
@@ -364,6 +366,17 @@ void enmt_identity_format(const enmt_identity_t* id, const enmt_product_t* produ
   } else {
     add(&t, "No factory data: flash a gateway for the QR code\r\n");
   }
+  add(&t, "Status page: ");
+  if (ext_addr) {
+    add(&t, "http://");
+    for (int i = 0; i < 8; i++) {
+      char const hex[3] = {"0123456789ABCDEF"[ext_addr[i] >> 4], "0123456789ABCDEF"[ext_addr[i] & 0xF], '\0'};
+      add(&t, hex);
+    }
+    add(&t, ".local/\r\n");
+  } else {
+    add(&t, "not on a Thread network yet\r\n");
+  }
 
   // QR.HTM: straight to the QR viewer
   t = (text_t) {qr_htm, 0, ENMT_QR_HTM_MAX};
@@ -382,7 +395,10 @@ void enmt_identity_format(const enmt_identity_t* id, const enmt_product_t* produ
 //--------------------------------------------------------------------+
 
 #ifndef ENMT_IDENTITY_HOST_TEST
+#include "enmt_settings.h"
 #include "nrf.h"
+
+#define SETTINGS_SECTOR_SIZE 0x1000 // CONFIG_SETTINGS_NVS_SECTOR_SIZE_MULT=1 x flash page
 
 void enmt_identity_init(void) {
   char chip_id[ENMT_CHIP_ID_LEN + 1];
@@ -398,6 +414,11 @@ void enmt_identity_init(void) {
   enmt_product_t product;
   enmt_identity_derive(chip_id, &id);
   bool const has_product = enmt_factory_data_parse((const uint8_t*) FACTORY_DATA_ADDR, FACTORY_DATA_SIZE, &product);
-  enmt_identity_format(&id, has_product ? &product : NULL, enmt_matter_txt, enmt_qr_htm);
+  uint8_t ext_addr[8];
+  bool has_ext_addr = false;
+#ifdef BOARD_SETTINGS_ADDR
+  has_ext_addr = enmt_thread_ext_addr((const uint8_t*) BOARD_SETTINGS_ADDR, BOARD_SETTINGS_SIZE, SETTINGS_SECTOR_SIZE, ext_addr);
+#endif
+  enmt_identity_format(&id, has_product ? &product : NULL, has_ext_addr ? ext_addr : NULL, enmt_matter_txt, enmt_qr_htm);
 }
 #endif

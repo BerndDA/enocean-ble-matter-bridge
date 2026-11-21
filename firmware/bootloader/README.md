@@ -4,7 +4,7 @@ The Adafruit nRF52 UF2 bootloader 0.11.0 with an LED pattern on the carrier's th
 
 ```sh
 ./build.sh            # both boards into out/; or ./build.sh enmt_dk
-./test.sh             # host test of the pairing-code derivation
+./test.sh             # host tests: pairing codes, status page hostname from the settings
 ```
 
 Everything else (what's on the drive, settings and cloning, bootloader updates, the patch, testing on the DK) is on the wiki page [Bootloader](https://github.com/BerndDA/enocean-ble-matter-bridge/wiki/Bootloader).

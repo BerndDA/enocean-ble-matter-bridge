@@ -75,11 +75,14 @@ int main(int argc, char** argv) {
   enmt_product_t longest = {.vendor_id = 0xFFF1, .product_id = 0x8003};
   memset(longest.product_name, '&', sizeof(longest.product_name) - 1);
   enmt_identity_derive(boards[1].chip_id, &id);
-  enmt_identity_format(&id, &longest, txt, htm);
-  CHECK(strlen(txt) < ENMT_FILE_MAX && strstr(txt, "QR code image:"), "MATTER.TXT truncated (%zu)", strlen(txt));
+  static const uint8_t ext_addr[8] = {0x1A, 0x2B, 0x3C, 0x4D, 0x5E, 0x6F, 0x70, 0x81};
+  enmt_identity_format(&id, &longest, ext_addr, txt, htm);
+  CHECK(strlen(txt) < ENMT_FILE_MAX && strstr(txt, "Status page: http://1A2B3C4D5E6F7081.local/\r\n"),
+        "MATTER.TXT truncated or wrong (%zu)", strlen(txt));
   CHECK(strlen(htm) < ENMT_QR_HTM_MAX && strstr(htm, "MT%3A29801S0.03LB7674100\">"), "QR.HTM truncated (%zu)", strlen(htm));
-  enmt_identity_format(&id, NULL, txt, htm);
-  CHECK(strstr(txt, "No factory data") && !strstr(htm, "http"), "without factory data");
+  enmt_identity_format(&id, NULL, NULL, txt, htm);
+  CHECK(strstr(txt, "No factory data") && !strstr(htm, "http") && strstr(txt, "not on a Thread network"),
+        "without factory data and Thread");
 
   // A real factory_data.bin: print both files as the drive would show them
   if (argc > 1) {
@@ -88,7 +91,7 @@ int main(int argc, char** argv) {
     size_t const n = f ? fread(data, 1, sizeof(data), f) : 0;
     if (f) fclose(f);
     CHECK(enmt_factory_data_parse(data, n, &p), "parse %s", argv[1]);
-    enmt_identity_format(&id, &p, txt, htm);
+    enmt_identity_format(&id, &p, NULL, txt, htm);
     printf("--- MATTER.TXT (%zu bytes)\n%s--- QR.HTM (%zu bytes)\n%s", strlen(txt), txt, strlen(htm), htm);
   }
 
