@@ -162,7 +162,7 @@ index c988ee4..35761a4 100644
  
  // process SOC event from SD
 diff --git a/src/usb/uf2/ghostfat.c b/src/usb/uf2/ghostfat.c
-index 97753ef..e1467c2 100644
+index 97753ef..cdb73d4 100644
 --- a/src/usb/uf2/ghostfat.c
 +++ b/src/usb/uf2/ghostfat.c
 @@ -36,6 +36,10 @@
@@ -181,12 +181,12 @@ index 97753ef..e1467c2 100644
  static struct TextFile const info[] = {
      {.name = "INFO_UF2TXT", .content = infoUf2File},
 +#ifdef BOARD_IDENTITY_FILES
-+    {.name = "INDEX   HTM", .content = indexFile},
+     {.name = "INDEX   HTM", .content = indexFile},
 +    // Matter pairing codes of the gateway firmware, see enmt_identity.c
 +    {.name = "MATTER  TXT", .content = enmt_matter_txt},
 +    {.name = "QR      HTM", .content = enmt_qr_htm},
 +#else
-     {.name = "INDEX   HTM", .content = indexFile},
++    {.name = "INDEX   HTM", .content = indexFile},
 +#endif
  
      // current.uf2 must be the last element and its content must be NULL
@@ -196,12 +196,12 @@ index 97753ef..e1467c2 100644
  STATIC_ASSERT(NUM_DIRENTRIES < BPB_ROOT_DIR_ENTRIES);                            // FAT requirement -- Ensures BPB reserves sufficient entries for all files
  STATIC_ASSERT(NUM_DIRENTRIES < DIRENTRIES_PER_SECTOR); // GhostFAT bug workaround -- else, code overflows buffer
 +#ifdef BOARD_SETTINGS_ADDR
-+STATIC_ASSERT(NUM_DIRENTRIES + 2 < DIRENTRIES_PER_SECTOR); // SETTINGS.UF2, BOOTLOAD.UF2 after the others, in the first sector
++STATIC_ASSERT(NUM_DIRENTRIES + 3 < DIRENTRIES_PER_SECTOR); // SETTINGS.UF2, CUR_SET.UF2, BOOTLOAD.UF2 after the others, in the first sector
 +#endif
  
  #define NUM_SECTORS_IN_DATA_REGION (BPB_TOTAL_SECTORS - BPB_RESERVED_SECTORS - (BPB_NUMBER_OF_FATS * BPB_SECTORS_PER_FAT) - ROOT_DIR_SECTOR_COUNT)
  #define CLUSTER_COUNT              (NUM_SECTORS_IN_DATA_REGION / BPB_SECTORS_PER_CLUSTER)
-@@ -183,6 +197,68 @@ STATIC_ASSERT(UF2_SECTORS == ((UF2_SIZE/2) / 256)); // Not a requirement ... ens
+@@ -183,6 +197,74 @@ STATIC_ASSERT(UF2_SECTORS == ((UF2_SIZE/2) / 256)); // Not a requirement ... ens
  #define UF2_FIRST_SECTOR   ((NUM_FILES + 1) * BPB_SECTORS_PER_CLUSTER) // WARNING -- code presumes each non-UF2 file content fits in single sector
  #define UF2_LAST_SECTOR    ((UF2_FIRST_SECTOR + UF2_SECTORS - 1) * BPB_SECTORS_PER_CLUSTER)
  
@@ -211,7 +211,13 @@ index 97753ef..e1467c2 100644
 +#define SETTINGS_SECTORS      (BOARD_SETTINGS_SIZE / UF2_FIRMWARE_BYTES_PER_SECTOR)
 +#define SETTINGS_FIRST_SECTOR (UF2_LAST_SECTOR + 1)
 +#define SETTINGS_LAST_SECTOR  (SETTINGS_FIRST_SECTOR + SETTINGS_SECTORS - 1)
-+#define PREV_LAST_SECTOR      SETTINGS_LAST_SECTOR
++// CUR_SET.UF2: CURRENT.UF2 and SETTINGS.UF2 in one file (firmware, factory data and settings), so a
++// backup goes back in one copy. Blocks 0..UF2_SECTORS-1 are the app space, the rest the settings.
++#define CURSET_SECTORS        (UF2_SECTORS + SETTINGS_SECTORS)
++#define CURSET_FIRST_SECTOR   (SETTINGS_LAST_SECTOR + 1)
++#define CURSET_LAST_SECTOR    (CURSET_FIRST_SECTOR + CURSET_SECTORS - 1)
++STATIC_ASSERT(CURSET_SECTORS < MAX_BLOCKS);
++#define PREV_LAST_SECTOR      CURSET_LAST_SECTOR
 +#else
 +#define PREV_LAST_SECTOR      UF2_LAST_SECTOR
 +#endif
@@ -270,26 +276,28 @@ index 97753ef..e1467c2 100644
  #define FS_START_FAT0_SECTOR      BPB_RESERVED_SECTORS
  #define FS_START_FAT1_SECTOR      (FS_START_FAT0_SECTOR + BPB_SECTORS_PER_FAT)
  #define FS_START_ROOTDIR_SECTOR   (FS_START_FAT1_SECTOR + BPB_SECTORS_PER_FAT)
-@@ -234,6 +310,18 @@ static inline bool in_app_space (uint32_t addr)
+@@ -234,6 +316,20 @@ static inline bool in_app_space (uint32_t addr)
    return USER_FLASH_START <= addr && addr < USER_FLASH_END;
  }
  
 +#ifdef BOARD_SETTINGS_ADDR
-+// SETTINGS.UF2 written back: only blocks of a file shaped like the one read_block() serves
-+// (SETTINGS_SECTORS blocks, block number = position in the settings area), so a firmware .uf2
-+// can't overwrite the settings
++// SETTINGS.UF2 or CUR_SET.UF2 written back: settings blocks only from a file shaped like the ones
++// read_block() serves (SETTINGS_SECTORS blocks numbered by their position in the settings area, or
++// CURSET_SECTORS blocks with the settings after the app space), so a firmware .uf2 can't overwrite
++// the settings
 +static inline bool is_settings_block (UF2_Block const *bl)
 +{
-+  return BOARD_SETTINGS_ADDR <= bl->targetAddr && bl->targetAddr < BOARD_SETTINGS_ADDR + BOARD_SETTINGS_SIZE &&
-+         bl->numBlocks == SETTINGS_SECTORS &&
-+         bl->blockNo == (bl->targetAddr - BOARD_SETTINGS_ADDR) / UF2_FIRMWARE_BYTES_PER_SECTOR;
++  if (bl->targetAddr < BOARD_SETTINGS_ADDR || bl->targetAddr >= BOARD_SETTINGS_ADDR + BOARD_SETTINGS_SIZE) return false;
++  uint32_t const pos = (bl->targetAddr - BOARD_SETTINGS_ADDR) / UF2_FIRMWARE_BYTES_PER_SECTOR;
++  return (bl->numBlocks == SETTINGS_SECTORS && bl->blockNo == pos) ||
++         (bl->numBlocks == CURSET_SECTORS && bl->blockNo == UF2_SECTORS + pos);
 +}
 +#endif
 +
  // used when upgrading bootloader
  static inline bool in_bootloader_space (uint32_t addr)
  {
-@@ -252,6 +340,13 @@ static inline bool in_uicr_space(uint32_t addr)
+@@ -252,6 +348,13 @@ static inline bool in_uicr_space(uint32_t addr)
  
  void uf2_init(void)
  {
@@ -303,7 +311,7 @@ index 97753ef..e1467c2 100644
    strcat(infoUf2File, "SoftDevice: ");
  
    if ( is_sd_existed() )
-@@ -332,8 +427,17 @@ void read_block(uint32_t block_no, uint8_t *data) {
+@@ -332,8 +435,18 @@ void read_block(uint32_t block_no, uint8_t *data) {
          }
          for (uint32_t i = 0; i < FAT_ENTRIES_PER_SECTOR; ++i) { // Generate the FAT chain for the firmware "file"
              uint32_t v = (sectionIdx * FAT_ENTRIES_PER_SECTOR) + i;
@@ -313,6 +321,7 @@ index 97753ef..e1467c2 100644
 +            if (UF2_FIRST_SECTOR <= v && v <= UF2_LAST_SECTOR) last = UF2_LAST_SECTOR;
 +#ifdef BOARD_SETTINGS_ADDR
 +            else if (SETTINGS_FIRST_SECTOR <= v && v <= SETTINGS_LAST_SECTOR) last = SETTINGS_LAST_SECTOR;
++            else if (CURSET_FIRST_SECTOR <= v && v <= CURSET_LAST_SECTOR) last = CURSET_LAST_SECTOR;
 +#endif
 +#ifdef BOARD_BOOTLOADER_FILE
 +            else if (BOOTFILE_FIRST_SECTOR <= v && v < BOOTFILE_FIRST_SECTOR + bootfile_blocks())
@@ -323,7 +332,7 @@ index 97753ef..e1467c2 100644
          }
      } else if (block_no < FS_START_CLUSTERS_SECTOR) { // Requested root directory sector
  
-@@ -370,6 +474,34 @@ void read_block(uint32_t block_no, uint8_t *data) {
+@@ -370,6 +483,45 @@ void read_block(uint32_t block_no, uint8_t *data) {
              d->size = (inf->content ? strlen(inf->content) : UF2_SIZE);
          }
  
@@ -338,6 +347,17 @@ index 97753ef..e1467c2 100644
 +            d->updateDate       = __DOSDATE__;
 +            d->startCluster     = SETTINGS_FIRST_SECTOR;
 +            d->size             = SETTINGS_SECTORS * BPB_SECTOR_SIZE;
++            d++;
++
++            padded_memcpy(d->name, "CUR_SET UF2", 11);
++            d->createTimeFine   = __SECONDS_INT__ % 2 * 100;
++            d->createTime       = __DOSTIME__;
++            d->createDate       = __DOSDATE__;
++            d->lastAccessDate   = __DOSDATE__;
++            d->updateTime       = __DOSTIME__;
++            d->updateDate       = __DOSDATE__;
++            d->startCluster     = CURSET_FIRST_SECTOR;
++            d->size             = CURSET_SECTORS * BPB_SECTOR_SIZE;
 +            d++;
 +        }
 +#endif
@@ -358,7 +378,7 @@ index 97753ef..e1467c2 100644
      } else if (block_no < BPB_TOTAL_SECTORS) {
  
          sectionIdx -= FS_START_CLUSTERS_SECTOR;
-@@ -378,17 +510,40 @@ void read_block(uint32_t block_no, uint8_t *data) {
+@@ -378,17 +530,48 @@ void read_block(uint32_t block_no, uint8_t *data) {
          } else { // generate the UF2 file data on-the-fly
              sectionIdx -= NUM_FILES - 1;
              uint32_t addr = USER_FLASH_START + (sectionIdx * UF2_FIRMWARE_BYTES_PER_SECTOR);
@@ -375,7 +395,15 @@ index 97753ef..e1467c2 100644
 +                    numBlocks = SETTINGS_SECTORS;
 +                    blockNo = sectionIdx;
 +                }
-+                sectionIdx -= SETTINGS_SECTORS; // unsigned wrap below SETTINGS_SECTORS: no BOOTLOAD.UF2 block
++                sectionIdx -= SETTINGS_SECTORS; // unsigned wrap below SETTINGS_SECTORS: none of the files below
++                if (sectionIdx < CURSET_SECTORS) { // CUR_SET.UF2
++                    addr = sectionIdx < UF2_SECTORS
++                        ? USER_FLASH_START + sectionIdx * UF2_FIRMWARE_BYTES_PER_SECTOR
++                        : BOARD_SETTINGS_ADDR + (sectionIdx - UF2_SECTORS) * UF2_FIRMWARE_BYTES_PER_SECTOR;
++                    numBlocks = CURSET_SECTORS;
++                    blockNo = sectionIdx;
++                }
++                sectionIdx -= CURSET_SECTORS;
 +#endif
 +#ifdef BOARD_BOOTLOADER_FILE
 +                if (sectionIdx < bootfile_blocks()) { // BOOTLOAD.UF2
@@ -403,7 +431,7 @@ index 97753ef..e1467c2 100644
                  memcpy(bl->data, (void *)addr, bl->payloadSize);
              }
          }
-@@ -440,7 +595,15 @@ int write_block (uint32_t block_no, uint8_t *data, WriteState *state)
+@@ -440,7 +623,15 @@ int write_block (uint32_t block_no, uint8_t *data, WriteState *state)
        {
          PRINTF("Write addr = 0x%08lX, block = %ld (%ld of %ld)\r\n", bl->targetAddr, bl->blockNo, state->numWritten, bl->numBlocks);
          flash_nrf5x_write(bl->targetAddr, bl->data, bl->payloadSize, true);
@@ -420,7 +448,7 @@ index 97753ef..e1467c2 100644
        {
          // do nothing if writing to MBR, occurs when SD hex is included
          // keep going as successful write
-@@ -548,7 +711,7 @@ int write_block (uint32_t block_no, uint8_t *data, WriteState *state)
+@@ -548,7 +739,7 @@ int write_block (uint32_t block_no, uint8_t *data, WriteState *state)
          }
  
          // Offset to write the new bootloader address (skipping the App Data)
