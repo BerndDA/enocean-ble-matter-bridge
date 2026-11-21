@@ -11,6 +11,8 @@ defaults (pm_mount = "direct"); keep them in step when those change.
 Output: render-closed.png, render-exploded.png, render-open.png in the output folder.
 Mode "glb" (tools/render_case.sh glb): instead writes the scene as a glTF model to the file
 given as output (enocean-carrier.glb), for hardware/pcb-viewer.html.
+Mode "blend" (tools/render_case.sh blend): the scene of the USB clip (anim-usb), animated,
+saved as a .blend file to the file given as output instead of rendered.
 """
 import math
 import os
@@ -23,7 +25,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # for anim_case
 args = sys.argv[sys.argv.index("--") + 1:]
 WORK, OUT = args[0], args[1]
 SAMPLES = int(args[2]) if len(args) > 2 else 192
-MODE = args[3] if len(args) > 3 else "stills"        # "stills", "anim" (front view), "anim-usb" (USB side) or "glb"
+MODE = args[3] if len(args) > 3 else "stills"        # "stills", "anim" (front view), "anim-usb" (USB side), "glb" or "blend"
+SAVE = None
+if MODE == "blend":                                  # the anim-usb scene, saved instead of rendered
+    MODE, SAVE = "anim-usb", OUT
 FRAMES = args[4] if len(args) > 4 else ""            # anim: comma list of frames to render (test), default all
 
 # ---------------------------------------------------------------- dimensions (carrier_case.scad)
@@ -575,7 +580,7 @@ if MODE.startswith("anim"):
                   dict(BASE_H=BASE_H, TOP_Z=TOP_Z, SW_H=SW_H), OUT, FRAMES,
                   view="usb" if MODE == "anim-usb" else "front", plug=plug,
                   glows=glows if MODE == "anim-usb" else None, rod=rod,
-                  samples=SAMPLES)
+                  samples=SAMPLES, save=SAVE)
     raise SystemExit(0)
 shot("closed", (c.x + 0.95, c.y - 1.05, c.z + 0.75), (c.x, c.y, c.z + 0.02), lens=60, show_whip=True)
 shot("exploded", (c.x + 1.0, c.y - 1.15, c.z + 0.95), (c.x, c.y, c.z + 0.12), lens=55,

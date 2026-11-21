@@ -49,7 +49,7 @@ def ease(obj):
 
 
 def run(scene, cam, cam_data, target, center, lid, pins, whip, board_group, d, out, frames,
-        view="front", plug=None, glows=None, rod=None, samples=32):
+        view="front", plug=None, glows=None, rod=None, samples=32, save=None):
     """view "front": the buttons side; "usb": the USB end: the acrylic rods (children of the lid) drop
     into the light pipes, then a USB-C plug goes in and the LEDs light up: red, green, yellow once
     each, then green blinks three times. glows: [(colour name, rod material with a "light")]."""
@@ -147,6 +147,14 @@ def run(scene, cam, cam_data, target, center, lid, pins, whip, board_group, d, o
     scene.render.fps = FPS
     scene.frame_start, scene.frame_end = 1, end
     scene.render.image_settings.file_format = "PNG"
+
+    if save:                              # the scene as a .blend file instead of frames
+        scene.frame_set(1)
+        scene.render.filepath = "//anim-frames/f"
+        bpy.ops.file.pack_all()           # board textures from the KiCad GLB
+        bpy.ops.wm.save_as_mainfile(filepath=save, compress=True)
+        print("wrote", save)
+        return
 
     fdir = os.path.join(out, "anim-frames")
     os.makedirs(fdir, exist_ok=True)
