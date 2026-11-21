@@ -162,7 +162,7 @@ index c988ee4..35761a4 100644
  
  // process SOC event from SD
 diff --git a/src/usb/uf2/ghostfat.c b/src/usb/uf2/ghostfat.c
-index 97753ef..610c2e8 100644
+index 97753ef..e1467c2 100644
 --- a/src/usb/uf2/ghostfat.c
 +++ b/src/usb/uf2/ghostfat.c
 @@ -36,6 +36,10 @@
@@ -358,13 +358,14 @@ index 97753ef..610c2e8 100644
      } else if (block_no < BPB_TOTAL_SECTORS) {
  
          sectionIdx -= FS_START_CLUSTERS_SECTOR;
-@@ -378,17 +510,37 @@ void read_block(uint32_t block_no, uint8_t *data) {
+@@ -378,17 +510,40 @@ void read_block(uint32_t block_no, uint8_t *data) {
          } else { // generate the UF2 file data on-the-fly
              sectionIdx -= NUM_FILES - 1;
              uint32_t addr = USER_FLASH_START + (sectionIdx * UF2_FIRMWARE_BYTES_PER_SECTOR);
 -            if (addr < CFG_UF2_FLASH_SIZE) {
 +            uint32_t numBlocks = UF2_SECTORS;
 +            uint32_t familyID = CFG_UF2_BOARD_APP_ID;
++            uint32_t blockNo = sectionIdx; // block number within its own file
 +            if (sectionIdx >= UF2_SECTORS) {
 +                sectionIdx -= UF2_SECTORS;
 +                addr = CFG_UF2_FLASH_SIZE; // none
@@ -372,6 +373,7 @@ index 97753ef..610c2e8 100644
 +                if (sectionIdx < SETTINGS_SECTORS) { // SETTINGS.UF2
 +                    addr = BOARD_SETTINGS_ADDR + sectionIdx * UF2_FIRMWARE_BYTES_PER_SECTOR;
 +                    numBlocks = SETTINGS_SECTORS;
++                    blockNo = sectionIdx;
 +                }
 +                sectionIdx -= SETTINGS_SECTORS; // unsigned wrap below SETTINGS_SECTORS: no BOOTLOAD.UF2 block
 +#endif
@@ -380,6 +382,7 @@ index 97753ef..610c2e8 100644
 +                    addr = bootfile_addr(sectionIdx);
 +                    numBlocks = bootfile_blocks();
 +                    familyID = CFG_UF2_FAMILY_BOOT_ID;
++                    blockNo = sectionIdx;
 +                }
 +#endif
 +            }
@@ -388,8 +391,9 @@ index 97753ef..610c2e8 100644
                  bl->magicStart0 = UF2_MAGIC_START0;
                  bl->magicStart1 = UF2_MAGIC_START1;
                  bl->magicEnd = UF2_MAGIC_END;
-                 bl->blockNo = sectionIdx;
+-                bl->blockNo = sectionIdx;
 -                bl->numBlocks = UF2_SECTORS;
++                bl->blockNo = blockNo;
 +                bl->numBlocks = numBlocks;
                  bl->targetAddr = addr;
                  bl->payloadSize = UF2_FIRMWARE_BYTES_PER_SECTOR;
@@ -399,7 +403,7 @@ index 97753ef..610c2e8 100644
                  memcpy(bl->data, (void *)addr, bl->payloadSize);
              }
          }
-@@ -440,7 +592,15 @@ int write_block (uint32_t block_no, uint8_t *data, WriteState *state)
+@@ -440,7 +595,15 @@ int write_block (uint32_t block_no, uint8_t *data, WriteState *state)
        {
          PRINTF("Write addr = 0x%08lX, block = %ld (%ld of %ld)\r\n", bl->targetAddr, bl->blockNo, state->numWritten, bl->numBlocks);
          flash_nrf5x_write(bl->targetAddr, bl->data, bl->payloadSize, true);
@@ -416,7 +420,7 @@ index 97753ef..610c2e8 100644
        {
          // do nothing if writing to MBR, occurs when SD hex is included
          // keep going as successful write
-@@ -548,7 +708,7 @@ int write_block (uint32_t block_no, uint8_t *data, WriteState *state)
+@@ -548,7 +711,7 @@ int write_block (uint32_t block_no, uint8_t *data, WriteState *state)
          }
  
          // Offset to write the new bootloader address (skipping the App Data)
