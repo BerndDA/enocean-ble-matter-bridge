@@ -63,3 +63,43 @@ index c02a278..60e87aa 100644
  #ifdef LED_NEOPIXEL
  
  // WS2812B (rev B) timing is 0.4 and 0.8 us
+diff --git a/src/usb/uf2/ghostfat.c b/src/usb/uf2/ghostfat.c
+index 97753ef..401325c 100644
+--- a/src/usb/uf2/ghostfat.c
++++ b/src/usb/uf2/ghostfat.c
+@@ -36,6 +36,10 @@
+ #include "bootloader_settings.h"
+ #include "bootloader.h"
+ 
++#ifdef BOARD_IDENTITY_FILES
++#include "enmt_identity.h"
++#endif
++
+ //--------------------------------------------------------------------+
+ //
+ //--------------------------------------------------------------------+
+@@ -142,7 +146,13 @@ const char indexFile[] =
+ 
+ static struct TextFile const info[] = {
+     {.name = "INFO_UF2TXT", .content = infoUf2File},
++#ifdef BOARD_IDENTITY_FILES
++    // Matter pairing codes of the gateway firmware, see enmt_identity.c; no INDEX.HTM
++    {.name = "MATTER  TXT", .content = enmt_matter_txt},
++    {.name = "QR      HTM", .content = enmt_qr_htm},
++#else
+     {.name = "INDEX   HTM", .content = indexFile},
++#endif
+ 
+     // current.uf2 must be the last element and its content must be NULL
+     {.name = "CURRENT UF2", .content = NULL},
+@@ -252,6 +262,10 @@ static inline bool in_uicr_space(uint32_t addr)
+ 
+ void uf2_init(void)
+ {
++#ifdef BOARD_IDENTITY_FILES
++  enmt_identity_init();
++#endif
++
+   strcat(infoUf2File, "SoftDevice: ");
+ 
+   if ( is_sd_existed() )

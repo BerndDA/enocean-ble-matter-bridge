@@ -22,9 +22,9 @@ if [ ! -d "$SRC" ]; then
 fi
 
 # Fresh patch and board files on every build
-/usr/bin/git -C "$SRC" checkout -q -- Makefile src/boards/boards.c
+/usr/bin/git -C "$SRC" checkout -q -- Makefile src/boards/boards.c src/usb/uf2/ghostfat.c
 /usr/bin/git -C "$SRC" apply "$HERE/boards.patch"
-cp "$HERE/enmt_leds.h" "$SRC/src/boards/"
+cp "$HERE/enmt_leds.h" "$HERE/enmt_identity.c" "$HERE/enmt_identity.h" "$SRC/src/boards/"
 for b in "$HERE"/boards/*/; do
 	rm -rf "$SRC/src/boards/$(basename "$b")"
 	cp -R "${b%/}" "$SRC/src/boards/"

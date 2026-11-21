@@ -1,6 +1,11 @@
-# UF2 bootloader with the EnMT LED pattern
+# UF2 bootloader for the EnMT carrier
 
-The Adafruit nRF52 UF2 bootloader 0.11.0 (the same one as tested in `spike/uf2-bootloader-dk`, same flash layout) with its LED code replaced by a pattern for the EnMT carrier's three status LEDs. The built-in LED of the nice!nano stays off.
+The Adafruit nRF52 UF2 bootloader 0.11.0 (the same one as tested in `spike/uf2-bootloader-dk`, same flash layout) with two additions:
+
+- an LED pattern on the EnMT carrier's three status LEDs, in place of its own LED code; the built-in LED of the nice!nano stays off
+- the gateway's Matter pairing codes on the UF2 drive (`MATTER.TXT`, `QR.HTM`)
+
+## LEDs
 
 | Bootloader state | LEDs |
 |---|---|
@@ -16,18 +21,33 @@ Two boards:
 - `enmt`: the carrier (green P1.13, yellow P1.15, red P1.11, all active low). Holding FUNC (P1.06) while resetting also opens the UF2 drive. USB IDs of the nice!nano, so a stock nice!nano bootloader accepts `update-enmt_bootloader-*_nosd.uf2`.
 - `enmt_dk`: the nRF52840 DK as a stand-in, on LED1 (green), LED2 (yellow) and LED3 (red), like `firmware/common/boards/nrf52840dk_status_leds.dtsi`. Button 1 held at reset opens the UF2 drive.
 
+## Pairing codes on the drive
+
+The gateways derive their serial number, discriminator and setup code from the chip ID at boot (`firmware/common/identity/`); nothing of it is stored in flash. The bootloader repeats that derivation (`enmt_identity.c`) and reads vendor ID, product ID and product name from the app's factory data at 0xE9000, so the drive shows:
+
+- `MATTER.TXT`: product, vendor and product ID, chip ID, serial number, discriminator, setup code, manual pairing code, QR payload and a link that shows the QR code
+- `QR.HTM`: opens the QR code straight away (in place of `INDEX.HTM`, which led to the board's web page)
+
+The codes match `make identity` and are valid for every gateway build (they all use `CONFIG_GATEWAY_IDENTITY_FROM_CHIP_ID`). Without factory data, e.g. on an erased chip, there is no QR code. Both open the Matter project's QR viewer on github.io and sends it the payload.
+
+If the derivation in the app changes, `enmt_identity.c` has to change with it. `./test.sh` checks it on the Mac against the codes the factory data generator printed for three boards, and with a `factory_data.bin` as argument it also prints both files:
+
+```sh
+./test.sh ../enocean-gateway/build-enmt/matter_factory_data/zephyr/factory_data.bin
+```
+
 ## Build
 
 ```sh
 ./build.sh            # both boards; or ./build.sh enmt_dk
 ```
 
-It clones the bootloader into `_src/` (ignored), applies `boards.patch`, copies `boards/*` and `enmt_leds.h` into it, and builds with the nRF Connect SDK's `arm-zephyr-eabi-gcc`. No separate ARM toolchain is needed; the Makefile part of the patch handles picolibc in place of newlib-nano. Output in `out/`:
+It clones the bootloader into `_src/` (ignored), applies `boards.patch`, copies `boards/*`, `enmt_leds.h` and `enmt_identity.*` into it, and builds with the nRF Connect SDK's `arm-zephyr-eabi-gcc`. No separate ARM toolchain is needed; the Makefile part of the patch handles picolibc in place of newlib-nano. Output in `out/`:
 
 - `<board>_bootloader-0.11.0-enmt_nosd.hex`: MBR + bootloader + settings + UICR, for nrfjprog
 - `update-<board>_bootloader-0.11.0-enmt_nosd.uf2`: bootloader update to drop on a running UF2 drive
 
-The LED code is in `enmt_leds.h`. `boards.patch` only adds a third PWM channel and swaps out `led_tick()`/`led_state()` in `boards.c` for boards that define `BOARD_LEDS_ENMT`.
+`boards.patch` changes three files: `boards.c` gets a third PWM channel and takes `led_tick()`/`led_state()` from `enmt_leds.h` for boards that define `BOARD_LEDS_ENMT`; `ghostfat.c` serves `MATTER.TXT` and `QR.HTM` instead of `INDEX.HTM` for boards that set `BOARD_IDENTITY_FILES` (in their `board.mk`, which also adds `enmt_identity.c` and tinycrypt's SHA-256); the Makefile handles the toolchain. The bootloader uses about 35 of its 38 KB.
 
 ## Test on the DK
 

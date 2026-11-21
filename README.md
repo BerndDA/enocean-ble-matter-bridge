@@ -13,7 +13,7 @@ Both are based on the nRF Connect SDK Matter Bridge application and are meant fo
 | --- | --- |
 | [firmware/ble-gateway/](firmware/ble-gateway/) | The BLE gateway app |
 | [firmware/enocean-gateway/](firmware/enocean-gateway/) | The EnOcean gateway app |
-| [firmware/bootloader/](firmware/bootloader/) | UF2 bootloader for the EnMT carrier (and the DK as a stand-in) with an LED pattern on the three status LEDs |
+| [firmware/bootloader/](firmware/bootloader/) | UF2 bootloader for the EnMT carrier (and the DK as a stand-in): LED pattern on the three status LEDs, Matter pairing codes on the UF2 drive |
 | [firmware/common/](firmware/common/) | Shared by both apps: bridge core, Matter device types, Matter identity from the chip ID, network log, shared Kconfig (`common.cmake`, `Kconfig`) |
 | [Makefile](Makefile) | Shortcuts: build, flash, tests, shell, measurements (`make` lists them; `APP=enocean-gateway` for the EnOcean gateway) |
 | [scripts/](scripts/) | `ncs-env.sh` sets up the SDK and toolchain; `diag-capture.py` and `diag-summary.py` for measurements |
