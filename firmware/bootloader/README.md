@@ -5,6 +5,7 @@ The Adafruit nRF52 UF2 bootloader 0.11.0 (the same one as tested in `spike/uf2-b
 - an LED pattern on the EnMT carrier's three status LEDs, in place of its own LED code; the built-in LED of the nice!nano stays off
 - the gateway's Matter pairing codes on the UF2 drive (`MATTER.TXT`, `QR.HTM`)
 - the gateway's settings as `SETTINGS.UF2`, to back up, restore or clone onto another board
+- the installed bootloader as `BOOTLOAD.UF2`, to install it on another board
 
 ## LEDs
 
@@ -55,6 +56,20 @@ The file contains the Thread network key and the Matter operational keys unencry
 
 Tested on the DK: download, upload of empty settings (the app started without bridged devices), a file with a wrong block count (ignored), and restoring the download (all bridged devices back). Don't read the chip over the J-Link (`nrfjprog --readcode`, `--readregs`) while the drive is mounted: that halts the CPU, macOS then drops the USB device and the next copy fails.
 
+## Bootloader download and updates
+
+`BOOTLOAD.UF2` is the installed bootloader as a bootloader update, the same as `update-<board>_bootloader-*_nosd.uf2` from the build: the bootloader's image (its end comes from its own linker symbols), its config block and the UICR block with the bootloader address. Copied onto another board's drive, it installs this bootloader there and keeps app, factory data and settings. A board takes it only if its own bootloader has the same USB IDs (an `enmt_dk` bootloader doesn't go onto a carrier).
+
+How a bootloader update writes: a bootloader can't overwrite itself while it runs, so the new bootloader goes to a 40 KB staging area in the app space first. Once complete, the Nordic MBR copies it into place; the MBR records the job in its params page (0xFE000) and finishes it after a power loss. The stock bootloader stages at 0xE0000–0xEA000, which puts the config block at 0xE9800, inside the gateways' factory data page. This one stages at 0xDF000–0xE9000 (`BOARD_BL_STAGING_ADDR` in `board.mk`) and leaves the factory data page alone. Hence the gateways' UF2 layout (`boards/promicro_nrf52840_nrf52840_uf2.overlay` of both apps):
+
+- the app partition ends at 0xDF000 (888 KB); a larger app fails to link instead of losing its end at the next bootloader update
+- the factory data at 0xE9000 may use only its first 2 KB, for boards that still have the stock bootloader
+- `scripts/make-uf2.py` refuses a `.uf2` with data in 0xDF000–0xE9000 or 0xE9800–0xEA000
+
+The MBR copies the whole staging area, so after an update the unused end of the bootloader region holds whatever was at the end of the staging area (with the stock bootloader: a copy of the factory data page). That's harmless, and the reason why `BOOTLOAD.UF2` takes the image end from the linker instead of looking for the last non-empty flash.
+
+Tested on the DK: an update to a bootloader with another version string and back, each verified against its build; the factory data page stayed byte for byte the same.
+
 ## Build
 
 ```sh
@@ -69,11 +84,11 @@ It clones the bootloader into `_src/` (ignored), applies `boards.patch`, copies 
 `boards.patch` changes, each for boards that switch it on in `board.mk` or `board.h`:
 
 - `boards.c`: a third PWM channel, and `led_tick()`/`led_state()` from `enmt_leds.h` (`BOARD_LEDS_ENMT`)
-- `ghostfat.c`: `MATTER.TXT` and `QR.HTM` instead of `INDEX.HTM` (`BOARD_IDENTITY_FILES`; `board.mk` also adds `enmt_identity.c` and tinycrypt's SHA-256), and `SETTINGS.UF2` (`BOARD_SETTINGS_ADDR`, `BOARD_SETTINGS_SIZE`)
+- `ghostfat.c`: `MATTER.TXT` and `QR.HTM` instead of `INDEX.HTM` (`BOARD_IDENTITY_FILES`; `board.mk` also adds `enmt_identity.c` and tinycrypt's SHA-256), `SETTINGS.UF2` (`BOARD_SETTINGS_ADDR`, `BOARD_SETTINGS_SIZE`), and `BOOTLOAD.UF2` (`BOARD_BOOTLOADER_FILE`)
 - `main.c`, `bootloader.c`, Makefile: no BLE OTA DFU (`NO_BLE_OTA = 1`). It needs a SoftDevice, which the gateways' layout doesn't have. Serial DFU over the bootloader's USB serial port (`adafruit-nrfutil`) stays as a fallback to the UF2 drive.
 - Makefile: the toolchain
 
-The bootloader uses about 30 of its 38 KB.
+The bootloader uses about 31 of its 38 KB.
 
 ## Test on the DK
 

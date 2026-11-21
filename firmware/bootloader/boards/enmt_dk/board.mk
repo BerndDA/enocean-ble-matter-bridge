@@ -11,3 +11,10 @@ CFLAGS += -DBOARD_SETTINGS_ADDR=0xEA000 -DBOARD_SETTINGS_SIZE=0x8000
 
 # No BLE OTA: it needs a SoftDevice, which the gateways' UF2 layout doesn't have (saves about 4.5 KB)
 NO_BLE_OTA = 1
+
+# BOOTLOAD.UF2: the installed bootloader as a bootloader update, to copy onto another board
+CFLAGS += -DBOARD_BOOTLOADER_FILE
+
+# Stage bootloader updates at 0xDF000-0xE9000 instead of 0xE0000-0xEA000, so they don't touch the
+# gateways' factory data page at 0xE9000 (their app ends at 0xDF000)
+CFLAGS += -DBOARD_BL_STAGING_ADDR=0xDF000

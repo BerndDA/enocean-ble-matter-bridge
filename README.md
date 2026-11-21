@@ -13,7 +13,7 @@ Both are based on the nRF Connect SDK Matter Bridge application and are meant fo
 | --- | --- |
 | [firmware/ble-gateway/](firmware/ble-gateway/) | The BLE gateway app |
 | [firmware/enocean-gateway/](firmware/enocean-gateway/) | The EnOcean gateway app |
-| [firmware/bootloader/](firmware/bootloader/) | UF2 bootloader for the EnMT carrier (and the DK as a stand-in): LED pattern on the three status LEDs, Matter pairing codes and settings backup/restore (cloning) over the UF2 drive |
+| [firmware/bootloader/](firmware/bootloader/) | UF2 bootloader for the EnMT carrier (and the DK as a stand-in): LED pattern on the three status LEDs, Matter pairing codes, settings backup/restore (cloning) and bootloader download over the UF2 drive |
 | [firmware/common/](firmware/common/) | Shared by both apps: bridge core, Matter device types, Matter identity from the chip ID, network log, shared Kconfig (`common.cmake`, `Kconfig`) |
 | [Makefile](Makefile) | Shortcuts: build, flash, tests, shell, measurements (`make` lists them; `APP=enocean-gateway` for the EnOcean gateway) |
 | [scripts/](scripts/) | `ncs-env.sh` sets up the SDK and toolchain; `diag-capture.py` and `diag-summary.py` for measurements |
@@ -190,8 +190,8 @@ The Pro Micro (also sold as nice!nano clone or "SuperMini") is a second option n
 | --- | --- | --- | --- |
 | Flashing | J-Link on board | `.uf2` file over USB | SWD from the DK's Debug Out |
 | Bootloader | MCUboot, Matter OTA prepared | Adafruit UF2, no OTA | none, no OTA |
-| Flash (debug / release) | 866 / 783 KB of 952 KB | 845 / 769 KB of 928 KB | 845 / 769 KB of 988 KB |
-| Full erase | `make flash-erase` | not possible over UF2; use the factory reset | `make flash-erase BOARD=promicro` |
+| Flash (debug / release) | 866 / 783 KB of 952 KB | 845 / 769 KB of 888 KB | 845 / 769 KB of 988 KB |
+| Full erase | `make flash-erase` | not possible over UF2; use the factory reset (EnMT bootloader: empty `SETTINGS.UF2`, see [firmware/bootloader](firmware/bootloader/README.md)) | `make flash-erase BOARD=promicro` |
 | RAM (reserved at build time) | 213 KB | 218 KB (USB stack) | 218 KB |
 | Shell | UART through the J-Link | USB CDC on the board's own USB port | same |
 | Factory reset | hold Button 1 for 6 s | optional button between P1.06 and GND, held for 6 s, or `matter device factoryreset` in the shell | same |
@@ -234,7 +234,7 @@ The nRF52840 DK isn't a supported board for the SDK's Matter Bridge. Two sets of
 
 The Pro Micro uses the board definition that ships with Zephyr: `promicro_nrf52840/nrf52840` for SWD and `promicro_nrf52840/nrf52840/uf2` for UF2. The project adds:
 - `boards/promicro_nrf52840_nrf52840.{overlay,conf}` (SWD): app from 0x0, with factory data and settings at the same addresses as on the DK.
-- `boards/promicro_nrf52840_nrf52840_uf2.{overlay,conf}` (UF2): app from 0x1000 after the MBR, factory data at 0xe9000, settings at 0xea000. The bootloader only writes up to 0xea000, and keeps the 40 KB above that for the app's data. The overlay has the full map.
+- `boards/promicro_nrf52840_nrf52840_uf2.{overlay,conf}` (UF2): app from 0x1000 after the MBR up to 0xdf000, factory data at 0xe9000, settings at 0xea000. The bootloader only writes up to 0xea000, and keeps the 40 KB above that for the app's data. 0xdf000–0xe9000 stays free because a bootloader update stages the new bootloader there (see [firmware/bootloader](firmware/bootloader/README.md)). The overlay has the full map.
 - `boards/promicro_nrf52840_common.dtsi`: the function button and the disabled peripherals, used by both.
 
 `Kconfig.sysbuild` turns off MCUboot and Matter OTA for the Pro Micro.

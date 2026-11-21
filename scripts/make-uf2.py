@@ -40,6 +40,11 @@ from intelhex import IntelHex
 FAMILY_NRF52840 = "0xADA52840"
 # Adafruit_nRF52_Bootloader: USER_FLASH_START = MBR size, USER_FLASH_END = bootloader - 40 KB
 UF2_WRITABLE = (0x1000, 0xEA000)
+# A bootloader update stages the new bootloader in 40 KB of the app space before copying it into
+# place: the EnMT bootloader at 0xDF000-0xE9000, the stock one at 0xE0000-0xEA000 (its config block
+# at 0xE9800, in the factory data page). Data must stay out of both (firmware/bootloader/README.md):
+# the app ends below 0xDF000, the factory data at 0xE9000 below 0xE9800.
+BOOTLOADER_STAGING = [(0xDF000, 0xE9000), (0xE9800, 0xEA000)]
 UF2CONV = os.path.join(os.environ.get("ZEPHYR_BASE", ""), "scripts", "build", "uf2conv.py")
 
 ZEPHYR_USB_VID = 0x2FE3  # CONFIG_CDC_ACM_SERIAL_VID
@@ -257,6 +262,10 @@ def main():
         if start < UF2_WRITABLE[0] or end > UF2_WRITABLE[1]:
             sys.exit("make-uf2: 0x%06x-0x%06x is outside the range the UF2 bootloader writes (0x%06x-0x%06x)"
                      % (start, end, *UF2_WRITABLE))
+        for s_start, s_end in BOOTLOADER_STAGING:
+            if start < s_end and end > s_start:
+                sys.exit("make-uf2: 0x%06x-0x%06x overlaps 0x%06x-0x%06x, which a bootloader update overwrites"
+                         % (start, end, s_start, s_end))
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_hex = os.path.join(tmp, "merged.hex")

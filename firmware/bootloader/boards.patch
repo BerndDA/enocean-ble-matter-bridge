@@ -162,7 +162,7 @@ index c988ee4..35761a4 100644
  
  // process SOC event from SD
 diff --git a/src/usb/uf2/ghostfat.c b/src/usb/uf2/ghostfat.c
-index 97753ef..1bbf354 100644
+index 97753ef..a01b97e 100644
 --- a/src/usb/uf2/ghostfat.c
 +++ b/src/usb/uf2/ghostfat.c
 @@ -36,6 +36,10 @@
@@ -195,12 +195,12 @@ index 97753ef..1bbf354 100644
  STATIC_ASSERT(NUM_DIRENTRIES < BPB_ROOT_DIR_ENTRIES);                            // FAT requirement -- Ensures BPB reserves sufficient entries for all files
  STATIC_ASSERT(NUM_DIRENTRIES < DIRENTRIES_PER_SECTOR); // GhostFAT bug workaround -- else, code overflows buffer
 +#ifdef BOARD_SETTINGS_ADDR
-+STATIC_ASSERT(NUM_DIRENTRIES + 1 < DIRENTRIES_PER_SECTOR); // SETTINGS.UF2 after the others, in the first sector
++STATIC_ASSERT(NUM_DIRENTRIES + 2 < DIRENTRIES_PER_SECTOR); // SETTINGS.UF2, BOOTLOAD.UF2 after the others, in the first sector
 +#endif
  
  #define NUM_SECTORS_IN_DATA_REGION (BPB_TOTAL_SECTORS - BPB_RESERVED_SECTORS - (BPB_NUMBER_OF_FATS * BPB_SECTORS_PER_FAT) - ROOT_DIR_SECTOR_COUNT)
  #define CLUSTER_COUNT              (NUM_SECTORS_IN_DATA_REGION / BPB_SECTORS_PER_CLUSTER)
-@@ -183,6 +196,17 @@ STATIC_ASSERT(UF2_SECTORS == ((UF2_SIZE/2) / 256)); // Not a requirement ... ens
+@@ -183,6 +196,68 @@ STATIC_ASSERT(UF2_SECTORS == ((UF2_SIZE/2) / 256)); // Not a requirement ... ens
  #define UF2_FIRST_SECTOR   ((NUM_FILES + 1) * BPB_SECTORS_PER_CLUSTER) // WARNING -- code presumes each non-UF2 file content fits in single sector
  #define UF2_LAST_SECTOR    ((UF2_FIRST_SECTOR + UF2_SECTORS - 1) * BPB_SECTORS_PER_CLUSTER)
  
@@ -210,15 +210,66 @@ index 97753ef..1bbf354 100644
 +#define SETTINGS_SECTORS      (BOARD_SETTINGS_SIZE / UF2_FIRMWARE_BYTES_PER_SECTOR)
 +#define SETTINGS_FIRST_SECTOR (UF2_LAST_SECTOR + 1)
 +#define SETTINGS_LAST_SECTOR  (SETTINGS_FIRST_SECTOR + SETTINGS_SECTORS - 1)
-+#define LAST_FILE_SECTOR      SETTINGS_LAST_SECTOR
++#define PREV_LAST_SECTOR      SETTINGS_LAST_SECTOR
 +#else
-+#define LAST_FILE_SECTOR      UF2_LAST_SECTOR
++#define PREV_LAST_SECTOR      UF2_LAST_SECTOR
++#endif
++
++#ifdef BOARD_BOOTLOADER_FILE
++// BOOTLOAD.UF2: the installed bootloader as a bootloader update, like update-*_nosd.uf2 of its
++// build: this bootloader's image (code and initialized data, from its linker symbols), the
++// non-empty chunks of the config block, then the UICR block. Copied onto another board's drive,
++// it installs this bootloader. The rest of the bootloader region is left out on purpose: a
++// bootloader update copies its whole 40 KB staging area (BOOTLOADER_ADDR_NEW_RECEIVED) into the
++// region, so old app or factory data can sit there, and it must not be staged onto another board.
++// bootfile_scan() counts the blocks at uf2_init().
++#define BOOTFILE_CFG_START    (BOOTLOADER_ADDR_END - 0x800) // BOOTLOADER_CONFIG in the linker script
++#define BOOTFILE_CFG_CHUNKS   (0x800 / UF2_FIRMWARE_BYTES_PER_SECTOR)
++#define BOOTFILE_FIRST_SECTOR (PREV_LAST_SECTOR + 1)
++
++static uint32_t bootfile_code_chunks;
++static uint8_t  bootfile_cfg[BOOTFILE_CFG_CHUNKS];
++static uint32_t bootfile_cfg_count;
++
++static bool chunk_is_empty(uint32_t addr)
++{
++  uint32_t const *p = (uint32_t const *) addr;
++  for (uint32_t i = 0; i < UF2_FIRMWARE_BYTES_PER_SECTOR / 4; i++) {
++    if (p[i] != 0xFFFFFFFF) return false;
++  }
++  return true;
++}
++
++extern uint32_t __etext, __data_start__, __data_end__; // nrf_common.ld
++
++static void bootfile_scan(void)
++{
++  uint32_t const image_end = (uint32_t) &__etext + ((uint32_t) &__data_end__ - (uint32_t) &__data_start__);
++  bootfile_code_chunks = (image_end - BOOTLOADER_ADDR_START + UF2_FIRMWARE_BYTES_PER_SECTOR - 1) / UF2_FIRMWARE_BYTES_PER_SECTOR;
++  bootfile_cfg_count = 0;
++  for (uint32_t i = 0; i < BOOTFILE_CFG_CHUNKS; i++) {
++    if (!chunk_is_empty(BOOTFILE_CFG_START + i * UF2_FIRMWARE_BYTES_PER_SECTOR)) bootfile_cfg[bootfile_cfg_count++] = (uint8_t) i;
++  }
++}
++
++static inline uint32_t bootfile_blocks(void)
++{
++  return bootfile_code_chunks + bootfile_cfg_count + 1; // + UICR
++}
++
++static uint32_t bootfile_addr(uint32_t block)
++{
++  if (block < bootfile_code_chunks) return BOOTLOADER_ADDR_START + block * UF2_FIRMWARE_BYTES_PER_SECTOR;
++  block -= bootfile_code_chunks;
++  if (block < bootfile_cfg_count) return BOOTFILE_CFG_START + bootfile_cfg[block] * UF2_FIRMWARE_BYTES_PER_SECTOR;
++  return 0x10001000; // UICR: bootloader and MBR params addresses, checked by write_block()
++}
 +#endif
 +
  #define FS_START_FAT0_SECTOR      BPB_RESERVED_SECTORS
  #define FS_START_FAT1_SECTOR      (FS_START_FAT0_SECTOR + BPB_SECTORS_PER_FAT)
  #define FS_START_ROOTDIR_SECTOR   (FS_START_FAT1_SECTOR + BPB_SECTORS_PER_FAT)
-@@ -234,6 +258,18 @@ static inline bool in_app_space (uint32_t addr)
+@@ -234,6 +309,18 @@ static inline bool in_app_space (uint32_t addr)
    return USER_FLASH_START <= addr && addr < USER_FLASH_END;
  }
  
@@ -237,29 +288,41 @@ index 97753ef..1bbf354 100644
  // used when upgrading bootloader
  static inline bool in_bootloader_space (uint32_t addr)
  {
-@@ -252,6 +288,10 @@ static inline bool in_uicr_space(uint32_t addr)
+@@ -252,6 +339,13 @@ static inline bool in_uicr_space(uint32_t addr)
  
  void uf2_init(void)
  {
 +#ifdef BOARD_IDENTITY_FILES
 +  enmt_identity_init();
 +#endif
++#ifdef BOARD_BOOTLOADER_FILE
++  bootfile_scan();
++#endif
 +
    strcat(infoUf2File, "SoftDevice: ");
  
    if ( is_sd_existed() )
-@@ -332,8 +372,8 @@ void read_block(uint32_t block_no, uint8_t *data) {
+@@ -332,8 +426,17 @@ void read_block(uint32_t block_no, uint8_t *data) {
          }
          for (uint32_t i = 0; i < FAT_ENTRIES_PER_SECTOR; ++i) { // Generate the FAT chain for the firmware "file"
              uint32_t v = (sectionIdx * FAT_ENTRIES_PER_SECTOR) + i;
 -            if (UF2_FIRST_SECTOR <= v && v <= UF2_LAST_SECTOR)
 -                ((uint16_t *)(void *)data)[i] = v == UF2_LAST_SECTOR ? 0xffff : v + 1;
-+            if (UF2_FIRST_SECTOR <= v && v <= LAST_FILE_SECTOR)
-+                ((uint16_t *)(void *)data)[i] = (v == UF2_LAST_SECTOR || v == LAST_FILE_SECTOR) ? 0xffff : v + 1;
++            uint32_t last = 0;
++            if (UF2_FIRST_SECTOR <= v && v <= UF2_LAST_SECTOR) last = UF2_LAST_SECTOR;
++#ifdef BOARD_SETTINGS_ADDR
++            else if (SETTINGS_FIRST_SECTOR <= v && v <= SETTINGS_LAST_SECTOR) last = SETTINGS_LAST_SECTOR;
++#endif
++#ifdef BOARD_BOOTLOADER_FILE
++            else if (BOOTFILE_FIRST_SECTOR <= v && v < BOOTFILE_FIRST_SECTOR + bootfile_blocks())
++                last = BOOTFILE_FIRST_SECTOR + bootfile_blocks() - 1;
++#endif
++            if (last)
++                ((uint16_t *)(void *)data)[i] = v == last ? 0xffff : v + 1;
          }
      } else if (block_no < FS_START_CLUSTERS_SECTOR) { // Requested root directory sector
  
-@@ -370,6 +410,20 @@ void read_block(uint32_t block_no, uint8_t *data) {
+@@ -370,6 +473,34 @@ void read_block(uint32_t block_no, uint8_t *data) {
              d->size = (inf->content ? strlen(inf->content) : UF2_SIZE);
          }
  
@@ -274,27 +337,52 @@ index 97753ef..1bbf354 100644
 +            d->updateDate       = __DOSDATE__;
 +            d->startCluster     = SETTINGS_FIRST_SECTOR;
 +            d->size             = SETTINGS_SECTORS * BPB_SECTOR_SIZE;
++            d++;
++        }
++#endif
++#ifdef BOARD_BOOTLOADER_FILE
++        if (sectionIdx == 0) {
++            padded_memcpy(d->name, "BOOTLOADUF2", 11);
++            d->createTimeFine   = __SECONDS_INT__ % 2 * 100;
++            d->createTime       = __DOSTIME__;
++            d->createDate       = __DOSDATE__;
++            d->lastAccessDate   = __DOSDATE__;
++            d->updateTime       = __DOSTIME__;
++            d->updateDate       = __DOSDATE__;
++            d->startCluster     = BOOTFILE_FIRST_SECTOR;
++            d->size             = bootfile_blocks() * BPB_SECTOR_SIZE;
 +        }
 +#endif
 +
      } else if (block_no < BPB_TOTAL_SECTORS) {
  
          sectionIdx -= FS_START_CLUSTERS_SECTOR;
-@@ -378,13 +432,23 @@ void read_block(uint32_t block_no, uint8_t *data) {
+@@ -378,17 +509,37 @@ void read_block(uint32_t block_no, uint8_t *data) {
          } else { // generate the UF2 file data on-the-fly
              sectionIdx -= NUM_FILES - 1;
              uint32_t addr = USER_FLASH_START + (sectionIdx * UF2_FIRMWARE_BYTES_PER_SECTOR);
+-            if (addr < CFG_UF2_FLASH_SIZE) {
 +            uint32_t numBlocks = UF2_SECTORS;
-+#ifdef BOARD_SETTINGS_ADDR
-+            if (sectionIdx >= UF2_SECTORS) { // SETTINGS.UF2
++            uint32_t familyID = CFG_UF2_BOARD_APP_ID;
++            if (sectionIdx >= UF2_SECTORS) {
 +                sectionIdx -= UF2_SECTORS;
-+                addr = sectionIdx < SETTINGS_SECTORS
-+                    ? BOARD_SETTINGS_ADDR + sectionIdx * UF2_FIRMWARE_BYTES_PER_SECTOR
-+                    : CFG_UF2_FLASH_SIZE;
-+                numBlocks = SETTINGS_SECTORS;
-+            }
++                addr = CFG_UF2_FLASH_SIZE; // none
++#ifdef BOARD_SETTINGS_ADDR
++                if (sectionIdx < SETTINGS_SECTORS) { // SETTINGS.UF2
++                    addr = BOARD_SETTINGS_ADDR + sectionIdx * UF2_FIRMWARE_BYTES_PER_SECTOR;
++                    numBlocks = SETTINGS_SECTORS;
++                }
++                sectionIdx -= SETTINGS_SECTORS; // unsigned wrap below SETTINGS_SECTORS: no BOOTLOAD.UF2 block
 +#endif
-             if (addr < CFG_UF2_FLASH_SIZE) {
++#ifdef BOARD_BOOTLOADER_FILE
++                if (sectionIdx < bootfile_blocks()) { // BOOTLOAD.UF2
++                    addr = bootfile_addr(sectionIdx);
++                    numBlocks = bootfile_blocks();
++                    familyID = CFG_UF2_FAMILY_BOOT_ID;
++                }
++#endif
++            }
++            if (addr < CFG_UF2_FLASH_SIZE || addr == 0x10001000) {
                  UF2_Block *bl = (void *)data;
                  bl->magicStart0 = UF2_MAGIC_START0;
                  bl->magicStart1 = UF2_MAGIC_START1;
@@ -305,7 +393,12 @@ index 97753ef..1bbf354 100644
                  bl->targetAddr = addr;
                  bl->payloadSize = UF2_FIRMWARE_BYTES_PER_SECTOR;
                  bl->flags = UF2_FLAG_FAMILYID;
-@@ -440,7 +504,15 @@ int write_block (uint32_t block_no, uint8_t *data, WriteState *state)
+-                bl->familyID = CFG_UF2_BOARD_APP_ID;
++                bl->familyID = familyID;
+                 memcpy(bl->data, (void *)addr, bl->payloadSize);
+             }
+         }
+@@ -440,7 +591,15 @@ int write_block (uint32_t block_no, uint8_t *data, WriteState *state)
        {
          PRINTF("Write addr = 0x%08lX, block = %ld (%ld of %ld)\r\n", bl->targetAddr, bl->blockNo, state->numWritten, bl->numBlocks);
          flash_nrf5x_write(bl->targetAddr, bl->data, bl->payloadSize, true);
@@ -322,3 +415,26 @@ index 97753ef..1bbf354 100644
        {
          // do nothing if writing to MBR, occurs when SD hex is included
          // keep going as successful write
+@@ -548,7 +707,7 @@ int write_block (uint32_t block_no, uint8_t *data, WriteState *state)
+         }
+ 
+         // Offset to write the new bootloader address (skipping the App Data)
+-        uint32_t const offset_addr = BOOTLOADER_ADDR_END-USER_FLASH_END;
++        uint32_t const offset_addr = BOOTLOADER_ADDR_START-BOOTLOADER_ADDR_NEW_RECEIVED;
+         flash_nrf5x_write(bl->targetAddr-offset_addr, bl->data, bl->payloadSize, true);
+       }
+ #if 0 // don't allow bundle SoftDevice to prevent confusion
+diff --git a/src/usb/uf2/uf2cfg.h b/src/usb/uf2/uf2cfg.h
+index c23a12e..b3baa4b 100644
+--- a/src/usb/uf2/uf2cfg.h
++++ b/src/usb/uf2/uf2cfg.h
+@@ -32,4 +32,9 @@
+ #define BOOTLOADER_ADDR_END           BOOTLOADER_MBR_PARAMS_PAGE_ADDRESS
+ 
+ // Address where new bootloader is written before activation (skip application data)
++// BOARD_BL_STAGING_ADDR (board.mk) moves it, e.g. to keep data at the end of the app space out of it
++#ifdef BOARD_BL_STAGING_ADDR
++#define BOOTLOADER_ADDR_NEW_RECEIVED  (BOARD_BL_STAGING_ADDR)
++#else
+ #define BOOTLOADER_ADDR_NEW_RECEIVED  (USER_FLASH_END-DFU_BL_IMAGE_MAX_SIZE)
++#endif

@@ -33,6 +33,9 @@ done
 mkdir -p "$HERE/out"
 for board in ${@:-enmt enmt_dk}; do
 	name=${board}_bootloader-$VERSION
+	# Clean build: the Makefile doesn't track header or CFLAGS dependencies, so objects of
+	# unchanged sources would keep old values (e.g. the staging address in msc_uf2.o)
+	rm -rf "$SRC/_build/build-$board"
 	# _VER3: the Makefile's own version parsing needs GNU sed
 	make -C "$SRC" -j8 BOARD="$board" CROSS_COMPILE=arm-zephyr-eabi- PYTHON=python3 \
 		GIT_VERSION="$VERSION" _VER3="$(echo $TAG | tr . ' ')" \
