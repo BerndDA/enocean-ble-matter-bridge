@@ -1,5 +1,5 @@
 diff --git a/Makefile b/Makefile
-index 5866d15..d0dd477 100644
+index 5866d15..af14b0a 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -420,13 +420,23 @@ CFLAGS += -DDFU_APP_DATA_RESERVED=$(DFU_APP_DATA_RESERVED)
@@ -28,6 +28,50 @@ index 5866d15..d0dd477 100644
  #------------------------------------------------------------------------------
  # Assembler flags
  #------------------------------------------------------------------------------
+@@ -436,6 +446,13 @@ ASFLAGS += $(CFLAGS)
+ #function for removing duplicates in a list
+ remduplicates = $(strip $(if $1,$(firstword $1) $(call remduplicates,$(filter-out $(firstword $1),$1))))
+ 
++# NO_BLE_OTA = 1 (board.mk): no BLE OTA DFU, for boards that never have a SoftDevice for it
++ifeq ($(NO_BLE_OTA), 1)
++CFLAGS += -DNO_BLE_OTA
++C_SRC := $(filter-out $(SDK11_PATH)/libraries/bootloader_dfu/dfu_transport_ble.c \
++  $(SDK11_PATH)/ble/ble_services/ble_dfu/ble_dfu.c $(SDK11_PATH)/ble/ble_services/ble_dis/ble_dis.c,$(C_SRC))
++endif
++
+ C_SOURCE_FILE_NAMES = $(notdir $(C_SRC))
+ C_PATHS = $(call remduplicates, $(dir $(C_SRC) ) )
+ C_OBJECTS = $(addprefix $(BUILD)/, $(C_SOURCE_FILE_NAMES:.c=.o) )
+diff --git a/lib/sdk11/components/libraries/bootloader_dfu/bootloader.c b/lib/sdk11/components/libraries/bootloader_dfu/bootloader.c
+index da193bd..2d02dd2 100644
+--- a/lib/sdk11/components/libraries/bootloader_dfu/bootloader.c
++++ b/lib/sdk11/components/libraries/bootloader_dfu/bootloader.c
+@@ -342,10 +342,12 @@ void bootloader_dfu_update_process(dfu_update_status_t update_status)
+   {
+     // Timeout has occurred. Close the connection with the DFU Controller.
+     uint32_t err_code;
++#ifndef NO_BLE_OTA
+     if ( is_ota() )
+     {
+       err_code = dfu_transport_ble_close();
+     }else
++#endif
+     {
+       err_code = dfu_transport_serial_close();
+     }
+@@ -405,10 +407,12 @@ uint32_t bootloader_dfu_start(bool ota, uint32_t timeout_ms, bool cancel_timeout
+   err_code = dfu_init();
+   VERIFY_SUCCESS(err_code);
+ 
++#ifndef NO_BLE_OTA
+   if ( ota )
+   {
+     err_code = dfu_transport_ble_update_start();
+   }else
++#endif
+   {
+     // DFU mode with timeout can be
+     // - Forced startup DFU for nRF52832 or
 diff --git a/src/boards/boards.c b/src/boards/boards.c
 index c02a278..60e87aa 100644
 --- a/src/boards/boards.c
@@ -63,6 +107,60 @@ index c02a278..60e87aa 100644
  #ifdef LED_NEOPIXEL
  
  // WS2812B (rev B) timing is 0.4 and 0.8 us
+diff --git a/src/main.c b/src/main.c
+index c988ee4..35761a4 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -132,7 +132,11 @@ extern void tusb_hal_nrf_power_event(uint32_t event);
+ uint32_t* dbl_reset_mem = ((uint32_t*) DFU_DBL_RESET_MEM);
+ 
+ // true if ble, false if serial
++#ifdef NO_BLE_OTA
++#define _ota_dfu false // BLE OTA not built (NO_BLE_OTA)
++#else
+ bool _ota_dfu = false;
++#endif
+ bool _ota_connected = false;
+ bool _ota_was_connected = false;
+ bool _sd_inited = false;
+@@ -245,7 +249,9 @@ static void check_dfu_mode(void) {
+   _sd_inited = (gpregret == DFU_MAGIC_OTA_APPJUM);
+ 
+   // Start Bootloader in BLE OTA mode
++#ifndef NO_BLE_OTA
+   _ota_dfu = (gpregret == DFU_MAGIC_OTA_APPJUM) || (gpregret == DFU_MAGIC_OTA_RESET);
++#endif
+ 
+   // Serial only mode
+   bool const serial_only_dfu = (gpregret == DFU_MAGIC_SERIAL_ONLY_RESET);
+@@ -276,7 +282,9 @@ static void check_dfu_mode(void) {
+ 
+   // DFU + FRESET are pressed --> OTA
+ #if defined(BUTTON_DFU) && defined(BUTTON_DFU_OTA)
++#ifndef NO_BLE_OTA
+   _ota_dfu = _ota_dfu || (button_pressed(BUTTON_DFU) && button_pressed(BUTTON_DFU_OTA));
++#endif
+ #endif
+ 
+   bool const valid_app = bootloader_app_is_valid();
+@@ -502,6 +510,9 @@ extern void ble_evt_dispatch(ble_evt_t *p_ble_evt);
+ 
+ // Process BLE event from SD
+ uint32_t proc_ble(void) {
++#ifdef NO_BLE_OTA
++  return NRF_ERROR_NOT_FOUND;
++#else
+   __ALIGN(4) uint8_t ev_buf[BLE_EVT_LEN_MAX(BLEGATT_ATT_MTU_MAX)];
+   uint16_t ev_len = BLE_EVT_LEN_MAX(BLEGATT_ATT_MTU_MAX);
+ 
+@@ -546,6 +557,7 @@ uint32_t proc_ble(void) {
+   }
+ 
+   return err;
++#endif
+ }
+ 
+ // process SOC event from SD
 diff --git a/src/usb/uf2/ghostfat.c b/src/usb/uf2/ghostfat.c
 index 97753ef..1bbf354 100644
 --- a/src/usb/uf2/ghostfat.c

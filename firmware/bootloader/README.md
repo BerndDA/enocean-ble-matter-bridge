@@ -13,7 +13,6 @@ The Adafruit nRF52 UF2 bootloader 0.11.0 (the same one as tested in `spike/uf2-b
 | no USB host (charger, before enumeration) | red breathes, 2 s |
 | UF2 drive ready | a light sweeps green → yellow → red → yellow → …, 1.6 s per pass |
 | writing a `.uf2` | all three pulse together, 0.4 s; then the app starts |
-| BLE DFU connected (only with a SoftDevice) | green breathes |
 
 All of them fade, so they can't be mistaken for the app, which only switches its LEDs on and off.
 
@@ -67,7 +66,14 @@ It clones the bootloader into `_src/` (ignored), applies `boards.patch`, copies 
 - `<board>_bootloader-0.11.0-enmt_nosd.hex`: MBR + bootloader + settings + UICR, for nrfjprog
 - `update-<board>_bootloader-0.11.0-enmt_nosd.uf2`: bootloader update to drop on a running UF2 drive
 
-`boards.patch` changes three files: `boards.c` gets a third PWM channel and takes `led_tick()`/`led_state()` from `enmt_leds.h` for boards that define `BOARD_LEDS_ENMT`; `ghostfat.c` serves `MATTER.TXT` and `QR.HTM` instead of `INDEX.HTM` for boards that set `BOARD_IDENTITY_FILES` (in their `board.mk`, which also adds `enmt_identity.c` and tinycrypt's SHA-256), and `SETTINGS.UF2` for boards that set `BOARD_SETTINGS_ADDR` and `BOARD_SETTINGS_SIZE`; the Makefile handles the toolchain. The bootloader uses about 35 of its 38 KB.
+`boards.patch` changes, each for boards that switch it on in `board.mk` or `board.h`:
+
+- `boards.c`: a third PWM channel, and `led_tick()`/`led_state()` from `enmt_leds.h` (`BOARD_LEDS_ENMT`)
+- `ghostfat.c`: `MATTER.TXT` and `QR.HTM` instead of `INDEX.HTM` (`BOARD_IDENTITY_FILES`; `board.mk` also adds `enmt_identity.c` and tinycrypt's SHA-256), and `SETTINGS.UF2` (`BOARD_SETTINGS_ADDR`, `BOARD_SETTINGS_SIZE`)
+- `main.c`, `bootloader.c`, Makefile: no BLE OTA DFU (`NO_BLE_OTA = 1`). It needs a SoftDevice, which the gateways' layout doesn't have. Serial DFU over the bootloader's USB serial port (`adafruit-nrfutil`) stays as a fallback to the UF2 drive.
+- Makefile: the toolchain
+
+The bootloader uses about 30 of its 38 KB.
 
 ## Test on the DK
 

@@ -9,7 +9,7 @@
  *   no USB host           red breathes (2 s), e.g. on a charger or before the host enumerates
  *   UF2 drive ready       a light sweeps green → yellow → red → yellow → … (1.6 s per pass)
  *   writing a .uf2        all three pulse together (0.4 s); then the bootloader starts the app
- *   BLE DFU connected     green breathes (only with a SoftDevice; the gateways don't have one)
+ *   BLE DFU connected     green breathes (only boards without NO_BLE_OTA, with a SoftDevice)
  */
 
 #ifndef ENMT_LEDS_H
