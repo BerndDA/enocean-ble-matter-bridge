@@ -4,6 +4,7 @@ The Adafruit nRF52 UF2 bootloader 0.11.0 (the same one as tested in `spike/uf2-b
 
 - an LED pattern on the EnMT carrier's three status LEDs, in place of its own LED code; the built-in LED of the nice!nano stays off
 - the gateway's Matter pairing codes on the UF2 drive (`MATTER.TXT`, `QR.HTM`)
+- the gateway's settings as a download (`SETTINGS.UF2`)
 
 ## LEDs
 
@@ -36,6 +37,14 @@ If the derivation in the app changes, `enmt_identity.c` has to change with it. `
 ./test.sh ../enocean-gateway/build-enmt/matter_factory_data/zephyr/factory_data.bin
 ```
 
+## Settings download
+
+`SETTINGS.UF2` holds the app's settings partition (0xEA000–0xF2000, 32 KB, `storage_partition` in the UF2 overlays), read from flash like `CURRENT.UF2`, which ends where it begins: Matter fabrics and keys, the Thread network, the bridged devices. Copy it off the drive as a backup.
+
+It contains the Thread network key and the Matter operational keys unencrypted (the app's secure storage derives its key from the item ID, not from the chip), so keep it like a password. Anyone who can double-press RESET on a board can copy it, as they could read the flash over SWD.
+
+Copying it back onto a drive does nothing yet: the bootloader still writes only 0x1000–0xEA000 and ignores its blocks.
+
 ## Build
 
 ```sh
@@ -47,7 +56,7 @@ It clones the bootloader into `_src/` (ignored), applies `boards.patch`, copies 
 - `<board>_bootloader-0.11.0-enmt_nosd.hex`: MBR + bootloader + settings + UICR, for nrfjprog
 - `update-<board>_bootloader-0.11.0-enmt_nosd.uf2`: bootloader update to drop on a running UF2 drive
 
-`boards.patch` changes three files: `boards.c` gets a third PWM channel and takes `led_tick()`/`led_state()` from `enmt_leds.h` for boards that define `BOARD_LEDS_ENMT`; `ghostfat.c` serves `MATTER.TXT` and `QR.HTM` instead of `INDEX.HTM` for boards that set `BOARD_IDENTITY_FILES` (in their `board.mk`, which also adds `enmt_identity.c` and tinycrypt's SHA-256); the Makefile handles the toolchain. The bootloader uses about 35 of its 38 KB.
+`boards.patch` changes three files: `boards.c` gets a third PWM channel and takes `led_tick()`/`led_state()` from `enmt_leds.h` for boards that define `BOARD_LEDS_ENMT`; `ghostfat.c` serves `MATTER.TXT` and `QR.HTM` instead of `INDEX.HTM` for boards that set `BOARD_IDENTITY_FILES` (in their `board.mk`, which also adds `enmt_identity.c` and tinycrypt's SHA-256), and `SETTINGS.UF2` for boards that set `BOARD_SETTINGS_ADDR` and `BOARD_SETTINGS_SIZE`; the Makefile handles the toolchain. The bootloader uses about 35 of its 38 KB.
 
 ## Test on the DK
 
