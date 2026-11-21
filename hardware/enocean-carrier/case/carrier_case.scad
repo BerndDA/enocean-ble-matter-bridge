@@ -18,9 +18,21 @@ pm_mount = "direct";
 pm_gap   = pm_mount == "socket" ? 11.0 : 2.5;   // carrier top -> Pro Micro bottom
 pm_pcb   = 1.2;                                 // Pro Micro board thickness (SuperMini 1.0-1.2, nice!nano 1.0)
 pm_parts = 3.5;                                 // tallest part on the Pro Micro (USB-C receptacle ~3.2)
-usb_z    = pm_gap + pm_pcb + 1.6;               // USB-C centre above the carrier top
+pm_usb_mid = true;                              // USB-C mid-mounted in a notch of the module (nice!nano v2,
+                                                // SuperMini), else on top of its board
+usb_z    = pm_gap + (pm_usb_mid ? pm_pcb / 2 : pm_pcb + 1.6);   // USB-C centre above the carrier top
+// USB opening: a stadium (oval with straight sides, like a USB-C plug's overmold) around the
+// receptacle, big enough for the cable's plug body to reach in. Measure your cable's plug.
+usb_hole_w = 12.4;
+usb_hole_h = 6.6;
 
 // ---------------------------------------------------------------- options
+// How the board is held at H1 (2.2 mm hole):
+//   "peg":   a printed peg on the floor goes up through H1, a tube under the lid presses the board
+//            down around it. No screw, closed floor.
+//   "screw": M2 screw from the top through board and floor into a hex nut in the underside.
+board_fix  = "peg";
+peg_d      = 2.0;     // in the 2.2 mm hole; printed pegs come out a little thin, so it isn't loose
 sma_hole   = false;   // 6.5 mm hole in the right wall for an SMA bulkhead (u.FL pigtail instead of the whip)
 whip_hole  = true;    // 3 mm hole in the lid above the whip pad: the 86 mm wire (up to 1.5 mm) goes straight up
 light_pipe = true;    // one tube per LED from the lid down to just above it, each holds a clear acrylic rod
@@ -66,6 +78,7 @@ LABELS = [
 NAME_AT = [14.5, 10.5];                   // board coordinates of the centre of logo + name
 
 // ---------------------------------------------------------------- case
+hold_d   = 4.2;     // hold-down tube under the lid, inside H1's 4.9 mm keep-out
 wall     = 2.0;
 floor_t  = 3.0;     // the board lies on the floor; pockets take the solder joints
 pocket_d = 2.0;     // pocket depth under the pin rows and the whip pad
@@ -96,6 +109,11 @@ module rounded_box(w, d, h, r = 1.5) {
 PIN_ROWS_X = [2.4, 17.64];
 
 module base() {
+    // locating peg through H1, 1 mm above the board, tip chamfered so the board slides on
+    if (board_fix == "peg") for (h = HOLES) translate([B(h)[0], B(h)[1], floor_t - 0.01]) {
+        cylinder(d = peg_d, h = top_z - floor_t + 0.6);
+        translate([0, 0, top_z - floor_t + 0.6]) cylinder(d1 = peg_d, d2 = peg_d - 0.8, h = 0.4);
+    }
     difference() {
         difference() {
             rounded_box(OUT_W, OUT_D, base_h);
@@ -108,15 +126,24 @@ module base() {
         }
         translate([B(WHIP)[0], B(WHIP)[1], floor_t - pocket_d]) cylinder(d = 5.0, h = pocket_d + 1);   // whip pad 3.2 mm + solder
         // M2 screws from the top through board and floor into hex nuts in the underside
-        for (h = HOLES) {
+        if (board_fix == "screw") for (h = HOLES) {
             translate([B(h)[0], B(h)[1], -1]) cylinder(d = 2.4, h = floor_t + 2);
             translate([B(h)[0], B(h)[1], -0.01]) cylinder(d = 4.8, h = 1.8, $fn = 6);
         }
         // USB-C opening in the end wall (board y = 0 is the top wall here)
-        translate([B([USB_X, 0])[0] - 6, OUT_D - wall - 1, top_z + usb_z - 3.5]) cube([12, wall + 2, 7]);
+        usb_hole();
         if (sma_hole)
             translate([OUT_W - wall - 1, B(UFL)[1], top_z + 6]) rotate([0, 90, 0]) cylinder(d = 6.5, h = wall + 2);
     }
+}
+
+// The USB opening through the end wall, in base coordinates. Where its top reaches above the base
+// wall (a top-mounted receptacle, or pm_mount = "socket" with a low lid), the lid's underside takes
+// the same cut, so base and lid together form the full oval.
+module usb_hole() {
+    r = usb_hole_h / 2;
+    hull() for (dx = [-1, 1] * (usb_hole_w / 2 - r))
+        translate([B([USB_X, 0])[0] + dx, OUT_D - wall - 1, top_z + usb_z]) rotate([-90, 0, 0]) cylinder(r = r, h = wall + 2, $fn = 96);
 }
 
 module engrave(t, p, size, halign) {
@@ -163,6 +190,9 @@ module lid() {
                 cube([IN_W - 2 * fit, IN_D - 2 * fit, lip_h]);
                 translate([1.2, 1.2, -1]) cube([IN_W - 2 * fit - 2.4, IN_D - 2 * fit - 2.4, lip_h + 2]);
             }
+            // hold-down tube: presses the board onto the floor around the peg
+            if (board_fix == "peg")
+                for (h = HOLES) translate([B(h)[0], B(h)[1], -inner_h]) cylinder(d = hold_d, h = inner_h);
             // light pipe down to just above the LED
             if (light_pipe)
                 for (l = LEDS) translate([B(l)[0], B(l)[1], -pipe_len]) cylinder(d = pipe_bore + 2 * pipe_wall, h = pipe_len);
@@ -171,8 +201,12 @@ module lid() {
         for (b = BUTTONS) translate([B(b)[0], B(b)[1], -lip_h - 1]) cylinder(d = pin_collar_d + 1.0, h = lip_h + 1);
         // the lip must not cover the USB opening: cut it there
         translate([B([USB_X, 0])[0] - 6.5, OUT_D - wall - 2, -lip_h - 1]) cube([13, 3, lip_h + 1]);
+        translate([0, 0, -base_h]) usb_hole();   // the top of the oval
         if (light_pipe)
             for (l = LEDS) translate([B(l)[0], B(l)[1], -inner_h]) cylinder(d = pipe_bore, h = inner_h + lid_t + 1);
+        // room for the peg's tip inside the hold-down tube
+        if (board_fix == "peg")
+            for (h = HOLES) translate([B(h)[0], B(h)[1], -inner_h - 1]) cylinder(d = peg_d + 0.6, h = 1 + 1.5);
         // button holes
         for (b = BUTTONS) translate([B(b)[0], B(b)[1], -1]) cylinder(d = 3.8, h = lid_t + 2);
         if (whip_hole) translate([B(WHIP)[0], B(WHIP)[1], -1]) cylinder(d = 3.0, h = lid_t + 2);   // wire up to 1.5 mm, some play
@@ -206,7 +240,7 @@ else {
     color("lightgray") base();
     color("darkgreen") translate([wall + gap, wall + gap, board_z]) cube([BOARD_W, BOARD_H, BOARD_T]);
     color("navy") translate([B(P(USB_X - 9, 33.3))[0], B(P(0, 33.3))[1], top_z + pm_gap]) cube([18, 33.3, pm_pcb]);
-    color("silver") translate([B([USB_X - 4.5, 0])[0], OUT_D - wall - gap - 7.3, top_z + pm_gap + pm_pcb]) cube([9, 7.3, 3.2]);
+    color("silver") translate([B([USB_X - 4.5, 0])[0], OUT_D - wall - gap - 7.3, top_z + usb_z - 1.6]) cube([9, 7.3, 3.2]);
     color("tan") translate([B(P(19.9, 23.5))[0], B(P(19.9, 23.5))[1], top_z]) cube([14.7, 19, 3]);
     for (b = BUTTONS) color("black") translate([B(b)[0] - 2.55, B(b)[1] - 2.55, top_z]) cube([5.1, 5.1, SW_H]);
     color("white", 0.8) translate([0, 0, base_h + 12]) lid();

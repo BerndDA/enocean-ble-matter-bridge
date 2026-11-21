@@ -259,8 +259,8 @@ M.update({
 
 # ---------------- nice!nano v2: red board (black in the photo), gold rings, mid-mount USB-C, nRF52840 towards the far end
 # Module coordinates: d = mm from the USB end, f = fraction of the width from the +X edge
-# (RAW/GND/RST/VCC side). The case (carrier_case.scad usb_z) assumes a top-mounted receptacle;
-# the nice!nano's sits in a notch of its board, centred on the PCB.
+# (RAW/GND/RST/VCC side). The nice!nano's receptacle sits in a notch of its board, centred on
+# the PCB (carrier_case.scad pm_usb_mid).
 USB_MID = True
 PM_W = PM_X1 - PM_X0
 
@@ -540,7 +540,7 @@ if MODE.startswith("anim"):
         plug = bpy.data.objects.new("plug", None)
         scene.collection.objects.link(plug)
         plug.parent = root
-        uz = pm_z + PM_PCB + 1.6                 # receptacle centre
+        uz = pm_z + PM_PCB / 2 if USB_MID else pm_z + PM_PCB + 1.6   # receptacle centre
         yf = PM_Y1 + 0.4                         # receptacle front face
         parts = [
             box("plug_shell", cx - 4.1, yf - 6.4, uz - 1.25, cx + 4.1, yf + 0.3, uz + 1.25, M["metal"], 0.6),
