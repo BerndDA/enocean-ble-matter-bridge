@@ -4,7 +4,7 @@ check_netlist.py compares KiCad's netlist against it.
 
 Sources for values: nRF52840 PS v1.11 circuit configuration 3 (Fig. 220,
 Table 75) and the 4-component RF match of configuration 7 (Table 83); TCM 515
-User Manual v1.22 chapters 2 and 11. See ../DESIGN.md.
+User Manual v1.22 chapters 2 and 11. See the wiki page EnOcean Bridge PCB.
 
 Coordinates are in mm on the sheet (y down), symbol origins on the 2.54 grid.
 """

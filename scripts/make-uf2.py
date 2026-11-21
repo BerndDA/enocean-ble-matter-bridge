@@ -42,7 +42,7 @@ FAMILY_NRF52840 = "0xADA52840"
 UF2_WRITABLE = (0x1000, 0xEA000)
 # A bootloader update stages the new bootloader in 40 KB of the app space before copying it into
 # place: the EnMT bootloader at 0xDF000-0xE9000, the stock one at 0xE0000-0xEA000 (its config block
-# at 0xE9800, in the factory data page). Data must stay out of both (firmware/bootloader/README.md):
+# at 0xE9800, in the factory data page). Data must stay out of both (wiki page Bootloader):
 # the app ends below 0xDF000, the factory data at 0xE9000 below 0xE9800.
 BOOTLOADER_STAGING = [(0xDF000, 0xE9000), (0xE9800, 0xEA000)]
 UF2CONV = os.path.join(os.environ.get("ZEPHYR_BASE", ""), "scripts", "build", "uf2conv.py")

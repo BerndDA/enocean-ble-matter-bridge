@@ -1,10 +1,10 @@
 # TODO
 
-What's left to do and to decide. Tick items off here; the plan behind the steps is in [doc/BLE-to-Matter-over-Thread-Gateway.md](doc/BLE-to-Matter-over-Thread-Gateway.md).
+What's left to do and to decide. Tick items off here; the plan behind the steps is in [Design](https://github.com/BerndDA/enocean-ble-matter-bridge/wiki/Design).
 
 ## Decisions
 
-- [ ] **Far sensors.** The sensor in the other room delivers about 1 % of its advertisements, with gaps of up to 6.5 minutes ([measurements](doc/measurements.md)). Options:
+- [ ] **Far sensors.** The sensor in the other room delivers about 1 % of its advertisements, with gaps of up to 6.5 minutes ([measurements](https://github.com/BerndDA/enocean-ble-matter-bridge/wiki/Measurements)). Options:
   - Place the gateway more centrally (no code change).
   - Have pvvx advertise more often, for example every 1 s (costs sensor battery).
   - Scan at a 50 % duty cycle instead of 25 % (costs Thread listening time; run the A/B test again).
@@ -16,7 +16,7 @@ What's left to do and to decide. Tick items off here; the plan behind the steps 
 
 ## EnOcean carrier board
 
-Pro Micro nRF52840 soldered onto a 2-layer board with a TCM 515. Design in [hardware/enocean-carrier/DESIGN.md](hardware/enocean-carrier/DESIGN.md).
+Pro Micro nRF52840 soldered onto a 2-layer board with a TCM 515. Design in [EnMT Carrier Board](https://github.com/BerndDA/enocean-ble-matter-bridge/wiki/EnMT-Carrier-Board).
 
 - [x] Pro Micro symbol and footprint (with antenna keepout) in `hardware/lib/`; the TCM 515 library moved there too.
 - [x] Schematic: ERC clean, netlist checked.
@@ -37,7 +37,7 @@ Pro Micro nRF52840 soldered onto a 2-layer board with a TCM 515. Design in [hard
 
 ## EnOcean bridge PCB
 
-nRF52840 + TCM 515 + USB-C, pin-compatible with the Pro Micro build. Design, scripts and status in [hardware/enocean-bridge-pcb/DESIGN.md](hardware/enocean-bridge-pcb/DESIGN.md).
+nRF52840 + TCM 515 + USB-C, pin-compatible with the Pro Micro build. Design, scripts and status in [EnOcean Bridge PCB](https://github.com/BerndDA/enocean-ble-matter-bridge/wiki/EnOcean-Bridge-PCB).
 
 - [x] Design and decisions (TCM 515 soldered, bare nRF52840 in Nordic configuration 3, 4 layers, JLCPCB assembly).
 - [x] TCM 515 footprint and symbol from the EnOcean manual.
@@ -50,7 +50,7 @@ nRF52840 + TCM 515 + USB-C, pin-compatible with the Pro Micro build. Design, scr
 - [x] Fewer extended parts: buttons (TS-1187A), LDO (XC6206) and R4 (0 Ω) from JLC's basic library; 8 extended parts left, none of them replaceable.
 - [ ] Cosmetics: 9 silkscreen warnings on the board (J1 outline and JP1/AE1 references at the edge, references over pads, SW1/SW2 labels on the TCM outline).
 - [x] Fabrication outputs: Gerbers, drill, BOM and CPL in JLC format (`tools/export_fab.py`, TCM 515 not assembled).
-- [x] JLC quote (2026-11-20): PCB $8, Economic PCBA $107.50 (takes the aQFN73, with X-ray); about $98 after the basic-part swaps (DESIGN.md, "Cost").
+- [x] JLC quote (2026-11-20): PCB $8, Economic PCBA $107.50 (takes the aQFN73, with X-ray); about $98 after the basic-part swaps (wiki: EnOcean Bridge PCB, "Cost").
 - [ ] Before ordering: select epoxy-filled and capped vias (the quote showed "Via Covering $0.00"); JLC04161H-7628 stackup with impedance control; ENIG.
 - [ ] Check JLC stock of the nRF52840 (C3606858, 241 on 2026-11-18) right before ordering.
 - [ ] Order 5 × TCM 515 (Digi-Key 1084-TCM515, about €12.50 each).
@@ -67,7 +67,7 @@ nRF52840 + TCM 515 + USB-C, pin-compatible with the Pro Micro build. Design, scr
 - [x] Decided: thermostats run without PIN. The gateway does not pair; anyone in Bluetooth range could control or reflash a thermostat.
 - [x] Decided: thermostats run in manual mode. Every target from Apple Home is sent as manual + target (`40 <0x40 | temp×2>`), so the weekly schedule does not override it (`CONFIG_GATEWAY_EQ3_TARGET_SETS_MANUAL`).
 - [x] Command queue with a timeout per attempt. No routine polls are needed: the values come from the broadcasts.
-- [x] Measured again with thermostat commands ([measurements](doc/measurements.md)): 9 of 9 answered, Thread stable; bt_tx_processor stack and system heap raised.
+- [x] Measured again with thermostat commands ([measurements](https://github.com/BerndDA/enocean-ble-matter-bridge/wiki/Measurements)): 9 of 9 answered, Thread stable; bt_tx_processor stack and system heap raised.
 
 ## Later
 
