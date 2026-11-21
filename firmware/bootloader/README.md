@@ -27,7 +27,8 @@ Two boards:
 The gateways derive their serial number, discriminator and setup code from the chip ID at boot (`firmware/common/identity/`); nothing of it is stored in flash. The bootloader repeats that derivation (`enmt_identity.c`) and reads vendor ID, product ID and product name from the app's factory data at 0xE9000, so the drive shows:
 
 - `MATTER.TXT`: product, vendor and product ID, chip ID, serial number, discriminator, setup code, manual pairing code, QR payload and a link that shows the QR code
-- `QR.HTM`: opens the QR code straight away (in place of `INDEX.HTM`, which led to the board's web page)
+- `QR.HTM`: opens the QR code straight away
+- `INDEX.HTM`: opens this project on GitHub (`UF2_INDEX_URL` in `board.h`)
 
 The codes match `make identity` and are valid for every gateway build (they all use `CONFIG_GATEWAY_IDENTITY_FROM_CHIP_ID`). Without factory data, e.g. on an erased chip, there is no QR code. Both open the Matter project's QR viewer on github.io and sends it the payload.
 
@@ -84,7 +85,7 @@ It clones the bootloader into `_src/` (ignored), applies `boards.patch`, copies 
 `boards.patch` changes, each for boards that switch it on in `board.mk` or `board.h`:
 
 - `boards.c`: a third PWM channel, and `led_tick()`/`led_state()` from `enmt_leds.h` (`BOARD_LEDS_ENMT`)
-- `ghostfat.c`: `MATTER.TXT` and `QR.HTM` instead of `INDEX.HTM` (`BOARD_IDENTITY_FILES`; `board.mk` also adds `enmt_identity.c` and tinycrypt's SHA-256), `SETTINGS.UF2` (`BOARD_SETTINGS_ADDR`, `BOARD_SETTINGS_SIZE`), and `BOOTLOAD.UF2` (`BOARD_BOOTLOADER_FILE`)
+- `ghostfat.c`: `MATTER.TXT` and `QR.HTM` (`BOARD_IDENTITY_FILES`; `board.mk` also adds `enmt_identity.c` and tinycrypt's SHA-256), `SETTINGS.UF2` (`BOARD_SETTINGS_ADDR`, `BOARD_SETTINGS_SIZE`), and `BOOTLOAD.UF2` (`BOARD_BOOTLOADER_FILE`)
 - `main.c`, `bootloader.c`, Makefile: no BLE OTA DFU (`NO_BLE_OTA = 1`). It needs a SoftDevice, which the gateways' layout doesn't have. Serial DFU over the bootloader's USB serial port (`adafruit-nrfutil`) stays as a fallback to the UF2 drive.
 - Makefile: the toolchain
 

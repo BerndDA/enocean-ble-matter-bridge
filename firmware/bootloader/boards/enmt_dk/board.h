@@ -41,6 +41,6 @@
 #define UF2_PRODUCT_NAME      "nRF52840 DK (EnMT LEDs)"
 #define UF2_VOLUME_LABEL      "ENMTBOOT   "
 #define UF2_BOARD_ID          "nRF52840-pca10056-enmt"
-#define UF2_INDEX_URL         "https://www.nordicsemi.com/Software-and-Tools/Development-Kits/nRF52840-DK"
+#define UF2_INDEX_URL         "https://github.com/BerndDA/enocean-ble-matter-bridge"
 
 #endif // _ENMT_DK_H

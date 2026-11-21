@@ -44,6 +44,6 @@
 #define UF2_PRODUCT_NAME      "EnMT carrier"
 #define UF2_VOLUME_LABEL      "ENMTBOOT   "
 #define UF2_BOARD_ID          "nRF52840-EnMT-carrier"
-#define UF2_INDEX_URL         "https://nicekeyboards.com/docs/nice-nano"
+#define UF2_INDEX_URL         "https://github.com/BerndDA/enocean-ble-matter-bridge"
 
 #endif // _ENMT_H
