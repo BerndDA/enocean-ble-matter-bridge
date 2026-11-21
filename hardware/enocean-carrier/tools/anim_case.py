@@ -152,6 +152,7 @@ def run(scene, cam, cam_data, target, center, lid, pins, whip, board_group, d, o
         scene.frame_set(1)
         scene.render.filepath = "//anim-frames/f"
         bpy.ops.file.pack_all()           # board textures from the KiCad GLB
+        bpy.context.preferences.filepaths.save_version = 0   # no .blend1 backup next to it
         bpy.ops.wm.save_as_mainfile(filepath=save, compress=True)
         print("wrote", save)
         return

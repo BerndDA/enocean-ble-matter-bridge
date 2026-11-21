@@ -82,6 +82,7 @@ def mat(name, color, rough=0.5, metal=0.0, emit=None):
 
 
 M = {
+    "cable": mat("cable", (0.72, 0.73, 0.74), 0.45),       # light grey USB cable and plug
     "case": mat("case", (0.045, 0.047, 0.052), 0.55),
     "lid": mat("lid", (0.05, 0.052, 0.058), 0.5),
     "pin": mat("pin", (0.95, 0.42, 0.08), 0.45),
@@ -434,21 +435,76 @@ for o in list(scene.objects):
 root.scale = (0.01, 0.01, 0.01)
 center = Vector((OUT_W / 2, OUT_D / 2, BASE_H / 2)) * 0.01
 
+
+
+def rrect(name, cx, cz, w, h, r, y0, y1, material, seg=8):
+    """Prism along Y with a rounded-rectangle cross-section (w x h, corner radius r) centred on cx/cz."""
+    r = min(r, w / 2, h / 2)
+    ring = []
+    for qx, qz, a0 in ((1, 1, 0), (-1, 1, 90), (-1, -1, 180), (1, -1, 270)):
+        ox, oz = cx + qx * (w / 2 - r), cz + qz * (h / 2 - r)
+        for i in range(seg + 1):
+            a = math.radians(a0 + 90 * i / seg)
+            ring.append((ox + r * math.cos(a), oz + r * math.sin(a)))
+    n = len(ring)
+    verts = [(x, y0, z) for x, z in ring] + [(x, y1, z) for x, z in ring]
+    faces = [(i, (i + 1) % n, n + (i + 1) % n, n + i) for i in range(n)]
+    faces += [tuple(reversed(range(n))), tuple(range(n, 2 * n))]
+    me = bpy.data.meshes.new(name)
+    me.from_pydata(verts, [], faces)
+    me.update()
+    o = bpy.data.objects.new(name, me)
+    scene.collection.objects.link(o)
+    o.data.materials.append(material)
+    for f in me.polygons:
+        f.use_smooth = len(f.vertices) == 4
+    return o
+
+
+def usb_plug():
+    """USB-C plug with cable, mated (shell fully in the receptacle), pointing out of the end wall,
+    as one group. Plug shell per the USB Type-C spec: 8.25 x 2.40 mm, 6.65 mm long. Overmold of a
+    slim cable, 10.5 x 5.5 mm: clears the case's 12.4 x 6.6 mm oval by about 0.5 mm all round (the
+    spec allows up to 12.35 x 6.5 mm, whose corners would not pass the oval). Light grey."""
+    plug = bpy.data.objects.new("plug", None)
+    scene.collection.objects.link(plug)
+    plug.parent = root
+    uz = pm_z + PM_PCB / 2 if USB_MID else pm_z + PM_PCB + 1.6   # receptacle centre
+    yf = PM_Y1 + 0.3                         # receptacle front face
+    parts = [
+        rrect("plug_shell", cx, uz, 8.25, 2.40, 1.2, yf - 6.45, yf + 0.2, M["metal"]),
+        rrect("plug_body", cx, uz, 10.5, 5.5, 2.5, yf + 0.2, yf + 16.0, M["cable"]),
+        rrect("plug_relief", cx, uz, 6.6, 4.4, 2.0, yf + 16.0, yf + 22.0, M["cable"]),
+    ]
+    bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=1.8, depth=60, location=(cx, yf + 52.0, uz),
+                                        rotation=(math.radians(90), 0, 0))
+    cable = bpy.context.object
+    cable.name = "plug_cable"
+    cable.data.materials.append(M["cable"])
+    bpy.ops.object.shade_smooth()
+    for o in parts + [cable]:
+        o.parent = plug
+    return plug
+
+
 if MODE == "glb":
     # 3D model for viewing (hardware/pcb-viewer.html, Blender, any glTF viewer): the board with
     # its KiCad parts and the stand-ins above, in the closed case. glTF works in metres, so
     # 1 mm = 0.001. Top-level nodes for the viewer's toggles: base, lid (with the light-pipe
-    # rods), pin0/pin1 (button push pins), board_group (board + parts), whip.
+    # rods), pin0/pin1 (button push pins), board_group (board + parts), whip, plug (USB-C plug).
     bpy.data.objects.remove(floor)
     root.scale = (0.001, 0.001, 0.001)
     # Hints for pcb-viewer.html (glTF extras): name in the parts list, hidden at first (it opens
     # on the bare board), left out when framing the view (the whip is twice the case height).
+    plug = usb_plug()
     for o, label, hidden in [(board_group, "Board with parts", False), (whip, "868 MHz whip", False),
                              (base, "Case base", True), (lid, "Lid with light pipes", True),
-                             (pins[0], "Push pin FUNC", True), (pins[1], "Push pin RST", True)]:
+                             (pins[0], "Push pin FUNC", True), (pins[1], "Push pin RST", True),
+                             (plug, "USB-C plug and cable", True)]:
         o["viewer_label"] = label
         o["viewer_hidden"] = hidden
     whip["viewer_noframe"] = True
+    plug["viewer_noframe"] = True
     bpy.ops.export_scene.gltf(filepath=OUT, export_format="GLB", export_apply=True, export_yup=True,
                               export_extras=True)
     print("wrote", OUT)
@@ -541,24 +597,7 @@ if MODE.startswith("anim"):
     import anim_case   # noqa: E402  (tools/anim_case.py, next to this script)
     plug = None
     if MODE == "anim-usb":
-        # USB-C plug with cable, pointing out of the end wall, as one group
-        plug = bpy.data.objects.new("plug", None)
-        scene.collection.objects.link(plug)
-        plug.parent = root
-        uz = pm_z + PM_PCB / 2 if USB_MID else pm_z + PM_PCB + 1.6   # receptacle centre
-        yf = PM_Y1 + 0.4                         # receptacle front face
-        parts = [
-            box("plug_shell", cx - 4.1, yf - 6.4, uz - 1.25, cx + 4.1, yf + 0.3, uz + 1.25, M["metal"], 0.6),
-            box("plug_body", cx - 5.4, yf + 0.3, uz - 2.8, cx + 5.4, yf + 17.0, uz + 2.8, M["chip"], 1.2),
-            box("plug_relief", cx - 3.2, yf + 17.0, uz - 2.2, cx + 3.2, yf + 23.0, uz + 2.2, M["chip"], 1.0),
-        ]
-        bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=1.8, depth=60, location=(cx, yf + 53.0, uz),
-                                            rotation=(math.radians(90), 0, 0))
-        cable = bpy.context.object
-        cable.data.materials.append(M["chip"])
-        bpy.ops.object.shade_smooth()
-        for o in parts + [cable]:
-            o.parent = plug
+        plug = usb_plug()
         # status LEDs: each acrylic rod lights up in its LED's colour once the cable is in
         glows = []
         for name, l, rgb in (("red", LEDS[0], (1.0, 0.08, 0.05)), ("green", LEDS[1], (0.15, 1.0, 0.3)),
