@@ -64,7 +64,7 @@ index c02a278..60e87aa 100644
  
  // WS2812B (rev B) timing is 0.4 and 0.8 us
 diff --git a/src/usb/uf2/ghostfat.c b/src/usb/uf2/ghostfat.c
-index 97753ef..10df041 100644
+index 97753ef..1bbf354 100644
 --- a/src/usb/uf2/ghostfat.c
 +++ b/src/usb/uf2/ghostfat.c
 @@ -36,6 +36,10 @@
@@ -120,7 +120,26 @@ index 97753ef..10df041 100644
  #define FS_START_FAT0_SECTOR      BPB_RESERVED_SECTORS
  #define FS_START_FAT1_SECTOR      (FS_START_FAT0_SECTOR + BPB_SECTORS_PER_FAT)
  #define FS_START_ROOTDIR_SECTOR   (FS_START_FAT1_SECTOR + BPB_SECTORS_PER_FAT)
-@@ -252,6 +276,10 @@ static inline bool in_uicr_space(uint32_t addr)
+@@ -234,6 +258,18 @@ static inline bool in_app_space (uint32_t addr)
+   return USER_FLASH_START <= addr && addr < USER_FLASH_END;
+ }
+ 
++#ifdef BOARD_SETTINGS_ADDR
++// SETTINGS.UF2 written back: only blocks of a file shaped like the one read_block() serves
++// (SETTINGS_SECTORS blocks, block number = position in the settings area), so a firmware .uf2
++// can't overwrite the settings
++static inline bool is_settings_block (UF2_Block const *bl)
++{
++  return BOARD_SETTINGS_ADDR <= bl->targetAddr && bl->targetAddr < BOARD_SETTINGS_ADDR + BOARD_SETTINGS_SIZE &&
++         bl->numBlocks == SETTINGS_SECTORS &&
++         bl->blockNo == (bl->targetAddr - BOARD_SETTINGS_ADDR) / UF2_FIRMWARE_BYTES_PER_SECTOR;
++}
++#endif
++
+ // used when upgrading bootloader
+ static inline bool in_bootloader_space (uint32_t addr)
+ {
+@@ -252,6 +288,10 @@ static inline bool in_uicr_space(uint32_t addr)
  
  void uf2_init(void)
  {
@@ -131,7 +150,7 @@ index 97753ef..10df041 100644
    strcat(infoUf2File, "SoftDevice: ");
  
    if ( is_sd_existed() )
-@@ -332,8 +360,8 @@ void read_block(uint32_t block_no, uint8_t *data) {
+@@ -332,8 +372,8 @@ void read_block(uint32_t block_no, uint8_t *data) {
          }
          for (uint32_t i = 0; i < FAT_ENTRIES_PER_SECTOR; ++i) { // Generate the FAT chain for the firmware "file"
              uint32_t v = (sectionIdx * FAT_ENTRIES_PER_SECTOR) + i;
@@ -142,7 +161,7 @@ index 97753ef..10df041 100644
          }
      } else if (block_no < FS_START_CLUSTERS_SECTOR) { // Requested root directory sector
  
-@@ -370,6 +398,20 @@ void read_block(uint32_t block_no, uint8_t *data) {
+@@ -370,6 +410,20 @@ void read_block(uint32_t block_no, uint8_t *data) {
              d->size = (inf->content ? strlen(inf->content) : UF2_SIZE);
          }
  
@@ -163,7 +182,7 @@ index 97753ef..10df041 100644
      } else if (block_no < BPB_TOTAL_SECTORS) {
  
          sectionIdx -= FS_START_CLUSTERS_SECTOR;
-@@ -378,13 +420,23 @@ void read_block(uint32_t block_no, uint8_t *data) {
+@@ -378,13 +432,23 @@ void read_block(uint32_t block_no, uint8_t *data) {
          } else { // generate the UF2 file data on-the-fly
              sectionIdx -= NUM_FILES - 1;
              uint32_t addr = USER_FLASH_START + (sectionIdx * UF2_FIRMWARE_BYTES_PER_SECTOR);
@@ -188,3 +207,20 @@ index 97753ef..10df041 100644
                  bl->targetAddr = addr;
                  bl->payloadSize = UF2_FIRMWARE_BYTES_PER_SECTOR;
                  bl->flags = UF2_FLAG_FAMILYID;
+@@ -440,7 +504,15 @@ int write_block (uint32_t block_no, uint8_t *data, WriteState *state)
+       {
+         PRINTF("Write addr = 0x%08lX, block = %ld (%ld of %ld)\r\n", bl->targetAddr, bl->blockNo, state->numWritten, bl->numBlocks);
+         flash_nrf5x_write(bl->targetAddr, bl->data, bl->payloadSize, true);
+-      }else if ( bl->targetAddr < USER_FLASH_START )
++      }
++#ifdef BOARD_SETTINGS_ADDR
++      else if ( is_settings_block(bl) )
++      {
++        PRINTF("Write settings addr = 0x%08lX, block = %ld\r\n", bl->targetAddr, bl->blockNo);
++        flash_nrf5x_write(bl->targetAddr, bl->data, bl->payloadSize, true);
++      }
++#endif
++      else if ( bl->targetAddr < USER_FLASH_START )
+       {
+         // do nothing if writing to MBR, occurs when SD hex is included
+         // keep going as successful write

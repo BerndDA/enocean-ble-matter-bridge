@@ -4,7 +4,7 @@ The Adafruit nRF52 UF2 bootloader 0.11.0 (the same one as tested in `spike/uf2-b
 
 - an LED pattern on the EnMT carrier's three status LEDs, in place of its own LED code; the built-in LED of the nice!nano stays off
 - the gateway's Matter pairing codes on the UF2 drive (`MATTER.TXT`, `QR.HTM`)
-- the gateway's settings as a download (`SETTINGS.UF2`)
+- the gateway's settings as `SETTINGS.UF2`, to back up, restore or clone onto another board
 
 ## LEDs
 
@@ -37,13 +37,24 @@ If the derivation in the app changes, `enmt_identity.c` has to change with it. `
 ./test.sh ../enocean-gateway/build-enmt/matter_factory_data/zephyr/factory_data.bin
 ```
 
-## Settings download
+## Settings backup, restore and clone
 
 `SETTINGS.UF2` holds the app's settings partition (0xEA000–0xF2000, 32 KB, `storage_partition` in the UF2 overlays), read from flash like `CURRENT.UF2`, which ends where it begins: Matter fabrics and keys, the Thread network, the bridged devices. Copy it off the drive as a backup.
 
-It contains the Thread network key and the Matter operational keys unencrypted (the app's secure storage derives its key from the item ID, not from the chip), so keep it like a password. Anyone who can double-press RESET on a board can copy it, as they could read the flash over SWD.
+Copying a saved `SETTINGS.UF2` onto the drive (any name, or over the one there) writes it back; then the bootloader starts the app, as after a firmware copy. The bootloader takes settings blocks only from a file shaped like its own `SETTINGS.UF2` (128 blocks, block number = position in the settings area), so a firmware `.uf2` can't overwrite the settings; blocks of any other shape are ignored.
 
-Copying it back onto a drive does nothing yet: the bootloader still writes only 0x1000–0xEA000 and ignores its blocks.
+Onto another board, this clones the gateway: same Matter node in the same fabrics (Apple Home sees the old accessory), same Thread network, same bridged devices. Keep in mind:
+
+- Only one of the two may run: turn the old board off or give it empty settings.
+- Serial number and setup code still come from the new board's chip ID. Existing pairings don't use them; a new controller pairs with the new board's code (`MATTER.TXT`).
+- Settings belong to one app: clone a BLE gateway onto a BLE gateway, an EnOcean gateway onto an EnOcean gateway.
+- EnOcean: the actuators are taught in to the TCM module's sender IDs, which the module stores itself. Move the TCM to the new board, or teach the actuators in again.
+
+A file of 128 blocks with all bytes 0xFF (made from a downloaded `SETTINGS.UF2`) erases the settings: the app starts like after a factory reset.
+
+The file contains the Thread network key and the Matter operational keys unencrypted (the app's secure storage derives its key from the item ID, not from the chip), so keep it like a password. Anyone who can double-press RESET on a board can copy it, as they could read the flash over SWD, and can write settings the same way.
+
+Tested on the DK: download, upload of empty settings (the app started without bridged devices), a file with a wrong block count (ignored), and restoring the download (all bridged devices back). Don't read the chip over the J-Link (`nrfjprog --readcode`, `--readregs`) while the drive is mounted: that halts the CPU, macOS then drops the USB device and the next copy fails.
 
 ## Build
 
