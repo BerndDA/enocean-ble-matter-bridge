@@ -18,9 +18,14 @@ pm_mount = "direct";
 pm_gap   = pm_mount == "socket" ? 11.0 : 2.5;   // carrier top -> Pro Micro bottom
 pm_pcb   = 1.2;                                 // Pro Micro board thickness (SuperMini 1.0-1.2, nice!nano 1.0)
 pm_parts = 3.5;                                 // tallest part on the Pro Micro (USB-C receptacle ~3.2)
-pm_usb_mid = true;                              // USB-C mid-mounted in a notch of the module (nice!nano v2,
-                                                // SuperMini), else on top of its board
-usb_z    = pm_gap + (pm_usb_mid ? pm_pcb / 2 : pm_pcb + 1.6);   // USB-C centre above the carrier top
+// USB-C receptacle (3.2 mm high) on the Pro Micro:
+//   "bottom": sunk into a notch of the module, its underside flush with the module's underside
+//             (measured on the board that arrived)
+//   "mid":    centred on the module's PCB
+//   "top":    on top of the module's PCB
+pm_usb   = "bottom";
+usb_rh   = 3.2;                                 // receptacle height
+usb_z    = pm_gap + (pm_usb == "bottom" ? usb_rh / 2 : pm_usb == "mid" ? pm_pcb / 2 : pm_pcb + usb_rh / 2);   // USB-C centre above the carrier top
 // USB opening: a stadium (oval with straight sides, like a USB-C plug's overmold) around the
 // receptacle, big enough for the cable's plug body to reach in. Measure your cable's plug.
 usb_hole_w = 12.4;
@@ -84,7 +89,8 @@ floor_t  = 3.0;     // the board lies on the floor; pockets take the solder join
 pocket_d = 2.0;     // pocket depth under the pin rows and the whip pad
 gap      = 0.4;     // board to wall, each side
 under    = 0.0;     // floor to board bottom
-inner_h  = pm_gap + pm_pcb + pm_parts + 0.8;   // board top to lid underside
+usb_head = 1.5;     // extra height: leaves 2.1 mm of base wall above the USB opening (0.6 mm without)
+inner_h  = pm_gap + pm_pcb + pm_parts + 0.8 + usb_head;   // board top to lid underside
 lid_t    = 2.0;
 lip_h    = 3.0;     // lid lip reaching into the base
 pipe_len = inner_h - LED_H - 0.5;          // light pipes below the lid, end 0.5 mm above the LEDs
@@ -240,7 +246,7 @@ else {
     color("lightgray") base();
     color("darkgreen") translate([wall + gap, wall + gap, board_z]) cube([BOARD_W, BOARD_H, BOARD_T]);
     color("navy") translate([B(P(USB_X - 9, 33.3))[0], B(P(0, 33.3))[1], top_z + pm_gap]) cube([18, 33.3, pm_pcb]);
-    color("silver") translate([B([USB_X - 4.5, 0])[0], OUT_D - wall - gap - 7.3, top_z + usb_z - 1.6]) cube([9, 7.3, 3.2]);
+    color("silver") translate([B([USB_X - 4.5, 0])[0], OUT_D - wall - gap - 7.3, top_z + usb_z - usb_rh / 2]) cube([9, 7.3, usb_rh]);
     color("tan") translate([B(P(19.9, 23.5))[0], B(P(19.9, 23.5))[1], top_z]) cube([14.7, 19, 3]);
     for (b = BUTTONS) color("black") translate([B(b)[0] - 2.55, B(b)[1] - 2.55, top_z]) cube([5.1, 5.1, SW_H]);
     color("white", 0.8) translate([0, 0, base_h + 12]) lid();

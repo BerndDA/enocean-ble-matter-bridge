@@ -37,7 +37,8 @@ BOARD_W, BOARD_H = 46.5, 33.4
 SOCKET = False                        # carrier_case.scad pm_mount: "direct" (False) or "socket"
 PM_GAP = 11.0 if SOCKET else 2.5
 PM_PCB, PM_PARTS = 1.2, 3.5
-INNER_H = PM_GAP + PM_PCB + PM_PARTS + 0.8
+USB_HEAD = 1.5                       # carrier_case.scad usb_head: wall above the USB opening
+INNER_H = PM_GAP + PM_PCB + PM_PARTS + 0.8 + USB_HEAD
 BOARD_Z = FLOOR + UNDER
 TOP_Z = BOARD_Z + BOARD_T
 BASE_H = TOP_Z + INNER_H
@@ -263,11 +264,11 @@ M.update({
     "tongue": mat("tongue", (0.12, 0.12, 0.13), 0.5),
 })
 
-# ---------------- nice!nano v2: red board (black in the photo), gold rings, mid-mount USB-C, nRF52840 towards the far end
+# ---------------- nice!nano v2: red board (black in the photo), gold rings, USB-C sunk flush with its underside, nRF52840 towards the far end
 # Module coordinates: d = mm from the USB end, f = fraction of the width from the +X edge
-# (RAW/GND/RST/VCC side). The nice!nano's receptacle sits in a notch of its board, centred on
-# the PCB (carrier_case.scad pm_usb_mid).
-USB_MID = True
+# (RAW/GND/RST/VCC side). The receptacle (3.2 mm high) sits in a notch of the module, its
+# underside flush with the module's underside (carrier_case.scad pm_usb = "bottom").
+USB_UZ = pm_z + 1.6                  # receptacle centre
 PM_W = PM_X1 - PM_X0
 
 
@@ -328,7 +329,7 @@ for i, (d, f) in enumerate(PASSIVES):
         inside.append(box(f"p{i}t", x - 0.26, y + s * 0.5 - 0.13, top, x + 0.26, y + s * 0.5 + 0.13, top + 0.36, M["term"], 0.02))
 # USB-C receptacle (8.94 x 7.35 x 3.2 mm), front about flush with the module edge
 cx = (PM_X0 + PM_X1) / 2
-uz = pm_z + PM_PCB / 2 if USB_MID else top + 1.6
+uz = USB_UZ
 inside.append(box("usb", cx - 4.47, PM_Y1 - 7.35 + 0.3, uz - 1.6, cx + 4.47, PM_Y1 + 0.3, uz + 1.6, M["metal"], 1.1))
 inside.append(box("usb_mouth", cx - 3.9, PM_Y1 + 0.29, uz - 1.05, cx + 3.9, PM_Y1 + 0.33, uz + 1.05, M["usb_in"], 0.0))
 inside.append(box("usb_tongue", cx - 3.3, PM_Y1 + 0.32, uz - 0.35, cx + 3.3, PM_Y1 + 0.36, uz + 0.35, M["tongue"], 0.0))
@@ -469,7 +470,7 @@ def usb_plug():
     plug = bpy.data.objects.new("plug", None)
     scene.collection.objects.link(plug)
     plug.parent = root
-    uz = pm_z + PM_PCB / 2 if USB_MID else pm_z + PM_PCB + 1.6   # receptacle centre
+    uz = USB_UZ                              # receptacle centre
     yf = PM_Y1 + 0.3                         # receptacle front face
     parts = [
         rrect("plug_shell", cx, uz, 8.25, 2.40, 1.2, yf - 6.45, yf + 0.2, M["metal"]),
