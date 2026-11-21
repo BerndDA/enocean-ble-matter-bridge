@@ -13,6 +13,7 @@ Both are based on the nRF Connect SDK Matter Bridge application and are meant fo
 | --- | --- |
 | [firmware/ble-gateway/](firmware/ble-gateway/) | The BLE gateway app |
 | [firmware/enocean-gateway/](firmware/enocean-gateway/) | The EnOcean gateway app |
+| [firmware/bootloader/](firmware/bootloader/) | UF2 bootloader for the EnMT carrier (and the DK as a stand-in) with an LED pattern on the three status LEDs |
 | [firmware/common/](firmware/common/) | Shared by both apps: bridge core, Matter device types, Matter identity from the chip ID, network log, shared Kconfig (`common.cmake`, `Kconfig`) |
 | [Makefile](Makefile) | Shortcuts: build, flash, tests, shell, measurements (`make` lists them; `APP=enocean-gateway` for the EnOcean gateway) |
 | [scripts/](scripts/) | `ncs-env.sh` sets up the SDK and toolchain; `diag-capture.py` and `diag-summary.py` for measurements |
@@ -183,7 +184,7 @@ The Pro Micro (also sold as nice!nano clone or "SuperMini") is a second option n
 
 - **`BOARD=promicro-uf2`**: keeps the UF2 bootloader the board ships with. You flash over USB by copying a file. No wiring needed.
 - **`BOARD=promicro`**: flashed over SWD with the DK as programmer. This erases the UF2 bootloader, and gives a little more flash and a real full erase.
-- **`BOARD=enmt`**: the [EnMT carrier board](hardware/enocean-carrier/DESIGN.md), a nice!nano with a TCM 515 (not fitted for the BLE gateway), for both apps. Same as `promicro-uf2` plus the carrier's three status LEDs ([common/boards/enmt_carrier.overlay](firmware/common/boards/enmt_carrier.overlay), [common/status_leds](firmware/common/status_leds/status_leds.h)): green LINK (Matter/Thread status), yellow RX (a pulse per packet from a bridged device: EnOcean telegram or BTHome reading; Matter Identify blinks it), red PWR (on; the EnOcean gateway blinks it while the TCM doesn't answer). `promicro-uf2` also runs on the carrier, with the LEDs dark.
+- **`BOARD=enmt`**: the [EnMT carrier board](hardware/enocean-carrier/DESIGN.md), a nice!nano with a TCM 515 (not fitted for the BLE gateway), for both apps. Same as `promicro-uf2` plus the carrier's three status LEDs ([common/boards/enmt_carrier.overlay](firmware/common/boards/enmt_carrier.overlay), [common/status_leds](firmware/common/status_leds/status_leds.h)): green LINK (Matter/Thread status), yellow RX (a pulse per packet from a bridged device: EnOcean telegram or BTHome reading; Matter Identify blinks it), red PWR (on; the EnOcean gateway blinks it while the TCM doesn't answer). `promicro-uf2` also runs on the carrier, with the LEDs dark. The carrier's own UF2 bootloader ([firmware/bootloader/](firmware/bootloader/README.md)) shows its state on the same three LEDs.
 
 | | DK | Pro Micro, UF2 | Pro Micro, SWD |
 | --- | --- | --- | --- |

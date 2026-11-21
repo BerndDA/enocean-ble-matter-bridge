@@ -1,0 +1,65 @@
+diff --git a/Makefile b/Makefile
+index 5866d15..d0dd477 100644
+--- a/Makefile
++++ b/Makefile
+@@ -420,13 +420,23 @@ CFLAGS += -DDFU_APP_DATA_RESERVED=$(DFU_APP_DATA_RESERVED)
+ 
+ LDFLAGS += \
+ 	$(CFLAGS) \
+-	-Wl,-L,linker -Wl,-T,$(LD_FILE) \
++	-Wl,-L,linker -T$(LD_FILE) \
+ 	-Wl,--print-memory-usage \
+ 	-Wl,-Map=$@.map -Wl,-cref -Wl,-gc-sections \
+-	-specs=nosys.specs -specs=nano.specs
++	$(LIBC_SPECS)
+ 
+ LIBS += -lm -lc
+ 
++# Zephyr SDK GCC (arm-zephyr-eabi, from the nRF Connect SDK) has picolibc instead of newlib-nano:
++# no nosys/nano specs and no crt0, so the nrfx startup clears .bss and calls main itself.
++# The linker script goes to the driver as -T, otherwise the driver adds picolibc.ld.
++ifeq ($(CROSS_COMPILE),arm-zephyr-eabi-)
++LIBC_SPECS = -nostartfiles
++CFLAGS += -D__START=main -D__STARTUP_CLEAR_BSS
++else
++LIBC_SPECS = -specs=nosys.specs -specs=nano.specs
++endif
++
+ #------------------------------------------------------------------------------
+ # Assembler flags
+ #------------------------------------------------------------------------------
+diff --git a/src/boards/boards.c b/src/boards/boards.c
+index c02a278..60e87aa 100644
+--- a/src/boards/boards.c
++++ b/src/boards/boards.c
+@@ -90,6 +90,9 @@ void board_init(void) {
+   #if LEDS_NUMBER > 1
+   led_pwm_init(LED_SECONDARY, LED_SECONDARY_PIN);
+   #endif
++  #if LEDS_NUMBER > 2
++  led_pwm_init(LED_TERTIARY, LED_TERTIARY_PIN);
++  #endif
+ #endif
+ 
+ #if defined(LED_NEOPIXEL) || defined(LED_RGB_RED_PIN) || defined(LED_APA102_CLK)
+@@ -371,6 +374,11 @@ void led_pwm_duty_cycle(uint32_t led_index, uint16_t duty_cycle) {
+   nrf_pwm_task_trigger(NRF_PWM0, NRF_PWM_TASK_SEQSTART0);
+ }
+ 
++#ifdef BOARD_LEDS_ENMT
++// Three-LED pattern of the EnMT carrier (led_tick, led_state): see enmt_leds.h
++#include "enmt_leds.h"
++#else
++
+ static uint32_t primary_cycle_length;
+ #ifdef LED_SECONDARY_PIN
+ static uint32_t secondary_cycle_length;
+@@ -475,6 +483,8 @@ void led_state(uint32_t state) {
+ #endif
+ }
+ 
++#endif // BOARD_LEDS_ENMT
++
+ #ifdef LED_NEOPIXEL
+ 
+ // WS2812B (rev B) timing is 0.4 and 0.8 us
