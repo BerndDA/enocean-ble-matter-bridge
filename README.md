@@ -22,3 +22,5 @@ make identity                      # the board's Matter setup code
 ```
 
 `make` lists all targets. Open tasks are in [TODO.md](TODO.md).
+
+The wiki is also a git submodule in [wiki/](wiki/): `git submodule update --init wiki` checks it out for editing next to the code. Commit and push page changes inside `wiki/` (that publishes them), then commit the new `wiki` pointer here; `git submodule update --remote wiki` fetches edits made in the browser.
