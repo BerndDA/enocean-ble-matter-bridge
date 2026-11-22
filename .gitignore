@@ -12,3 +12,6 @@ __pycache__/
 # Build logs and Python environments
 *.log
 .venv/
+
+# Gateway drive backups (make backup / bootloader drive copies): firmware, settings, keys
+backups/
