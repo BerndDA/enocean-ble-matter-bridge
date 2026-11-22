@@ -1,7 +1,7 @@
 /*
  * EnMT carrier board (hardware/enocean-carrier): a nice!nano v2 on a carrier with a TCM 515
  * (not fitted when it runs the BLE gateway), two buttons and three status LEDs under the lid's
- * light pipes. Shared by both apps.
+ * light pipes. Shared by all apps.
  *
  * Applied on top of the Pro Micro UF2 target (promicro_nrf52840/nrf52840/uf2 with the app's own
  * boards/promicro_nrf52840_nrf52840_uf2.overlay: TCM UART or none, function button) by
@@ -10,8 +10,10 @@
  * The LEDs hang from 3.3 V through their resistors: a pin pulled low lights its LED.
  * Order of the leds node = DK_LED1..4 of the DK library = LED1..4 of Nrf::Board:
  *   LED1  green  LINK  P1.13  Matter/Thread status (Nrf::Board: off-blink, BLE blink, on when connected)
- *   LED2  yellow RX    P1.15  short pulse per packet from a bridged device; Matter Identify blinks it
- *   LED3  red    PWR   P1.11  on; blinks while the app's health check fails (EnOcean: TCM silent)
+ *   LED2  yellow RX    P1.15  short pulse per packet from a bridged device (Nuki: on while connected to
+ *                              the lock); Matter Identify blinks it
+ *   LED3  red    PWR   P1.11  on; blinks while the app's health check fails (EnOcean: TCM silent; Nuki:
+ *                              a pattern per state, see nuki-gateway/src/app_task.cpp)
  *   LED4  the nice!nano's own LED on P0.15 (under the module, not visible in the case)
  * All four blink together during a factory reset (button held 6 s). See common/status_leds/.
  */

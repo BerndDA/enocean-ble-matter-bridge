@@ -123,7 +123,9 @@ bt_gatt_exchange_params sMtuParams;
 bt_gatt_write_params sWriteParams;
 uint8_t sTx[NUKI_MAX_MSG_LEN];
 const bt_uuid *sWantedChar;
+bool sLinkUp; /* the connection callback was told "open" */
 atomic_t sStateQueued; /* a RefreshState is waiting in sRequests */
+atomic_t sAdvCount; /* advertisements received by the scan */
 
 /* --- Bluetooth callbacks (Bluetooth RX thread / GATT DM) ---------------------------------------------------- */
 
@@ -134,6 +136,11 @@ void OnConnected(bt_conn *conn, uint8_t err)
 	}
 	if (err) {
 		LOG_INF("Connect failed (HCI 0x%02x)", err);
+
+		k_spinlock_key_t key = k_spin_lock(&sLock);
+
+		sSnap.mLastDisconnectReason = err;
+		k_spin_unlock(&sLock, key);
 	}
 	k_event_post(&sEvents, err ? kEvtConnectFailed : kEvtConnected);
 }
@@ -145,6 +152,11 @@ void OnDisconnected(bt_conn *conn, uint8_t reason)
 	}
 	/* 0x08 supervision timeout and 0x3e "failed to establish" point to range; 0x13: the lock closed it. */
 	LOG_INF("Disconnected (reason 0x%02x)", reason);
+
+	k_spinlock_key_t key = k_spin_lock(&sLock);
+
+	sSnap.mLastDisconnectReason = reason;
+	k_spin_unlock(&sLock, key);
 
 	/* Wakes a thread waiting for a reply. */
 	static RxMsg sMarker;
@@ -248,6 +260,7 @@ void OnScanRecv(const bt_le_scan_recv_info *info, net_buf_simple *buf)
 {
 	nuki_adv adv;
 
+	atomic_inc(&sAdvCount);
 	nuki_adv_parse(buf->data, buf->len, &adv);
 	if (adv.kind == NUKI_ADV_OTHER) {
 		return;
@@ -354,6 +367,17 @@ void PublishPaired(bool paired)
 
 /* --- Scanning (Nuki thread) ---------------------------------------------------------------------------------- */
 
+void PublishScan(int err)
+{
+	k_spinlock_key_t key = k_spin_lock(&sLock);
+
+	sSnap.mScanning = sScanning;
+	if (err) {
+		sSnap.mScanError = err;
+	}
+	k_spin_unlock(&sLock, key);
+}
+
 void ScanStop()
 {
 	if (sScanning) {
@@ -363,6 +387,7 @@ void ScanStop()
 			LOG_WRN("Scan stop failed (%d)", err);
 		}
 		sScanning = false;
+		PublishScan(0);
 	}
 }
 
@@ -385,10 +410,12 @@ void ScanStart(bool active)
 
 	if (err) {
 		LOG_WRN("Scan start failed (%d)", err);
+		PublishScan(err);
 		return;
 	}
 	sScanning = true;
 	sScanActive = active;
+	PublishScan(0);
 }
 
 /* --- Connection (Nuki thread) -------------------------------------------------------------------------------- */
@@ -431,10 +458,29 @@ bool Disconnect()
 	}
 	bt_conn_unref(sConn);
 	sConn = nullptr;
+	if (sLinkUp) {
+		sLinkUp = false;
+		if (sCallbacks.mConnection) {
+			sCallbacks.mConnection(false);
+		}
+	}
 	return true;
 }
 
-Result Connect(const bt_addr_le_t &addr, const bt_uuid *service, const bt_uuid *characteristic)
+/* Counts a connection attempt; on failure also a failed one. Returns r. */
+Result CountConnect(Result r)
+{
+	k_spinlock_key_t key = k_spin_lock(&sLock);
+
+	sSnap.mConnects++;
+	if (r != Result::Ok) {
+		sSnap.mConnectFailures++;
+	}
+	k_spin_unlock(&sLock, key);
+	return r;
+}
+
+Result ConnectOnce(const bt_addr_le_t &addr, const bt_uuid *service, const bt_uuid *characteristic)
 {
 	char text[BT_ADDR_LE_STR_LEN];
 	uint32_t got;
@@ -472,6 +518,10 @@ Result Connect(const bt_addr_le_t &addr, const bt_uuid *service, const bt_uuid *
 		LOG_INF("Lock %s not reached", text);
 		Disconnect();
 		return Result::ConnectFailed;
+	}
+	sLinkUp = true;
+	if (sCallbacks.mConnection) {
+		sCallbacks.mConnection(true);
 	}
 
 	/* Nuki messages are longer than the default 20 bytes per write. */
@@ -513,6 +563,11 @@ Result Connect(const bt_addr_le_t &addr, const bt_uuid *service, const bt_uuid *
 		return got & kEvtDisconnected ? Result::Disconnected : Result::Protocol;
 	}
 	return Result::Ok;
+}
+
+Result Connect(const bt_addr_le_t &addr, const bt_uuid *service, const bt_uuid *characteristic)
+{
+	return CountConnect(ConnectOnce(addr, service, characteristic));
 }
 
 Result Write(size_t len)
@@ -1148,6 +1203,7 @@ void GetSnapshot(Snapshot &out)
 
 	out = sSnap;
 	k_spin_unlock(&sLock, key);
+	out.mAdvertisements = atomic_get(&sAdvCount);
 }
 
 } /* namespace Nuki */

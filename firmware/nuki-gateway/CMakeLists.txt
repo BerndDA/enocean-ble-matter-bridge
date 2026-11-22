@@ -32,6 +32,9 @@ target_sources(app PRIVATE
 )
 target_sources_ifdef(CONFIG_SHELL app PRIVATE src/nuki/nuki_shell.cpp)
 
+# Status page (firmware/common/web): src/web/index.html and its JSON
+target_sources_ifdef(CONFIG_GATEWAY_WEB app PRIVATE src/web_status.cpp)
+
 # TweetNaCl as published (public domain, tweetnacl.cr.yp.to 20140427): no warnings for code we don't change
 set_source_files_properties(src/nuki/tweetnacl/tweetnacl.c PROPERTIES COMPILE_OPTIONS "-w")
 

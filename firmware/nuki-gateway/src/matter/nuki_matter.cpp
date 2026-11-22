@@ -40,10 +40,6 @@ namespace NukiMatter
 namespace
 {
 
-/* Endpoint 2 is the data model's placeholder (disabled by the bridge manager); dynamic ones start at 3.
- * The opener came first in the first build, so it keeps 3. */
-constexpr EndpointId kOpenerEndpointId = 3;
-constexpr EndpointId kLockEndpointId = 4;
 constexpr uint8_t kOpenerIndex = 0;
 constexpr uint8_t kLockIndex = 1;
 
@@ -214,8 +210,15 @@ void OnNukiState(const nuki_keyturner_state &state)
 	sStatePending = true;
 	k_spin_unlock(&sLock, key);
 	Schedule();
+}
+
+void OnNukiConnection(bool open)
+{
 #ifdef CONFIG_GATEWAY_STATUS_LEDS
-	Gateway::StatusLeds::PacketReceived();
+	/* RX (yellow) is on while the gateway talks to the lock. */
+	Gateway::StatusLeds::SetRxActive(open);
+#else
+	ARG_UNUSED(open);
 #endif
 }
 
@@ -358,6 +361,7 @@ CHIP_ERROR Init()
 	callbacks.mState = OnNukiState;
 	callbacks.mPaired = OnNukiPaired;
 	callbacks.mActionDone = OnNukiActionDone;
+	callbacks.mConnection = OnNukiConnection;
 	Nuki::Init(callbacks);
 
 	/* Reachable while paired */

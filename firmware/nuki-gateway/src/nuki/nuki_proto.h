@@ -246,6 +246,7 @@ int nuki_parse_config(const uint8_t *payload, size_t len, struct nuki_config *ou
 int nuki_parse_error(const uint8_t *payload, size_t len, uint8_t *error, uint16_t *cmd);
 
 const char *nuki_lock_state_str(uint8_t lock_state);
+const char *nuki_door_state_str(uint8_t door_state);
 const char *nuki_error_str(uint8_t error);
 
 /* --- Advertisements ------------------------------------------------------------------------------------------ */

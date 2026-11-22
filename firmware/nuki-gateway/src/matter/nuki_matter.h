@@ -22,6 +22,11 @@ namespace Gateway
 namespace NukiMatter
 {
 
+/* Endpoint 2 is the data model's placeholder (disabled by the bridge manager); dynamic ones start at 3.
+ * The opener came first in the first build, so it keeps 3. */
+constexpr chip::EndpointId kOpenerEndpointId = 3;
+constexpr chip::EndpointId kLockEndpointId = 4;
+
 /* On the Matter thread, after BridgeManager::Init: adds the endpoints and starts the Nuki client. */
 CHIP_ERROR Init();
 

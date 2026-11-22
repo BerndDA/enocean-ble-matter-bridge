@@ -42,6 +42,7 @@ struct Callbacks {
 	void (*mInfo)(const nuki_config &config);
 	void (*mActionDone)(uint8_t action, Result result);
 	void (*mPaired)(bool paired);
+	void (*mConnection)(bool open); /* a connection to the lock opened / closed */
 };
 
 /* Loads the pairing and starts the thread. Call once Bluetooth is enabled (after the Matter server init). */
@@ -76,6 +77,12 @@ struct Snapshot {
 	Result mLastResult;
 	uint32_t mRequests;
 	uint32_t mFailures;
+	uint32_t mConnects; /* connection attempts */
+	uint32_t mConnectFailures; /* attempts that ended before the Nuki service was ready */
+	uint8_t mLastDisconnectReason; /* HCI reason of the last disconnect or failed connect */
+	bool mScanning; /* the beacon scan runs */
+	uint32_t mAdvertisements; /* received by the scan, from any device */
+	int mScanError; /* of the last failed scan start, 0 = none */
 };
 
 void GetSnapshot(Snapshot &out);

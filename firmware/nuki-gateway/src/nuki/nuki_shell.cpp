@@ -39,22 +39,6 @@ int Report(const shell *sh, int err, const char *what)
 	}
 }
 
-const char *DoorStr(uint8_t door)
-{
-	switch (door) {
-	case NUKI_DOOR_UNAVAILABLE: return "no sensor";
-	case NUKI_DOOR_DEACTIVATED: return "sensor off";
-	case NUKI_DOOR_CLOSED: return "closed";
-	case NUKI_DOOR_OPENED: return "open";
-	case NUKI_DOOR_UNKNOWN: return "unknown";
-	case NUKI_DOOR_CALIBRATING: return "calibrating";
-	case NUKI_DOOR_UNCALIBRATED: return "uncalibrated";
-	case NUKI_DOOR_TAMPERED: return "tampered";
-	case NUKI_DOOR_NONE: return "-";
-	default: return "?";
-	}
-}
-
 int CmdStatus(const shell *sh, size_t, char **)
 {
 	Nuki::Snapshot s;
@@ -81,13 +65,20 @@ int CmdStatus(const shell *sh, size_t, char **)
 	}
 	if (s.mHaveState) {
 		shell_print(sh, "State: %s, door %s, battery %u %%%s%s (%lld s ago)",
-			    nuki_lock_state_str(s.mState.lock_state), DoorStr(s.mState.door_state),
+			    nuki_lock_state_str(s.mState.lock_state), nuki_door_state_str(s.mState.door_state),
 			    nuki_battery_percent(s.mState.battery_raw),
 			    nuki_battery_critical(s.mState.battery_raw) ? ", critical" : "",
 			    nuki_battery_charging(s.mState.battery_raw) ? ", charging" : "", (now - s.mStateMs) / 1000);
 	}
 	shell_print(sh, "Requests: %u, failed %u, last: %s%s", s.mRequests, s.mFailures, Nuki::ResultStr(s.mLastResult),
 		    s.mBusy ? " (one running)" : "");
+	shell_print(sh, "Connections: %u, failed %u, last disconnect reason 0x%02x", s.mConnects, s.mConnectFailures,
+		    s.mLastDisconnectReason);
+	shell_print(sh, "Scan: %s, %u advertisements received%s", s.mScanning ? "on" : "off", s.mAdvertisements,
+		    s.mScanError ? " (last start failed)" : "");
+	if (s.mScanError) {
+		shell_print(sh, "Last scan start error: %d", s.mScanError);
+	}
 	if (s.mLastResult == Nuki::Result::LockError) {
 		shell_print(sh, "Last lock error: 0x%02x (%s)", s.mLastError, nuki_error_str(s.mLastError));
 	}

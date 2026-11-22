@@ -328,6 +328,22 @@ const char *nuki_lock_state_str(uint8_t lock_state)
 	}
 }
 
+const char *nuki_door_state_str(uint8_t door_state)
+{
+	switch (door_state) {
+	case NUKI_DOOR_UNAVAILABLE: return "no sensor";
+	case NUKI_DOOR_DEACTIVATED: return "sensor off";
+	case NUKI_DOOR_CLOSED: return "closed";
+	case NUKI_DOOR_OPENED: return "open";
+	case NUKI_DOOR_UNKNOWN: return "unknown";
+	case NUKI_DOOR_CALIBRATING: return "calibrating";
+	case NUKI_DOOR_UNCALIBRATED: return "uncalibrated";
+	case NUKI_DOOR_TAMPERED: return "tampered";
+	case NUKI_DOOR_NONE: return "-";
+	default: return "?";
+	}
+}
+
 const char *nuki_error_str(uint8_t error)
 {
 	switch (error) {

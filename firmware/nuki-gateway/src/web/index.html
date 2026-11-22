@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nuki Matter Gateway</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='11' width='14' height='10' rx='2'/%3E%3Cpath d='M8 11V7a4 4 0 0 1 8 0v4'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #f3f4f6; --card: #fff; --text: #16181d; --muted: #6b7280; --faint: #9ca3af; --line: #e5e7eb;
+    --track: #eceef1; --ok: #15803d; --ok-bg: #dcfce7; --warn: #b45309; --warn-bg: #fef3c7;
+    --bad: #b91c1c; --bad-bg: #fee2e2; --accent: #2563eb; --idle-bg: #e5e7eb; --on: #ca8a04; --on-bg: #fef9c3;
+    --shadow: 0 1px 2px rgba(16, 24, 40, .05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111316; --card: #1b1e23; --text: #e8eaed; --muted: #9aa1ab; --faint: #6b7280; --line: #2b3038;
+      --track: #2b3038; --ok: #4ade80; --ok-bg: #14532d55; --warn: #fbbf24; --warn-bg: #78350f55;
+      --bad: #f87171; --bad-bg: #7f1d1d55; --accent: #7aa7ff; --idle-bg: #2b3038; --on: #facc15; --on-bg: #713f1255;
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1400px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; }
+  code, .mono { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .muted { color: var(--muted); } .ok { color: var(--ok); } .warn { color: var(--warn); } .bad { color: var(--bad); }
+
+  /* header */
+  .top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 650; }
+  .brand svg { width: 26px; height: 26px; color: var(--accent); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 3px 10px;
+          border-radius: 99px; background: var(--card); border: 1px solid var(--line); color: var(--muted); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+  .chip.ok { color: var(--text); } .chip.ok .dot { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-bg); }
+  .chip.bad { color: var(--bad); } .chip.bad .dot { background: var(--bad); }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px;
+          box-shadow: var(--shadow); min-width: 0; }
+  h2 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+       margin: 0 0 12px; }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .kv { display: flex; justify-content: space-between; gap: 16px; font-size: 14px; padding: 3px 0; }
+  .kv span:first-child { color: var(--muted); }
+  .pill { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 99px; font-weight: 500; white-space: nowrap; }
+  .pill.ok { background: var(--ok-bg); } .pill.warn { background: var(--warn-bg); } .pill.bad { background: var(--bad-bg); }
+  .pill.idle { background: var(--idle-bg); color: var(--muted); }
+  .pill.on { background: var(--on-bg); color: var(--on); }
+  .bar { height: 6px; border-radius: 99px; background: var(--track); overflow: hidden; margin-top: 5px; }
+  .bar > i { display: block; height: 100%; border-radius: 99px; background: var(--ok); transition: width .4s; }
+  .bar.warn > i { background: var(--warn); } .bar.bad > i { background: var(--bad); }
+
+  /* tiles */
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .tile .val { font-size: 22px; font-weight: 650; display: flex; align-items: center; gap: 10px; }
+  .signal { display: inline-flex; align-items: flex-end; gap: 2px; height: 16px; }
+  .signal i { width: 4px; border-radius: 1px; background: var(--track); }
+  .signal i:nth-child(1) { height: 25%; } .signal i:nth-child(2) { height: 50%; }
+  .signal i:nth-child(3) { height: 75%; } .signal i:nth-child(4) { height: 100%; }
+  .signal i.on { background: currentColor; }
+  .signal.small { height: 12px; } .signal.small i { width: 3px; }
+
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+  .ctrl { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 0;
+          border-top: 1px solid var(--line); }
+  .ctrl:first-child { border-top: 0; }
+  .ctrl b { font-weight: 550; }
+  details.more { margin-top: 10px; }
+  details.more summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  .addr { overflow-wrap: anywhere; }
+
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 0 10px 8px 0; white-space: nowrap; }
+  td { padding: 7px 10px 7px 0; border-top: 1px solid var(--line); white-space: nowrap; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .hint { color: var(--faint); font-size: 12px; margin-top: 8px; }
+
+  /* lock */
+  .lockcard { display: grid; grid-template-columns: auto 1fr auto; gap: 18px; align-items: center; }
+  .lockicon { width: 72px; height: 72px; border-radius: 18px; display: grid; place-items: center;
+              background: var(--idle-bg); color: var(--muted); transition: background .3s, color .3s; }
+  .lockicon svg { width: 38px; height: 38px; }
+  .lockicon.locked { background: var(--ok-bg); color: var(--ok); }
+  .lockicon.unlocked { background: var(--on-bg); color: var(--on); }
+  .lockicon.bad { background: var(--bad-bg); color: var(--bad); }
+  .lockicon.unknown { background: transparent; border: 1px dashed var(--line); color: var(--faint); }
+  .lockstate { font-size: 26px; font-weight: 650; text-transform: capitalize; }
+  .battery { min-width: 170px; }
+  .battery .val { font-size: 20px; font-weight: 650; }
+  .eps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  @media (max-width: 640px) { .lockcard { grid-template-columns: auto 1fr; } .battery { grid-column: 1 / -1; } }
+
+  @media (max-width: 1000px) { .tiles { grid-template-columns: 1fr 1fr; } .cols { grid-template-columns: 1fr; } }
+  @media (max-width: 520px) { .tiles { grid-template-columns: 1fr; } .devs { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      Nuki Matter Gateway
+    </div>
+    <div class="chips">
+      <span class="chip" id="chipConn"><span class="dot"></span><span>connecting…</span></span>
+      <span class="chip" id="chipLock">–</span>
+      <span class="chip" id="chipThread">–</span>
+      <span class="chip" id="chipFw">–</span>
+    </div>
+  </header>
+
+  <section class="card">
+    <h2>Lock</h2>
+    <div class="lockcard">
+      <div class="lockicon unknown" id="lockIcon"></div>
+      <div>
+        <div class="lockstate" id="lockState">–</div>
+        <div class="sub" id="lockSub">–</div>
+      </div>
+      <div class="battery">
+        <div class="kv"><span>Battery</span><span class="val" id="bat">–</span></div>
+        <div class="bar" id="batBar"><i style="width:0"></i></div>
+        <div class="sub" id="batSub"></div>
+      </div>
+    </div>
+    <div class="eps" id="eps"></div>
+  </section>
+
+  <div class="tiles">
+    <section class="card tile">
+      <h2>Thread</h2>
+      <div class="val"><span class="signal" id="sigBars"><i></i><i></i><i></i><i></i></span><span id="rssi">–</span></div>
+      <div class="sub" id="threadSub">–</div>
+    </section>
+    <section class="card tile">
+      <h2>Matter heap</h2>
+      <div class="val" id="heap">–</div>
+      <div class="bar" id="heapBar"><i style="width:0"></i></div>
+      <div class="sub" id="heapSub">–</div>
+    </section>
+    <section class="card tile">
+      <h2>Uptime</h2>
+      <div class="val" id="uptime">–</div>
+      <div class="sub" id="resetSub">–</div>
+    </section>
+    <section class="card tile">
+      <h2>Firmware</h2>
+      <div class="val" id="fw">–</div>
+      <div class="sub" id="fwSub">–</div>
+    </section>
+  </div>
+
+  <div class="cols">
+    <section class="card">
+      <h2>Bluetooth link to the lock</h2>
+      <div id="link"><div class="muted">–</div></div>
+    </section>
+    <section class="card">
+      <h2>Matter controllers</h2>
+      <div id="fabrics"><div class="muted">–</div></div>
+      <details class="more">
+        <summary>Thread network · <span id="netName">–</span></summary>
+        <div id="netInfo" style="margin-top:8px"></div>
+      </details>
+    </section>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const txt = (id, v) => { $(id).textContent = v; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const kb = b => (b / 1024).toFixed(1) + ' KB';
+
+const LOCKED = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+const UNLOCKED = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>';
+const VENDORS = { 0x1349: 'Apple Home', 0x1384: 'Apple Keychain', 0x6006: 'Google Home', 0x1217: 'Amazon Alexa',
+                  0x110A: 'SmartThings', 0x134B: 'Home Assistant', 0xFFF1: 'Test vendor' };
+// HCI reasons a connection to the lock ended with (log and `nuki status` show the same)
+const REASONS = { '0x08': 'supervision timeout (range)', '0x3E': 'failed to establish (range)',
+                  '0x13': 'closed by the lock', '0x16': 'closed by the gateway (normal)', '0x02': 'cancelled (lock not found)' };
+
+function duration(s) {
+  const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+  return d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : m ? `${m} min` : `${s} s`;
+}
+function ago(s) { return s == null ? 'never' : s < 60 ? `${s} s ago` : duration(s) + ' ago'; }
+function bars(dbm, steps) { return dbm == null ? 0 : dbm >= steps[0] ? 4 : dbm >= steps[1] ? 3 : dbm >= steps[2] ? 2 : 1; }
+function signal(n, small) {
+  const c = n >= 3 ? 'ok' : n === 2 ? 'warn' : n ? 'bad' : 'muted';
+  return `<span class="signal ${small ? 'small' : ''} ${c}">` + [0, 1, 2, 3].map(i => `<i class="${i < n ? 'on' : ''}"></i>`).join('') + '</span>';
+}
+const BLE_STEPS = [-70, -78, -86];    // beacon dBm; connections get unreliable below about -85
+const THREAD_STEPS = [-65, -75, -85]; // Thread parent RSSI
+
+function renderLock(n, eps) {
+  const l = n.lock;
+  // Nuki lock states: 1 locked, 2/4/7 motor running, 3/5/6 open, 0xFE motor blocked
+  const cls = !l ? 'unknown' : l.code === 1 ? 'locked' : [3, 5, 6].includes(l.code) ? 'unlocked'
+            : l.code === 254 ? 'bad' : [2, 4, 7].includes(l.code) ? '' : 'unknown';
+  $('lockIcon').className = 'lockicon ' + cls;
+  $('lockIcon').innerHTML = cls === 'unlocked' ? UNLOCKED : LOCKED;
+  txt('lockState', !n.paired ? 'not paired' : l ? l.state : 'state unknown');
+  const name = n.info ? `${esc(n.info.name)} · Nuki ID <span class="mono">${n.info.nukiId}</span>` : '';
+  $('lockSub').innerHTML = !n.paired
+    ? (n.searching ? '<span class="ok">Looking for a lock in pairing mode: hold its button for 5 s.</span>'
+                   : 'Pair in the shell: <code>nuki pair</code>, then hold the lock\'s button for 5 s.')
+    : [name, l ? `door ${esc(l.door)}` : '', l ? `read ${ago(l.agoS)}` : ''].filter(Boolean).join(' · ');
+
+  if (l) {
+    const bcls = l.critical ? 'bad' : l.battery <= 25 ? 'warn' : '';
+    txt('bat', `${l.battery} %`);
+    $('bat').className = 'val ' + bcls;
+    $('batBar').className = 'bar ' + bcls;
+    $('batBar').firstElementChild.style.width = l.battery + '%';
+    txt('batSub', [l.critical ? 'critical: replace soon' : '', l.charging ? 'charging' : ''].filter(Boolean).join(' · '));
+  } else {
+    txt('bat', '–'); txt('batSub', '');
+    $('batBar').firstElementChild.style.width = '0';
+  }
+
+  $('eps').innerHTML = eps.map(e => {
+    const st = e.state == null ? 'unknown' : e.state;
+    const c = st === 'locked' ? 'ok' : st === 'unlocked' || st === 'unlatched' ? 'on' : st === 'unknown' ? 'idle' : 'bad';
+    return `<span class="pill ${c}" title="Matter endpoint ${e.endpoint}: ${e.role === 'lock' ? 'Lock / Unlock move the bolt' : 'Unlock pulls the latch'}">` +
+      `${esc(e.name)}: ${esc(st)}${e.reachable ? '' : ' (unreachable)'}</span>`;
+  }).join('');
+
+  txt('chipLock', !n.paired ? 'not paired' : l ? `lock ${l.state}` : 'lock: no state yet');
+}
+
+function renderLink(n) {
+  if (!n.paired) {
+    $('link').innerHTML = `<div class="muted">Not paired.</div>` +
+      `<div class="sub">The gateway pairs as an app called <b>${esc(n.name)}</b>.</div>`;
+    return;
+  }
+  const b = bars(n.rssi, BLE_STEPS);
+  const reason = n.lastDisconnect ? `${n.lastDisconnect} · ${REASONS[n.lastDisconnect] || 'other'}` : '–';
+  const rcls = ['0x08', '0x3E', '0x02'].includes(n.lastDisconnect) ? 'warn' : '';
+  const failed = n.connectFailures ? ` · <span class="${n.connectFailures * 4 > n.connects ? 'bad' : 'warn'}">${n.connectFailures} failed</span>` : '';
+  const last = n.lastResult === 'ok' ? '<span class="ok">ok</span>' : `<span class="bad">${esc(n.lastResult)}${n.lastError ? ': ' + esc(n.lastError) : ''}</span>`;
+  $('link').innerHTML =
+    `<div class="kv"><span>Beacon</span><span>${n.rssi == null ? '<span class="warn">not heard yet</span>' : `${signal(b, true)} ${n.rssi} dBm · ${ago(n.beaconAgoS)}`}</span></div>` +
+    `<div class="kv"><span>Lock</span><span class="mono">${esc(n.address)}</span></div>` +
+    `<div class="kv"><span>Authorization</span><span>${esc(n.name)} · ID ${n.authId}</span></div>` +
+    (n.info ? `<div class="kv"><span>Lock firmware</span><span>${esc(n.info.firmware)} · hardware ${esc(n.info.hardware)}</span></div>` : '') +
+    `<div class="kv"><span>Requests</span><span>${n.requests}${n.failures ? ` · <span class="warn">${n.failures} failed</span>` : ''}` +
+      `${n.busy ? ' · <span class="ok">one running</span>' : ''}</span></div>` +
+    `<div class="kv"><span>Last request</span><span>${last}</span></div>` +
+    `<div class="kv"><span>Connections</span><span>${n.connects}${failed}</span></div>` +
+    `<div class="kv"><span>Last disconnect</span><span class="${rcls}">${reason}</span></div>` +
+    `<div class="kv"><span>Beacon scan</span><span>${n.scanning ? 'on' : n.busy ? 'paused (connecting)' : '<span class="warn">off</span>'}` +
+      ` · ${n.advertisements} advertisements${n.scanError ? ` · <span class="bad">start failed (${n.scanError})</span>` : ''}</span></div>` +
+    `<div class="hint">Below about -85 dBm, connections often fail while being set up: place the gateway closer to the lock.</div>`;
+}
+
+function render(s) {
+  const y = s.system, t = s.thread, m = s.matter, n = s.nuki;
+
+  // ---- header ----
+  const attached = ['child', 'router', 'leader'].includes(t.role);
+  $('chipConn').className = 'chip ' + (attached ? 'ok' : 'bad');
+  $('chipConn').lastElementChild.textContent = attached ? 'online' : 'Thread ' + t.role;
+  txt('chipThread', `Thread ${t.role}`);
+  txt('chipFw', `v${y.version}`);
+
+  renderLock(n, s.endpoints);
+  renderLink(n);
+
+  // ---- tiles ----
+  // A child shows its parent link, a router its strongest neighbor link.
+  const rssi = t.parentRssi != null ? t.parentRssi : t.bestRssi;
+  const tb = rssi != null ? bars(rssi, THREAD_STEPS) : 0;
+  $('sigBars').outerHTML = signal(tb).replace('class="signal', 'id="sigBars" class="signal');
+  txt('rssi', rssi != null ? `${rssi} dBm` : attached ? t.role : 'detached');
+  txt('threadSub', `${t.role} · channel ${t.channel} · ` + (t.parentRssi != null
+    ? `parent ${t.parentRloc16}, LQI ${t.parentLqi}`
+    : `${t.neighbors} neighbor${t.neighbors === 1 ? '' : 's'}` + (t.bestRssi != null ? ', strongest link' : '')));
+
+  const heapTotal = y.heapFree + y.heapUsed;
+  const used = heapTotal ? y.heapUsed / heapTotal : 0, high = heapTotal ? Math.max(y.heapHigh, y.heapUsed) / heapTotal : 0;
+  const hcls = high > .9 ? 'bad' : high > .75 ? 'warn' : '';
+  $('heap').className = 'val ' + hcls;
+  txt('heap', kb(y.heapFree) + ' free');
+  $('heapBar').className = 'bar ' + hcls;
+  $('heapBar').firstElementChild.style.width = Math.round(used * 100) + '%';
+  txt('heapSub', `of ${kb(heapTotal)}` + (y.heapHigh ? ` · peak use ${kb(y.heapHigh)}` : ''));
+
+  txt('uptime', duration(y.uptimeS));
+  const rcls = /watchdog|brown/.test(y.bootReason) ? 'bad' : '';
+  $('resetSub').innerHTML = `last start: <span class="${rcls}">${esc(y.bootReason)}</span> · ${y.rebootCount} starts`;
+
+  txt('fw', y.version);
+  txt('fwSub', `nRF Connect SDK ${y.sdk} · ${y.board}`);
+
+  // ---- matter ----
+  $('fabrics').innerHTML = (m.fabrics.length
+    ? m.fabrics.map(f => `<div class="ctrl"><div><b>${esc(VENDORS[f.vendorId] || 'Vendor 0x' + f.vendorId.toString(16).toUpperCase())}</b>` +
+        `${f.label ? ' <span class="muted">· ' + esc(f.label) + '</span>' : ''}</div>` +
+        `<span class="mono muted" title="Node ID of the gateway in this fabric">${f.nodeId.replace(/^0+(?=.{8})/, '')}</span></div>`).join('')
+    : '<div class="muted">Not commissioned yet.</div>') +
+    `<div class="sub">${m.subscriptions} subscription${m.subscriptions === 1 ? '' : 's'} · ` +
+    (m.commissioningOpen ? '<span class="ok">pairing window open</span>' : 'pairing window closed') + '</div>';
+
+  txt('netName', t.network);
+  $('netInfo').innerHTML =
+    `<div class="kv"><span>Role</span><span>${esc(t.role)} · RLOC16 <span class="mono">${t.rloc16}</span></span></div>` +
+    `<div class="kv"><span>Channel · PAN ID</span><span>${t.channel} · <span class="mono">${t.panId}</span></span></div>` +
+    `<div class="kv"><span>Partition</span><span class="mono">${t.partition}</span></div>` +
+    t.addresses.map(a => `<div class="kv"><span>Address</span><span class="mono addr">${esc(a)}</span></div>`).join('');
+}
+
+let failures = 0;
+async function refresh() {
+  try {
+    const r = await fetch('/api/status', { cache: 'no-store' });
+    if (!r.ok) throw new Error(r.status);
+    render(await r.json());
+    failures = 0;
+  } catch (e) {
+    if (++failures > 1) {
+      $('chipConn').className = 'chip bad';
+      $('chipConn').lastElementChild.textContent = 'not reachable';
+    }
+  }
+}
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>
