@@ -1,6 +1,7 @@
 // 3D-printable case for the EnOcean carrier board (hardware/enocean-carrier).
 //
-// Parts (choose with `part`): "base", "lid", "pin" (two needed), or "assembly" (preview).
+// Parts (choose with `part`): "plate" (everything for one print: base, lid, 4 pins incl. 2 spares),
+// "base", "lid", "pin" (two needed), or "assembly" (preview).
 //   openscad -D 'part="base"' -o base.stl carrier_case.scad
 // tools/export_case.sh renders all STLs and preview PNGs.
 //
@@ -233,14 +234,27 @@ module pin() {
     translate([0, 0, pin_below - collar]) cylinder(d = pin_collar_d, h = collar);
 }
 
+pins_n = 4;   // pins on the plate: two needed, two spares
+
+module lid_print() translate([0, 0, lid_t]) rotate([180, 0, 0]) translate([0, -OUT_D, 0]) lid();   // upside down
+module pin_print() rotate([180, 0, 0]) translate([0, 0, -(pin_below + lid_t + 1.2)]) pin();        // collar down
+
 if (light_pipe) echo(str("light pipes: cut three ", rod_d, " mm acrylic rods to ", rod_len, " mm"));
 
 // ---------------------------------------------------------------- parts
 if (part == "base") base();
 else if (part == "lid_asm") lid();     // as mounted (renders)
 else if (part == "pin_asm") pin();     // as mounted, tip at z = 0 (renders)
-else if (part == "lid") translate([0, 0, lid_t]) rotate([180, 0, 0]) translate([0, -OUT_D, 0]) lid();  // print upside down
-else if (part == "pin") rotate([180, 0, 0]) translate([0, 0, -(pin_below + lid_t + 1.2)]) pin();     // print collar down
+else if (part == "lid") lid_print();
+else if (part == "pin") pin_print();
+else if (part == "plate") {
+    // one print job: base and lid side by side, the pins in a row in front of them
+    plate_gap = 5;
+    base();
+    translate([OUT_W + plate_gap, 0, 0]) lid_print();
+    for (i = [0 : pins_n - 1])
+        translate([pin_collar_d / 2 + i * (pin_collar_d + 3), -plate_gap - pin_collar_d / 2, 0]) pin_print();
+}
 else {
     // assembly preview: base, board, lid lifted 12 mm
     color("lightgray") base();

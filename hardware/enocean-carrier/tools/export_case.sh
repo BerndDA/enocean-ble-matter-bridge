@@ -4,7 +4,7 @@
 set -e
 cd "$(dirname "$0")/../case"
 SCAD=${OPENSCAD:-openscad}
-for part in base lid pin; do
+for part in base lid pin plate; do
   "$SCAD" -q "$@" -D "part=\"$part\"" -o "carrier_case-$part.stl" carrier_case.scad
   echo "case/carrier_case-$part.stl"
 done
