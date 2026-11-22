@@ -1,0 +1,110 @@
+#
+# Nuki-to-Matter-over-Thread gateway.
+# Based on the nRF Connect SDK Matter Bridge application
+# (Copyright (c) 2023 Nordic Semiconductor, LicenseRef-Nordic-5-Clause).
+#
+mainmenu "Nuki-to-Matter-over-Thread Gateway"
+
+# Bluetooth LE central for the lock, next to Matter's commissioning peripheral
+config BT_CENTRAL
+	default y
+
+config BT_GATT_CLIENT
+	default y
+
+config BT_GATT_DM
+	default y
+
+# The Nuki thread waits on k_event bits set by the Bluetooth callbacks.
+config EVENTS
+	default y
+
+menu "Nuki gateway"
+
+config GATEWAY_NUKI_NAME
+	string "Name of the gateway in the Nuki app"
+	default "Thread Gateway"
+	help
+	  Sent to the lock when pairing; at most 32 bytes.
+
+config GATEWAY_NUKI_APP_ID
+	int "ID the gateway presents to the lock"
+	default 2020003
+	help
+	  Sent when pairing and with every lock action (the lock's activity
+	  log). The ESP32 bridge (nuki_matter) uses 2020002.
+
+choice GATEWAY_NUKI_ID_TYPE
+	prompt "Authorization type"
+	default GATEWAY_NUKI_ID_TYPE_APP
+
+config GATEWAY_NUKI_ID_TYPE_APP
+	bool "App"
+	help
+	  The gateway pairs like a phone with the Nuki app. A lock accepts
+	  several app authorizations, so this works next to a bridge (nuki_hub,
+	  the ESP32 bridge or the Nuki Bridge).
+
+config GATEWAY_NUKI_ID_TYPE_BRIDGE
+	bool "Bridge"
+	help
+	  The gateway pairs as a bridge, like the Nuki Bridge, nuki_hub and the
+	  ESP32 bridge.
+
+endchoice
+
+config GATEWAY_NUKI_LOCK_LABEL
+	string "Matter name of the lock (endpoint 4)"
+	default "Front door"
+	help
+	  Lock and Unlock move the bolt only.
+
+config GATEWAY_NUKI_OPENER_LABEL
+	string "Matter name of the door opener (endpoint 3)"
+	default "Door opener"
+	help
+	  Unlock pulls the latch (opens the door); it then shows Locked again.
+
+config GATEWAY_NUKI_POLL_INTERVAL_S
+	int "Read the lock state at least this often (s)"
+	default 600
+	help
+	  The lock's beacon flags new state, which is then read at once; the poll
+	  only covers missed beacons.
+
+config GATEWAY_NUKI_PAIRING_SEARCH_S
+	int "Look for a lock in pairing mode this long after `nuki pair` (s)"
+	default 60
+
+config GATEWAY_NUKI_ACTION_ATTEMPTS
+	int "Attempts per lock action"
+	default 3
+	help
+	  A failed connection, a missing reply or a busy lock is retried.
+
+config GATEWAY_NUKI_SCAN_INTERVAL
+	int "Beacon scan interval (x0.625 ms)"
+	default 160
+	help
+	  Passive scan for the lock's beacon while idle. Default: 160 (100 ms).
+
+config GATEWAY_NUKI_SCAN_WINDOW
+	int "Beacon scan window (x0.625 ms)"
+	default 40
+	help
+	  Listening time per interval. Keep it well below the interval so Thread
+	  keeps enough radio time. Default: 40 (25 ms, 25 % duty cycle).
+
+config GATEWAY_NUKI_STACK_SIZE
+	int "Stack size of the Nuki thread"
+	default 5120
+	help
+	  TweetNaCl's Curve25519 (pairing only) needs about 2 KB.
+
+module = GATEWAY_NUKI
+module-str = Gateway Nuki
+source "subsys/logging/Kconfig.template.log_config"
+
+endmenu
+
+rsource "../common/Kconfig"

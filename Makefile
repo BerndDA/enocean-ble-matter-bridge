@@ -1,13 +1,13 @@
 # Shortcuts for building, flashing and testing the gateways. `make` lists the targets.
 # Every target sets up the SDK itself (scripts/ncs-env.sh); no need to source it first.
-# Add APP=enocean-gateway for the EnOcean gateway (default: the BLE gateway), and
+# Add APP=enocean-gateway for the EnOcean gateway or APP=nuki-gateway for the Nuki gateway (default: the BLE gateway), and
 # BOARD=promicro or BOARD=promicro-uf2 for the Pro Micro nRF52840, BOARD=enmt for the EnMT carrier,
 # BOARD=enmt-dk for the carrier build on a DK with the EnMT bootloader.
 
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
-# App: a folder in firmware/ (ble-gateway, enocean-gateway). An exported APP from the shell is ignored.
+# App: a folder in firmware/ (ble-gateway, enocean-gateway, nuki-gateway). An exported APP from the shell is ignored.
 ifeq ($(origin APP),environment)
 APP      := ble-gateway
 endif
@@ -22,10 +22,10 @@ endif
 #   promicro      Pro Micro nRF52840, flashed over SWD through the DK's Debug Out header
 #   promicro-uf2  Pro Micro nRF52840 with its factory UF2 bootloader, flashed over USB
 #   enmt          EnMT carrier board (hardware/enocean-carrier): promicro-uf2 plus its three status
-#                 LEDs (firmware/common/boards/enmt_carrier.overlay); both apps
+#                 LEDs (firmware/common/boards/enmt_carrier.overlay); all apps
 #   enmt-dk       the enmt build on an nRF52840 DK with the EnMT bootloader (firmware/bootloader,
 #                 enmt_dk): status LEDs on LED1-3, Button 1 as function button, flashed over the
-#                 DK's nRF USB port (firmware/common/boards/enmt_dk.overlay); both apps
+#                 DK's nRF USB port (firmware/common/boards/enmt_dk.overlay); all apps
 # An exported BOARD from the shell is ignored.
 ifeq ($(origin BOARD),environment)
 BOARD    := dk
@@ -118,7 +118,7 @@ diag: ## Build the diagnostics firmware (stack, heap, thread statistics) into bu
 diag-flash: diag ## Build and flash the diagnostics firmware
 	@$(call flash_dir,$(DIAG))
 
-test: ## Run the app's host unit tests (BTHome parser, ESP3/EEP parser)
+test: ## Run the app's host unit tests (BTHome parser, ESP3/EEP parser, Nuki protocol)
 	@$(foreach t,$(TESTS),$(MAKE) --no-print-directory -C $(t) &&) true
 
 zap: ## Regenerate the Matter data model code after editing bridge.zap
