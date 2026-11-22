@@ -18,3 +18,11 @@ CFLAGS += -DBOARD_BOOTLOADER_FILE
 # Stage bootloader updates at 0xDF000-0xE9000 instead of 0xE0000-0xEA000, so they don't touch the
 # gateways' factory data page at 0xE9000 (their app ends at 0xDF000)
 CFLAGS += -DBOARD_BL_STAGING_ADDR=0xDF000
+
+# RESTART.UF2: copied back onto the drive, the bootloader starts the app (e.g. after `gateway
+# bootloader` from a remote shell, without a reset button)
+CFLAGS += -DBOARD_RESTART_FILE
+
+# Finish an update (and reset) only once the host has stopped writing for 1 s, so the copy ends
+# without an I/O error on the host
+CFLAGS += -DBOARD_FINISH_ON_IDLE

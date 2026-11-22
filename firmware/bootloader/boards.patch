@@ -43,10 +43,31 @@ index 5866d15..af14b0a 100644
  C_PATHS = $(call remduplicates, $(dir $(C_SRC) ) )
  C_OBJECTS = $(addprefix $(BUILD)/, $(C_SOURCE_FILE_NAMES:.c=.o) )
 diff --git a/lib/sdk11/components/libraries/bootloader_dfu/bootloader.c b/lib/sdk11/components/libraries/bootloader_dfu/bootloader.c
-index da193bd..2d02dd2 100644
+index da193bd..924819d 100644
 --- a/lib/sdk11/components/libraries/bootloader_dfu/bootloader.c
 +++ b/lib/sdk11/components/libraries/bootloader_dfu/bootloader.c
-@@ -342,10 +342,12 @@ void bootloader_dfu_update_process(dfu_update_status_t update_status)
+@@ -52,6 +52,10 @@ static pstorage_handle_t        m_bootsettings_handle;  /**< Pstorage handle to
+ static bootloader_status_t      m_update_status;        /**< Current update status for the bootloader module to ensure correct behaviour when updating settings and when update completes. */
+ static bool m_cancel_timeout_on_usb; /**< If set the timeout is cancelled when USB is enumerated. Otherwise, the timeout is only cancelled when DFU update is started. */
+ static bool m_usb_was_mounted; /**< Tracks whether the USB DFU session was ever enumerated so we can exit when cable is later removed. */
++#ifdef BOARD_FINISH_ON_IDLE
++void uf2_finish_poll(void);
++#endif
++
+ static bool m_startup_dfu_has_activity; /**< Tracks whether any valid serial or UF2 update traffic has started. */
+ 
+ APP_TIMER_DEF( _dfu_startup_timer );
+@@ -149,6 +153,9 @@ static void wait_for_events(void)
+     {
+       tud_task();
+       tud_cdc_write_flush();
++#ifdef BOARD_FINISH_ON_IDLE
++      uf2_finish_poll(); // msc_uf2.c: finish a complete UF2 once the host is idle
++#endif
+     }
+ 
+     // Exit startup DFU once USB was actually unplugged (VBUS gone), not on a
+@@ -342,10 +349,12 @@ void bootloader_dfu_update_process(dfu_update_status_t update_status)
    {
      // Timeout has occurred. Close the connection with the DFU Controller.
      uint32_t err_code;
@@ -59,7 +80,7 @@ index da193bd..2d02dd2 100644
      {
        err_code = dfu_transport_serial_close();
      }
-@@ -405,10 +407,12 @@ uint32_t bootloader_dfu_start(bool ota, uint32_t timeout_ms, bool cancel_timeout
+@@ -405,10 +414,12 @@ uint32_t bootloader_dfu_start(bool ota, uint32_t timeout_ms, bool cancel_timeout
    err_code = dfu_init();
    VERIFY_SUCCESS(err_code);
  
@@ -161,8 +182,208 @@ index c988ee4..35761a4 100644
  }
  
  // process SOC event from SD
+diff --git a/src/usb/msc_uf2.c b/src/usb/msc_uf2.c
+index f4a6078..bba7f53 100644
+--- a/src/usb/msc_uf2.c
++++ b/src/usb/msc_uf2.c
+@@ -28,6 +28,7 @@
+ #if CFG_TUD_MSC
+ 
+ #include "bootloader.h"
++#include "app_timer.h"
+ 
+ /*------------------------------------------------------------------*/
+ /* MACRO TYPEDEF CONSTANT ENUM
+@@ -138,9 +139,30 @@ int32_t tud_msc_read10_cb (uint8_t lun, uint32_t lba, uint32_t offset, void* buf
+ 
+ // Callback invoked when received WRITE10 command.
+ // Process data in buffer to disk's storage and return number of written bytes
++#ifdef BOARD_FINISH_ON_IDLE
++// Finish an update only once the host has stopped writing. It writes the directory entry and the
++// FAT and closes the file after the last data block; a reset in between makes the copy fail on the
++// host ("Input/output error", "Device not configured") although the firmware is complete.
++#define FINISH_IDLE_MS 1000 // no write for this long: the host is done
++#define FINISH_MAX_MS  5000 // finish anyway, e.g. when the host keeps writing other files
++
++static bool     _finish_pending;
++static bool     _finish_aborted;
++static uint32_t _finish_since;
++static uint32_t _last_write;
++
++static uint32_t ms_since(uint32_t ticks)
++{
++  return app_timer_cnt_diff_compute(app_timer_cnt_get(), ticks) / APP_TIMER_TICKS(1);
++}
++#endif
++
+ int32_t tud_msc_write10_cb (uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* buffer, uint32_t bufsize)
+ {
+   (void) lun;
++#ifdef BOARD_FINISH_ON_IDLE
++  _last_write = app_timer_cnt_get();
++#endif
+ 
+   uint32_t count = 0;
+   while ( count < bufsize )
+@@ -167,6 +189,87 @@ int32_t tud_msc_write10_cb (uint8_t lun, uint32_t lba, uint32_t offset, uint8_t*
+   return count;
+ }
+ 
++// Ends the update: settings, bootloader copy or reset (the bootloader then starts the app).
++static void finish_update(bool aborted)
++{
++  dfu_update_status_t update_status;
++  memset(&update_status, 0, sizeof(dfu_update_status_t ));
++
++  if ( aborted || _wr_state.restart )
++  {
++    // aborted, or RESTART.UF2: reset, nothing written
++    PRINTF(aborted ? "Aborted\r\n" : "Restart\r\n");
++    update_status.status_code = DFU_RESET;
++    update_status.restart_into_bootloader = false;
++  }
++  else if ( _wr_state.update_bootloader )
++  {
++    // update bootloader always end with reset
++    update_status.status_code = DFU_RESET;
++    update_status.restart_into_bootloader = false;
++
++    // Location of current stored new bootloader
++    uint32_t * new_bootloader = (uint32_t *) BOOTLOADER_ADDR_NEW_RECEIVED;
++
++    PRINT_HEX(new_bootloader);
++
++    // skip if there is no bootloader change
++    if ( memcmp(new_bootloader, (uint8_t*) BOOTLOADER_ADDR_START, DFU_BL_IMAGE_MAX_SIZE) )
++    {
++      PRINTF("Coyping new bootloader\r\n");
++
++      sd_mbr_command_t command =
++      {
++        .command = SD_MBR_COMMAND_COPY_BL,
++        .params.copy_bl.bl_src = new_bootloader,
++        .params.copy_bl.bl_len = DFU_BL_IMAGE_MAX_SIZE/4 // size in words
++      };
++
++      // on success, COPY_BL won't return but run the new bootloader right away.
++      sd_mbr_command(&command);
++    }
++
++    PRINTF("bootloader update complete\r\n");
++  }else
++  {
++    // update App
++    update_status.status_code = DFU_UPDATE_APP_COMPLETE;
++
++    PRINTF("Application update complete\r\n");
++  }
++
++  bootloader_dfu_update_process(update_status);
++
++  led_state(STATE_WRITING_FINISHED);
++}
++
++static void update_done(bool aborted)
++{
++#ifdef BOARD_FINISH_ON_IDLE
++  // later, in uf2_finish_poll()
++  if ( !_finish_pending )
++  {
++    _finish_pending = true;
++    _finish_aborted = aborted;
++    _finish_since = app_timer_cnt_get();
++  }
++#else
++  finish_update(aborted);
++#endif
++}
++
++#ifdef BOARD_FINISH_ON_IDLE
++// From the bootloader's event loop (wait_for_events)
++void uf2_finish_poll(void)
++{
++  if ( _finish_pending && (ms_since(_last_write) >= FINISH_IDLE_MS || ms_since(_finish_since) >= FINISH_MAX_MS) )
++  {
++    _finish_pending = false;
++    finish_update(_finish_aborted);
++  }
++}
++#endif
++
+ // Callback invoked when WRITE10 command is completed (status received and accepted by host).
+ void tud_msc_write10_complete_cb(uint8_t lun)
+ {
+@@ -175,17 +278,7 @@ void tud_msc_write10_complete_cb(uint8_t lun)
+   // abort the DFU, uf2 block failed integrity check
+   if ( _wr_state.aborted )
+   {
+-    // aborted and reset
+-    PRINTF("Aborted\r\n");
+-
+-    dfu_update_status_t update_status;
+-    memset(&update_status, 0, sizeof(dfu_update_status_t ));
+-    update_status.status_code = DFU_RESET;
+-    update_status.restart_into_bootloader = false;
+-
+-    bootloader_dfu_update_process(update_status);
+-
+-    led_state(STATE_WRITING_FINISHED);
++    update_done(true);
+   }
+   else if ( _wr_state.numBlocks )
+   {
+@@ -199,48 +292,7 @@ void tud_msc_write10_complete_cb(uint8_t lun)
+     // All block of uf2 file is complete --> complete DFU process
+     if (_wr_state.numWritten >= _wr_state.numBlocks)
+     {
+-      dfu_update_status_t update_status;
+-      memset(&update_status, 0, sizeof(dfu_update_status_t ));
+-
+-      if ( _wr_state.update_bootloader )
+-      {
+-        // update bootloader always end with reset
+-        update_status.status_code = DFU_RESET;
+-        update_status.restart_into_bootloader = false;
+-
+-        // Location of current stored new bootloader
+-        uint32_t * new_bootloader = (uint32_t *) BOOTLOADER_ADDR_NEW_RECEIVED;
+-
+-        PRINT_HEX(new_bootloader);
+-
+-        // skip if there is no bootloader change
+-        if ( memcmp(new_bootloader, (uint8_t*) BOOTLOADER_ADDR_START, DFU_BL_IMAGE_MAX_SIZE) )
+-        {
+-          PRINTF("Coyping new bootloader\r\n");
+-
+-          sd_mbr_command_t command =
+-          {
+-            .command = SD_MBR_COMMAND_COPY_BL,
+-            .params.copy_bl.bl_src = new_bootloader,
+-            .params.copy_bl.bl_len = DFU_BL_IMAGE_MAX_SIZE/4 // size in words
+-          };
+-
+-          // on success, COPY_BL won't return but run the new bootloader right away.
+-          sd_mbr_command(&command);
+-        }
+-
+-        PRINTF("bootloader update complete\r\n");
+-      }else
+-      {
+-        // update App
+-        update_status.status_code = DFU_UPDATE_APP_COMPLETE;
+-
+-        PRINTF("Application update complete\r\n");
+-      }
+-
+-      bootloader_dfu_update_process(update_status);
+-
+-      led_state(STATE_WRITING_FINISHED);
++      update_done(false);
+     }
+   }
+ }
 diff --git a/src/usb/uf2/ghostfat.c b/src/usb/uf2/ghostfat.c
-index 97753ef..cdb73d4 100644
+index 97753ef..82f2e51 100644
 --- a/src/usb/uf2/ghostfat.c
 +++ b/src/usb/uf2/ghostfat.c
 @@ -36,6 +36,10 @@
@@ -181,12 +402,12 @@ index 97753ef..cdb73d4 100644
  static struct TextFile const info[] = {
      {.name = "INFO_UF2TXT", .content = infoUf2File},
 +#ifdef BOARD_IDENTITY_FILES
-     {.name = "INDEX   HTM", .content = indexFile},
++    {.name = "INDEX   HTM", .content = indexFile},
 +    // Matter pairing codes of the gateway firmware, see enmt_identity.c
 +    {.name = "MATTER  TXT", .content = enmt_matter_txt},
 +    {.name = "QR      HTM", .content = enmt_qr_htm},
 +#else
-+    {.name = "INDEX   HTM", .content = indexFile},
+     {.name = "INDEX   HTM", .content = indexFile},
 +#endif
  
      // current.uf2 must be the last element and its content must be NULL
@@ -196,12 +417,12 @@ index 97753ef..cdb73d4 100644
  STATIC_ASSERT(NUM_DIRENTRIES < BPB_ROOT_DIR_ENTRIES);                            // FAT requirement -- Ensures BPB reserves sufficient entries for all files
  STATIC_ASSERT(NUM_DIRENTRIES < DIRENTRIES_PER_SECTOR); // GhostFAT bug workaround -- else, code overflows buffer
 +#ifdef BOARD_SETTINGS_ADDR
-+STATIC_ASSERT(NUM_DIRENTRIES + 3 < DIRENTRIES_PER_SECTOR); // SETTINGS.UF2, CUR_SET.UF2, BOOTLOAD.UF2 after the others, in the first sector
++STATIC_ASSERT(NUM_DIRENTRIES + 4 < DIRENTRIES_PER_SECTOR); // SETTINGS.UF2, CUR_SET.UF2, BOOTLOAD.UF2, RESTART.UF2 after the others, in the first sector
 +#endif
  
  #define NUM_SECTORS_IN_DATA_REGION (BPB_TOTAL_SECTORS - BPB_RESERVED_SECTORS - (BPB_NUMBER_OF_FATS * BPB_SECTORS_PER_FAT) - ROOT_DIR_SECTOR_COUNT)
  #define CLUSTER_COUNT              (NUM_SECTORS_IN_DATA_REGION / BPB_SECTORS_PER_CLUSTER)
-@@ -183,6 +197,74 @@ STATIC_ASSERT(UF2_SECTORS == ((UF2_SIZE/2) / 256)); // Not a requirement ... ens
+@@ -183,6 +197,91 @@ STATIC_ASSERT(UF2_SECTORS == ((UF2_SIZE/2) / 256)); // Not a requirement ... ens
  #define UF2_FIRST_SECTOR   ((NUM_FILES + 1) * BPB_SECTORS_PER_CLUSTER) // WARNING -- code presumes each non-UF2 file content fits in single sector
  #define UF2_LAST_SECTOR    ((UF2_FIRST_SECTOR + UF2_SECTORS - 1) * BPB_SECTORS_PER_CLUSTER)
  
@@ -273,10 +494,27 @@ index 97753ef..cdb73d4 100644
 +}
 +#endif
 +
++#ifdef BOARD_RESTART_FILE
++// RESTART.UF2: one block of its own family. Copied back onto the drive, the bootloader starts the
++// app instead of writing anything, so a board put into the bootloader remotely (`gateway
++// bootloader`) can be sent back without a reset button. In the cluster after BOOTLOAD.UF2.
++#define RESTART_FAMILY 0x54534552 // "REST"
++static const char restart_text[] = "EnMT bootloader: restart into the app";
++
++static inline uint32_t restart_sector(void)
++{
++#ifdef BOARD_BOOTLOADER_FILE
++  return BOOTFILE_FIRST_SECTOR + bootfile_blocks();
++#else
++  return PREV_LAST_SECTOR + 1;
++#endif
++}
++#endif
++
  #define FS_START_FAT0_SECTOR      BPB_RESERVED_SECTORS
  #define FS_START_FAT1_SECTOR      (FS_START_FAT0_SECTOR + BPB_SECTORS_PER_FAT)
  #define FS_START_ROOTDIR_SECTOR   (FS_START_FAT1_SECTOR + BPB_SECTORS_PER_FAT)
-@@ -234,6 +316,20 @@ static inline bool in_app_space (uint32_t addr)
+@@ -234,6 +333,20 @@ static inline bool in_app_space (uint32_t addr)
    return USER_FLASH_START <= addr && addr < USER_FLASH_END;
  }
  
@@ -297,7 +535,7 @@ index 97753ef..cdb73d4 100644
  // used when upgrading bootloader
  static inline bool in_bootloader_space (uint32_t addr)
  {
-@@ -252,6 +348,13 @@ static inline bool in_uicr_space(uint32_t addr)
+@@ -252,6 +365,13 @@ static inline bool in_uicr_space(uint32_t addr)
  
  void uf2_init(void)
  {
@@ -311,7 +549,7 @@ index 97753ef..cdb73d4 100644
    strcat(infoUf2File, "SoftDevice: ");
  
    if ( is_sd_existed() )
-@@ -332,8 +435,18 @@ void read_block(uint32_t block_no, uint8_t *data) {
+@@ -332,8 +452,21 @@ void read_block(uint32_t block_no, uint8_t *data) {
          }
          for (uint32_t i = 0; i < FAT_ENTRIES_PER_SECTOR; ++i) { // Generate the FAT chain for the firmware "file"
              uint32_t v = (sectionIdx * FAT_ENTRIES_PER_SECTOR) + i;
@@ -327,12 +565,15 @@ index 97753ef..cdb73d4 100644
 +            else if (BOOTFILE_FIRST_SECTOR <= v && v < BOOTFILE_FIRST_SECTOR + bootfile_blocks())
 +                last = BOOTFILE_FIRST_SECTOR + bootfile_blocks() - 1;
 +#endif
++#ifdef BOARD_RESTART_FILE
++            else if (v == restart_sector()) last = v;
++#endif
 +            if (last)
 +                ((uint16_t *)(void *)data)[i] = v == last ? 0xffff : v + 1;
          }
      } else if (block_no < FS_START_CLUSTERS_SECTOR) { // Requested root directory sector
  
-@@ -370,6 +483,45 @@ void read_block(uint32_t block_no, uint8_t *data) {
+@@ -370,6 +503,59 @@ void read_block(uint32_t block_no, uint8_t *data) {
              d->size = (inf->content ? strlen(inf->content) : UF2_SIZE);
          }
  
@@ -372,13 +613,27 @@ index 97753ef..cdb73d4 100644
 +            d->updateDate       = __DOSDATE__;
 +            d->startCluster     = BOOTFILE_FIRST_SECTOR;
 +            d->size             = bootfile_blocks() * BPB_SECTOR_SIZE;
++            d++;
++        }
++#endif
++#ifdef BOARD_RESTART_FILE
++        if (sectionIdx == 0) {
++            padded_memcpy(d->name, "RESTART UF2", 11);
++            d->createTimeFine   = __SECONDS_INT__ % 2 * 100;
++            d->createTime       = __DOSTIME__;
++            d->createDate       = __DOSDATE__;
++            d->lastAccessDate   = __DOSDATE__;
++            d->updateTime       = __DOSTIME__;
++            d->updateDate       = __DOSDATE__;
++            d->startCluster     = restart_sector();
++            d->size             = BPB_SECTOR_SIZE;
 +        }
 +#endif
 +
      } else if (block_no < BPB_TOTAL_SECTORS) {
  
          sectionIdx -= FS_START_CLUSTERS_SECTOR;
-@@ -378,17 +530,48 @@ void read_block(uint32_t block_no, uint8_t *data) {
+@@ -378,17 +564,64 @@ void read_block(uint32_t block_no, uint8_t *data) {
          } else { // generate the UF2 file data on-the-fly
              sectionIdx -= NUM_FILES - 1;
              uint32_t addr = USER_FLASH_START + (sectionIdx * UF2_FIRMWARE_BYTES_PER_SECTOR);
@@ -412,6 +667,22 @@ index 97753ef..cdb73d4 100644
 +                    familyID = CFG_UF2_FAMILY_BOOT_ID;
 +                    blockNo = sectionIdx;
 +                }
++                sectionIdx -= bootfile_blocks();
++#endif
++#ifdef BOARD_RESTART_FILE
++                if (sectionIdx == 0) { // RESTART.UF2
++                    UF2_Block *bl = (void *)data;
++                    bl->magicStart0 = UF2_MAGIC_START0;
++                    bl->magicStart1 = UF2_MAGIC_START1;
++                    bl->magicEnd = UF2_MAGIC_END;
++                    bl->blockNo = 0;
++                    bl->numBlocks = 1;
++                    bl->targetAddr = 0;
++                    bl->payloadSize = UF2_FIRMWARE_BYTES_PER_SECTOR; // required by is_uf2_block(); the text and zeros
++                    bl->flags = UF2_FLAG_FAMILYID;
++                    bl->familyID = RESTART_FAMILY;
++                    memcpy(bl->data, restart_text, sizeof(restart_text));
++                }
 +#endif
 +            }
 +            if (addr < CFG_UF2_FLASH_SIZE || addr == 0x10001000) {
@@ -431,7 +702,7 @@ index 97753ef..cdb73d4 100644
                  memcpy(bl->data, (void *)addr, bl->payloadSize);
              }
          }
-@@ -440,7 +623,15 @@ int write_block (uint32_t block_no, uint8_t *data, WriteState *state)
+@@ -440,7 +673,15 @@ int write_block (uint32_t block_no, uint8_t *data, WriteState *state)
        {
          PRINTF("Write addr = 0x%08lX, block = %ld (%ld of %ld)\r\n", bl->targetAddr, bl->blockNo, state->numWritten, bl->numBlocks);
          flash_nrf5x_write(bl->targetAddr, bl->data, bl->payloadSize, true);
@@ -448,7 +719,7 @@ index 97753ef..cdb73d4 100644
        {
          // do nothing if writing to MBR, occurs when SD hex is included
          // keep going as successful write
-@@ -548,7 +739,7 @@ int write_block (uint32_t block_no, uint8_t *data, WriteState *state)
+@@ -548,7 +789,7 @@ int write_block (uint32_t block_no, uint8_t *data, WriteState *state)
          }
  
          // Offset to write the new bootloader address (skipping the App Data)
@@ -457,6 +728,33 @@ index 97753ef..cdb73d4 100644
          flash_nrf5x_write(bl->targetAddr-offset_addr, bl->data, bl->payloadSize, true);
        }
  #if 0 // don't allow bundle SoftDevice to prevent confusion
+@@ -569,6 +810,14 @@ int write_block (uint32_t block_no, uint8_t *data, WriteState *state)
+       }
+     break;
+ 
++#ifdef BOARD_RESTART_FILE
++    case RESTART_FAMILY:
++      if ( bl->numBlocks != 1 ) return -1;
++      PRINTF("Restart requested\r\n");
++      state->restart = true;
++    break;
++#endif
++
+     // unknown family ID
+     default: return -1;
+   }
+diff --git a/src/usb/uf2/uf2.h b/src/usb/uf2/uf2.h
+index 081280c..35c8c3e 100644
+--- a/src/usb/uf2/uf2.h
++++ b/src/usb/uf2/uf2.h
+@@ -57,6 +57,7 @@ typedef struct {
+     bool update_bootloader;   // if updating bootloader (else app)
+     bool has_uicr;            // if containing uicr data
+     bool boot_id_matches;     // if bootloader id in cf2 config matches our VID/PID
++    bool restart;             // RESTART.UF2: restart into the app, nothing written (BOARD_RESTART_FILE)
+ 
+     uint8_t writtenMask[MAX_BLOCKS / 8 + 1];
+ } WriteState;
 diff --git a/src/usb/uf2/uf2cfg.h b/src/usb/uf2/uf2cfg.h
 index c23a12e..b3baa4b 100644
 --- a/src/usb/uf2/uf2cfg.h
