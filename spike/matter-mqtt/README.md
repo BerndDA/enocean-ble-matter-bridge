@@ -115,7 +115,15 @@ curl -X PUT localhost:8080/api/nodes/2/fabric-label -H 'content-type: applicatio
 curl -X DELETE localhost:8080/api/nodes/2                       # RemoveFabric + forget
 curl -X DELETE 'localhost:8080/api/nodes/2?local_only=true'     # forget only (device gone)
 curl 'localhost:8080/api/nodes/4/read?ep=0&cluster=0x28'        # debug read, omitted = wildcard
+curl localhost:8080/api/thread                                  # Thread neighbor/route tables of all nodes
 ```
+
+The web UI's *Thread network* card draws the mesh from `/api/thread` (read on load, every 60 s and
+on *Refresh*): Thread Network Diagnostics (`0035`) neighbor and route tables, matched up by the
+extended address each node reports in General Diagnostics `NetworkInterfaces`. Links are colored by
+LQI and labelled with the average RSSI at the end that measured it. Dashed means one-sided: only one
+of our nodes lists the other, or the route table says the link isn't established. Routers that
+aren't on this fabric (e.g. the border router) appear only through our nodes' tables.
 
 The fabric label is what the device stores for our fabric. The vendor shown next to it
 ("Test vendor") comes from the admin vendor id `0xFFF1`, fixed at commissioning.

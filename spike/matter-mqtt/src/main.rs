@@ -10,6 +10,7 @@
 mod hub;
 mod mapping;
 mod mqtt;
+mod thread;
 mod tlv;
 mod watcher;
 mod web;

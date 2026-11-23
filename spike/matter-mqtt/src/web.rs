@@ -6,6 +6,7 @@
 //! PUT    /api/nodes/{id}/fabric-label  {"label": "..."} our fabric's label on the device
 //! DELETE /api/nodes/{id}[?local_only=true]  remove our fabric from the device
 //! GET    /api/nodes/{id}/read?ep=&cluster=&attr=  debug read, omitted = wildcard
+//! GET    /api/thread                   Thread neighbor/route tables of every node
 
 use std::sync::Arc;
 
@@ -26,6 +27,7 @@ pub fn router(hub: Arc<Hub>) -> Router {
         .route("/api/nodes/{id}", get(detail).delete(remove))
         .route("/api/nodes/{id}/fabric-label", put(fabric_label))
         .route("/api/nodes/{id}/read", get(read))
+        .route("/api/thread", get(thread))
         .with_state(hub)
 }
 
@@ -70,11 +72,7 @@ async fn list(State(hub): State<Arc<Hub>>) -> ApiResult<Json<Vec<NodeSummary>>> 
             .into_iter()
             .map(|n| {
                 let v = hub.view(n.node_id);
-                let name = ["0/0028/0005", "0/0028/0003"]
-                    .iter()
-                    .filter_map(|k| v.values.get(*k))
-                    .find(|s| s.as_str().is_some_and(|s| !s.is_empty()))
-                    .cloned();
+                let name = basic_name(&v).map(JsonValue::from);
                 NodeSummary {
                     node_id: n.node_id,
                     label: n.label,
@@ -87,6 +85,32 @@ async fn list(State(hub): State<Arc<Hub>>) -> ApiResult<Json<Vec<NodeSummary>>> 
             })
             .collect(),
     ))
+}
+
+/// BasicInformation NodeLabel, else ProductName.
+fn basic_name(v: &NodeView) -> Option<String> {
+    ["0/0028/0005", "0/0028/0003"]
+        .iter()
+        .filter_map(|k| v.values.get(*k)?.as_str())
+        .find(|s| !s.is_empty())
+        .map(str::to_owned)
+}
+
+async fn thread(State(hub): State<Arc<Hub>>) -> ApiResult<Json<Vec<crate::thread::ThreadNode>>> {
+    let nodes = hub
+        .controller
+        .nodes()
+        .await?
+        .into_iter()
+        .map(|n| {
+            let name = n
+                .label
+                .or_else(|| basic_name(&hub.view(n.node_id)))
+                .unwrap_or_else(|| format!("Node {}", n.node_id));
+            (n.node_id, name)
+        })
+        .collect();
+    Ok(Json(crate::thread::snapshot(&hub, nodes).await))
 }
 
 async fn detail(State(hub): State<Arc<Hub>>, Path(id): Path<u64>) -> ApiResult<Json<NodeView>> {

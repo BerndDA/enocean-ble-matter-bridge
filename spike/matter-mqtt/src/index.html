@@ -8,11 +8,13 @@
   :root {
     --bg: #f6f7f9; --card: #fff; --text: #1d2330; --muted: #6b7280; --line: #e3e6eb;
     --accent: #2563eb; --ok: #16a34a; --off: #9ca3af; --danger: #dc2626;
+    --q3: #16a34a; --q2: #ca8a04; --q1: #ea580c; --q0: #dc2626;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #12151b; --card: #1b1f27; --text: #e6e8ec; --muted: #9aa1ad; --line: #2b313c;
       --accent: #60a5fa; --ok: #4ade80; --off: #6b7280; --danger: #f87171;
+      --q3: #4ade80; --q2: #facc15; --q1: #fb923c; --q0: #f87171;
     }
   }
   * { box-sizing: border-box; }
@@ -51,6 +53,20 @@
   .empty { color: var(--muted); }
   details { margin-top: 10px; }
   summary { cursor: pointer; }
+  .card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .card-head h2 { margin: 0; }
+  .card-head button { margin-left: auto; padding: 5px 10px; font-size: 13px; }
+  #mesh svg { width: 100%; height: auto; display: block; }
+  #mesh svg text { font-size: 12px; fill: var(--text); paint-order: stroke; stroke: var(--card);
+                   stroke-width: 4px; stroke-linejoin: round; }
+  #mesh svg text.sub { font-size: 11px; fill: var(--muted); }
+  #mesh svg text.rssi { font-size: 11px; font-family: ui-monospace, monospace; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 12px; margin: 6px 0 4px; }
+  .legend i { display: inline-block; width: 18px; height: 0; border-top: 3px solid; vertical-align: middle; margin-right: 5px; }
+  .legend i.dash { border-top-style: dashed; }
+  .scroll { overflow-x: auto; }
+  td.num { font-family: ui-monospace, monospace; white-space: nowrap; }
+  th { text-align: left; font-weight: 600; color: var(--muted); padding: 4px 8px 4px 0; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -72,6 +88,14 @@
   <section class="card">
     <h2>Devices</h2>
     <div id="nodes"><p class="empty">Loading...</p></div>
+  </section>
+  <section class="card">
+    <div class="card-head">
+      <h2>Thread network</h2>
+      <span id="mesh-meta" class="meta"></span>
+      <button id="mesh-refresh">Refresh</button>
+    </div>
+    <div id="mesh"><p class="empty">Loading...</p></div>
   </section>
 </main>
 
@@ -217,6 +241,217 @@ $("#add").addEventListener("submit", async ev => {
 
 render();
 setInterval(render, 3000);
+
+// ---- Thread mesh ----------------------------------------------------------
+// One graph node per Thread device (keyed by extended address). Edges come
+// from the neighbor tables; each side's own measurement is kept separately,
+// because a link can look quite different from its two ends.
+
+const ROLE = {leader: "leader", router: "router", reed: "REED", end_device: "end device",
+              sleepy_end_device: "sleepy end device", unassigned: "unassigned", unspecified: "?"};
+const rlocHex = r => hex(r, 4);
+const routerId = r => r >> 10;
+const isChildRloc = r => (r & 0x1ff) !== 0;
+const qColor = q => `var(--q${q ?? 0})`;
+
+function buildMesh(data) {
+  const nodes = new Map();   // ext -> {ext, rloc, name, ours, role, ...}
+  const get = (ext, rloc) => {
+    if (!nodes.has(ext)) nodes.set(ext, {ext, rloc, ours: null});
+    const n = nodes.get(ext);
+    if (n.rloc == null && rloc != null) n.rloc = rloc;
+    return n;
+  };
+  const zero = "0000000000000000";
+  // Our nodes without an ext address (read failed) can't be placed.
+  for (const t of data) if (t.ext_address) Object.assign(get(t.ext_address, t.rloc16), {ours: t});
+  const leaders = new Set(data.map(t => t.leader_router_id).filter(x => x != null));
+
+  const edges = new Map();   // "a|b" -> {a, b, seen: {ext: neighborEntry}, route: {ext: routeEntry}}
+  const edge = (x, y) => {
+    const [a, b] = [x, y].sort(), k = a + "|" + b;
+    if (!edges.has(k)) edges.set(k, {a, b, seen: {}, route: {}});
+    return edges.get(k);
+  };
+  for (const t of data) {
+    if (!t.ext_address) continue;
+    for (const nb of t.neighbors) {
+      if (nb.ext_address === zero) continue;
+      get(nb.ext_address, nb.rloc16).child = nb.is_child;
+      edge(t.ext_address, nb.ext_address).seen[t.ext_address] = nb;
+    }
+    for (const r of t.routes) {
+      if (r.ext_address === zero || r.ext_address === t.ext_address) continue;
+      get(r.ext_address, r.rloc16);
+      const key = [t.ext_address, r.ext_address].sort().join("|");
+      if (edges.has(key)) edges.get(key).route[t.ext_address] = r;
+    }
+  }
+  for (const n of nodes.values()) {
+    if (n.rloc == null) continue;
+    n.router = !isChildRloc(n.rloc);
+    n.leader = n.router && leaders.has(routerId(n.rloc));
+  }
+  return {nodes: [...nodes.values()], edges: [...edges.values()]};
+}
+
+function nodeName(n) {
+  if (n.ours) return n.ours.name;
+  if (n.rloc == null) return n.ext.slice(0, 4) + "…" + n.ext.slice(-4);
+  return n.router ? `Router ${routerId(n.rloc)}` : `Child ${rlocHex(n.rloc)}`;
+}
+
+function nodeSub(n) {
+  const role = n.ours?.role ? ROLE[n.ours.role] || n.ours.role
+             : n.leader ? "leader" : n.router ? "router" : n.child ? "child" : "";
+  const parts = [role, n.rloc != null ? rlocHex(n.rloc) : ""];
+  if (!n.ours) parts.push("not on this fabric");
+  return parts.filter(Boolean).join(" · ");
+}
+
+function layout(mesh, W, H) {
+  const routers = mesh.nodes.filter(n => n.router !== false || n.ours);
+  const children = mesh.nodes.filter(n => !routers.includes(n));
+  // Ours first, then the rest by router id: stable positions between refreshes.
+  routers.sort((a, b) => (!!b.ours - !!a.ours) || ((a.rloc ?? 0) - (b.rloc ?? 0)));
+  const cx = W / 2, cy = H / 2, R = Math.min(W, H) / 2 - 70;
+  const pos = new Map();
+  routers.forEach((n, i) => {
+    const a = -Math.PI / 2 + (2 * Math.PI * i) / Math.max(routers.length, 1);
+    pos.set(n.ext, routers.length === 1 ? {x: cx, y: cy} : {x: cx + R * Math.cos(a), y: cy + R * Math.sin(a)});
+  });
+  // Children fan out behind their parent, away from the center.
+  const byParent = new Map();
+  for (const c of children) {
+    const e = mesh.edges.find(e => (e.a === c.ext || e.b === c.ext) && pos.has(e.a === c.ext ? e.b : e.a));
+    const parent = e ? (e.a === c.ext ? e.b : e.a) : null;
+    if (!byParent.has(parent)) byParent.set(parent, []);
+    byParent.get(parent).push(c);
+  }
+  for (const [parent, list] of byParent) {
+    const p = pos.get(parent) || {x: cx, y: H - 30};
+    const base = Math.atan2(p.y - cy, p.x - cx) || Math.PI / 2;
+    list.forEach((c, i) => {
+      const a = base + (i - (list.length - 1) / 2) * 0.45;
+      pos.set(c.ext, {x: p.x + 60 * Math.cos(a), y: p.y + 60 * Math.sin(a)});
+    });
+  }
+  return pos;
+}
+
+function meshSvg(mesh) {
+  const W = 760, H = 420, pos = layout(mesh, W, H);
+  const byExt = new Map(mesh.nodes.map(n => [n.ext, n]));
+  let lines = "", labels = "", dots = "";
+  for (const e of mesh.edges) {
+    const p = pos.get(e.a), q = pos.get(e.b);
+    if (!p || !q) continue;
+    const views = Object.values(e.seen);
+    const lqi = Math.min(...views.map(v => v.lqi ?? 0));
+    // One-sided: a router says the link isn't established, or both ends are
+    // ours and only one lists the other (a foreign end's tables are unknown).
+    const bothOurs = !!(byExt.get(e.a)?.ours && byExt.get(e.b)?.ours);
+    const oneSided = (bothOurs && views.length < 2) || Object.values(e.route).some(r => !r.link_established);
+    lines += `<line x1="${p.x}" y1="${p.y}" x2="${q.x}" y2="${q.y}" stroke="${qColor(lqi)}"
+      stroke-width="${1.5 + lqi}" ${oneSided ? 'stroke-dasharray="6 5"' : ""} stroke-linecap="round"/>`;
+    // Each end's RSSI sits near that end: it is what that end hears.
+    for (const [x, from, to] of [[e.a, p, q], [e.b, q, p]]) {
+      const v = e.seen[x];
+      if (v?.avg_rssi == null) continue;
+      const lx = from.x + (to.x - from.x) * 0.3, ly = from.y + (to.y - from.y) * 0.3;
+      labels += `<text class="rssi" x="${lx}" y="${ly + 4}" text-anchor="middle">${esc(v.avg_rssi)}</text>`;
+    }
+  }
+  for (const n of mesh.nodes) {
+    const p = pos.get(n.ext);
+    if (!p) continue;
+    const online = n.ours ? n.ours.online && !n.ours.error : true;
+    const r = n.router ? 11 : 7;
+    const fill = n.ours ? (online ? "var(--accent)" : "var(--off)") : "var(--card)";
+    dots += `<circle cx="${p.x}" cy="${p.y}" r="${r}" fill="${fill}" stroke="${n.ours ? fill : "var(--muted)"}"
+      stroke-width="2" ${n.ours ? "" : 'stroke-dasharray="3 2"'}/>`;
+    if (n.leader) dots += `<circle cx="${p.x}" cy="${p.y}" r="${r + 5}" fill="none" stroke="var(--accent)" stroke-width="1.5"/>`;
+    // Label outward from the center: beside side nodes, above/below the others.
+    const dx = p.x - W / 2, dy = p.y - H / 2, side = Math.abs(dx) > Math.abs(dy) * 1.5;
+    const anchor = side ? (dx < 0 ? "end" : "start") : "middle";
+    const tx = side ? p.x + Math.sign(dx) * (r + 10) : p.x;
+    const ty = side ? p.y - 3 : dy >= 0 ? p.y + r + 16 : p.y - r - 22;
+    dots += `<text x="${tx}" y="${ty}" text-anchor="${anchor}">${esc(nodeName(n))}</text>
+      <text class="sub" x="${tx}" y="${ty + 14}" text-anchor="${anchor}">${esc(nodeSub(n))}</text>`;
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Thread mesh">${lines}${labels}${dots}</svg>`;
+}
+
+function meshTable(mesh) {
+  const byExt = new Map(mesh.nodes.map(n => [n.ext, n]));
+  const rows = [];
+  for (const e of mesh.edges) {
+    for (const [from, to] of [[e.a, e.b], [e.b, e.a]]) {
+      const nb = e.seen[from];
+      if (!nb) continue;
+      const rt = e.route[from];
+      rows.push({from: byExt.get(from), to: byExt.get(to), nb, rt});
+    }
+  }
+  rows.sort((x, y) => nodeName(x.from).localeCompare(nodeName(y.from)) || (y.nb.avg_rssi ?? -999) - (x.nb.avg_rssi ?? -999));
+  const cell = v => v == null ? "–" : esc(v);
+  return `<div class="scroll"><table>
+    <tr><th>Seen by</th><th>Neighbor</th><th>Avg RSSI</th><th>Last RSSI</th><th>LQI</th>
+        <th>Route LQI in/out</th><th>Frame err</th><th>Msg err</th><th>Age</th></tr>
+    ${rows.map(r => `<tr>
+      <td>${esc(nodeName(r.from))}</td>
+      <td>${esc(nodeName(r.to))}${r.nb.is_child ? ' <span class="meta">child</span>' : ""}</td>
+      <td class="num">${cell(r.nb.avg_rssi)} dBm</td>
+      <td class="num">${cell(r.nb.last_rssi)} dBm</td>
+      <td class="num" style="color:${qColor(r.nb.lqi)}">${cell(r.nb.lqi)}</td>
+      <td class="num">${r.rt ? `${r.rt.lqi_in} / ${r.rt.lqi_out}${r.rt.link_established ? "" : " (no link)"}` : "–"}</td>
+      <td class="num">${cell(r.nb.frame_error_rate)} %</td>
+      <td class="num">${cell(r.nb.message_error_rate)} %</td>
+      <td class="num">${cell(r.nb.age)} s</td>
+    </tr>`).join("")}
+  </table></div>`;
+}
+
+let meshBusy = false;
+async function renderMesh() {
+  if (meshBusy) return;
+  meshBusy = true;
+  const btn = $("#mesh-refresh");
+  btn.disabled = true;
+  try {
+    const data = await api("GET", "/api/thread");
+    const errors = data.filter(t => t.error).map(t => `${esc(t.name)}: ${esc(t.error)}`);
+    const first = data.find(t => t.network_name);
+    $("#mesh-meta").textContent = [
+      first ? `${first.network_name} · channel ${first.channel}` : "",
+      "read " + new Date().toLocaleTimeString(),
+    ].filter(Boolean).join(" · ");
+    const mesh = buildMesh(data);
+    if (!mesh.nodes.length) {
+      $("#mesh").innerHTML = `<p class="empty">No Thread devices.</p>`;
+    } else {
+      $("#mesh").innerHTML = meshSvg(mesh) + `
+        <div class="legend">
+          <span><i style="border-color:var(--q3)"></i>LQI 3</span>
+          <span><i style="border-color:var(--q2)"></i>LQI 2</span>
+          <span><i style="border-color:var(--q1)"></i>LQI 1</span>
+          <span><i style="border-color:var(--q0)"></i>LQI 0</span>
+          <span><i class="dash" style="border-color:var(--muted)"></i>one-sided</span>
+          <span>numbers: average RSSI (dBm), placed at the end that measured it</span>
+        </div>
+        ${errors.length ? `<p class="msg err">${errors.join("<br>")}</p>` : ""}
+        <h2 style="margin-top:16px">Links</h2>${meshTable(mesh)}`;
+    }
+  } catch (e) {
+    $("#mesh").innerHTML = `<p class="msg err">${esc(e.message)}</p>`;
+  } finally {
+    meshBusy = false;
+    btn.disabled = false;
+  }
+}
+$("#mesh-refresh").addEventListener("click", renderMesh);
+renderMesh();
+setInterval(renderMesh, 60000);
 </script>
 </body>
 </html>
