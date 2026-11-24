@@ -37,7 +37,7 @@ def font(size):
 
 
 def board_parts(s):
-    a = s.index('(footprint "EnOcean:TCM515"')
+    a = s.index('(footprint "EnOcean:TCM515')
     b = s.find("\n\t(footprint ", a + 1)
     fp = s[a:b if b > 0 else len(s)]
     at = re.search(r"\(at ([-\d.]+) ([-\d.]+)(?: ([-\d.]+))?\)", fp)

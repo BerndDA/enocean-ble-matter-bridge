@@ -216,7 +216,7 @@ def main():
 
     route_868(board, nets)
 
-    for s, x, y, size, layer in (("EnOcean carrier v0.2", 32.0, 31.6, 1.0, pcbnew.B_SilkS),
+    for s, x, y, size, layer in (("EnOcean carrier v0.3", 32.0, 31.6, 1.0, pcbnew.B_SilkS),
                                  ("WHIP", 44.4, 4.6, 0.8, pcbnew.F_SilkS),
                                  ("TCM515", 27.6, 14.0, 1.0, pcbnew.F_SilkS),      # inside the module outline
                                  ("R", 43.2, 18.2, 0.8, pcbnew.F_SilkS),           # LED colours, below each LED

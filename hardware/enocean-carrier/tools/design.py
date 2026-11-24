@@ -66,7 +66,7 @@ part("U1", "Modules:ProMicro_nRF52840", "ProMicro nRF52840", "Modules:ProMicro_n
 }, nc_rest=True, mpn="nice!nano v2 / SuperMini nRF52840 with UF2 bootloader >= 0.6.1")
 
 # ---------------------------------------------------------------- TCM 515
-part("U2", "EnOcean:TCM515", "TCM515", "EnOcean:TCM515", 100, 40, {
+part("U2", "EnOcean:TCM515", "TCM515", "EnOcean:TCM515_HandSolder", 100, 40, {
     "22": "VDD_TCM", "24": "TCM_NRESET", "31": "TCM_NTURBO",
     "20": "TCM_RX", "21": "TCM_TX",
     "2": "RF_868", "25": None, "26": None, "27": None,   # TCM test points: no pads on this board

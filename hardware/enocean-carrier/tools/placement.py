@@ -38,7 +38,7 @@ PLACE = {
     # right edge of the module
     "R1": (37.4, 14.1, 180, "F"),      # nTURBO pull-up, pad 2 (nTURBO) facing the pin
     "JP1": (41.0, 14.1, 0, "F"),
-    "C3": (37.4, 21.1, 0, "F"),        # nRESET filter, pad 1 facing the pin
+    "C3": (37.85, 21.1, 0, "F"),       # nRESET filter, pad 1 facing the pin; 0.45 mm right of R1 (v0.3: clear of the longer TCM pads)
     # 868 MHz, top-right corner
     "C4": (36.4, 3.65, 270, "F"),      # shunt (DNP), pad 1 on the line
     "R2": (40.4, RF_Y, 0, "F"),        # to the whip
