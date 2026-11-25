@@ -45,6 +45,18 @@ light_pipe = true;    // a solid block from the lid down to just above the LEDs,
 rod_d      = 3.0;     // acrylic (PMMA) rods pressed into the light pipes
 pipe_bore  = rod_d + 0.2;   // printed holes come out ~0.1-0.2 mm small: press fit
 pipe_wall  = 0.8;     // also the wall between two pipes (LEDs 4 mm apart): two lines of a 0.4 mm nozzle
+// piezo disc under the lid, over the TCM (the only spot with ~6 mm of height): the disc's rim rests
+// on a ledge, a dab of glue in the lip below holds it; the chamber in front of it and the sound hole
+// form a Helmholtz resonator (~4.5 kHz with these values: a smaller hole lowers it)
+piezo      = true;
+piezo_d    = 15.0;    // brass disc, e.g. Murata 7BB-15-6 (15 mm, 10 mm ceramic, 6 kHz) or equivalent
+piezo_t    = 0.3;     // disc thickness (brass + ceramic)
+piezo_at   = [28.0, 18.5];   // board coordinates of the centre: sound hole clear of the engraving
+piezo_ch   = 1.2;     // front chamber between lid and disc
+piezo_ledge = 0.8;    // the rim rests on this much of a ledge
+piezo_lip  = 0.8;     // ring below the disc, for the glue
+piezo_wall = 1.2;
+piezo_hole = 2.5;     // sound hole through the lid
 
 // ---------------------------------------------------------------- labels engraved in the lid top
 labels     = true;
@@ -69,6 +81,7 @@ BUTTONS = [P(29.0, 30.75), P(41.6, 30.75)];  // SW2 FUNC, SW1 RESET (XKB TS-1187
 LEDS    = [P(43.2, 16.4), P(43.2, 20.4), P(43.2, 24.4)];   // D1 red, D2 green, D3 yellow (0805)
 WHIP    = P(44.4, 2.6);                   // TP1
 UFL     = P(43.9, 9.5);                   // J1
+PIEZO   = P(piezo_at[0], piezo_at[1]);
 // wire pads (v0.4): first and last hole of each row, KiCad board coordinates
 WIRE_PADS = [[[21.0, 1.75], [28.62, 1.75]],    // J2 I2C (SCL SDA 3V3 GND)
              [[21.0, 26.4], [23.54, 26.4]]];   // J3 piezo
@@ -98,6 +111,7 @@ usb_head = 1.5;     // extra height: leaves 2.1 mm of base wall above the USB op
 inner_h  = pm_gap + pm_pcb + pm_parts + 0.8 + usb_head;   // board top to lid underside
 lid_t    = 2.0;
 lip_h    = 3.0;     // lid lip reaching into the base
+piezo_ring_h = piezo_ch + piezo_t + piezo_lip;   // how far the piezo ring hangs below the lid
 pipe_len = inner_h - LED_H - 0.5;          // light pipes below the lid, end 0.5 mm above the LEDs
 rod_len  = pipe_len + lid_t;               // rod flush with the lid top and the pipe end
 fit      = 0.25;    // lip clearance per side
@@ -218,6 +232,9 @@ module lid() {
                 y1 = max([for (l = LEDS) B(l)[1]]) + r;
                 translate([x0, y0, -pipe_len]) cube([OUT_W - wall - fit - x0, y1 - y0, pipe_len]);
             }
+            // piezo ring
+            if (piezo) translate([B(PIEZO)[0], B(PIEZO)[1], -piezo_ring_h])
+                cylinder(d = piezo_d + 0.3 + 2 * piezo_wall, h = piezo_ring_h, $fn = 96);
         }
         // the buttons sit close to the front edge: notch the lip around each pin collar
         for (b = BUTTONS) translate([B(b)[0], B(b)[1], -lip_h - 1]) cylinder(d = pin_collar_d + 1.0, h = lip_h + 1);
@@ -229,6 +246,15 @@ module lid() {
         // room for the peg's tip inside the hold-down tube
         if (board_fix == "peg")
             for (h = HOLES) translate([B(h)[0], B(h)[1], -inner_h - 1]) cylinder(d = peg_d + 0.6, h = 1 + 1.5);
+        // piezo: bore for the disc and its glue lip, chamber, sound hole, wire notch toward J3
+        if (piezo) translate([B(PIEZO)[0], B(PIEZO)[1], 0]) {
+            translate([0, 0, -piezo_ring_h - 1]) cylinder(d = piezo_d + 0.3, h = piezo_ring_h + 1 - piezo_ch, $fn = 96);
+            translate([0, 0, -piezo_ch - 0.01]) cylinder(d = piezo_d - 2 * piezo_ledge, h = piezo_ch + 0.02, $fn = 96);
+            translate([0, 0, -1]) cylinder(d = piezo_hole, h = lid_t + 2);
+            j3 = B(P(22.27, 26.4)) - B(PIEZO);
+            rotate([0, 0, atan2(j3[1], j3[0])]) translate([piezo_d / 2 - 1, -1.5, -piezo_ring_h - 1])
+                cube([piezo_wall + 2, 3, piezo_lip + piezo_t + 1]);
+        }
         // button holes
         for (b = BUTTONS) translate([B(b)[0], B(b)[1], -1]) cylinder(d = 3.8, h = lid_t + 2);
         if (whip_hole) translate([B(WHIP)[0], B(WHIP)[1], -1]) cylinder(d = 3.0, h = lid_t + 2);   // wire up to 1.5 mm, some play
@@ -255,6 +281,8 @@ module lid_print() translate([0, 0, lid_t]) rotate([180, 0, 0]) translate([0, -O
 module pin_print() rotate([180, 0, 0]) translate([0, 0, -(pin_below + lid_t + 1.2)]) pin();        // collar down
 
 if (light_pipe) echo(str("light pipes: cut three ", rod_d, " mm acrylic rods to ", rod_len, " mm"));
+if (piezo) echo(str("piezo: ", piezo_d, " mm disc, ring ", piezo_ring_h, " mm below the lid, ",
+                    inner_h - piezo_ring_h - 3, " mm above the TCM"));
 
 // ---------------------------------------------------------------- parts
 if (part == "base") base();
@@ -280,5 +308,9 @@ else {
     for (b = BUTTONS) color("black") translate([B(b)[0] - 2.55, B(b)[1] - 2.55, top_z]) cube([5.1, 5.1, SW_H]);
     color("white", 0.8) translate([0, 0, base_h + 12]) lid();
     if (light_pipe) for (l = LEDS) color("gold", 0.6) translate([B(l)[0], B(l)[1], base_h + 12 - pipe_len]) cylinder(d = rod_d, h = rod_len);
+    if (piezo) translate([B(PIEZO)[0], B(PIEZO)[1], base_h + 12 - piezo_ch - piezo_t]) {
+        color("goldenrod") cylinder(d = piezo_d, h = 0.2, $fn = 96);
+        color("white") translate([0, 0, -0.1]) cylinder(d = piezo_d * 2 / 3, h = 0.1, $fn = 96);
+    }
     for (b = BUTTONS) color("orange") translate([B(b)[0], B(b)[1], base_h + 12 - pin_below]) pin();
 }

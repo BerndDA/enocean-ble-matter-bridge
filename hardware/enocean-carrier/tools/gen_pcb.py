@@ -180,7 +180,7 @@ def main():
             if fname not in ("Reference", "Value"):
                 fp.GetField(fname).SetVisible(False)
         if ref in ("U1", "U2", "TP1", "H1", "H2", "R4", "R5", "R6", "D1", "D2", "D3",
-                   "R7", "R8", "R9", "R10", "J2", "J3"):   # obvious or tiny parts: labels would sit on others
+                   "R7", "R8", "R9", "R10", "J2", "J3", "U3", "C5", "R11"):   # obvious or tiny parts: labels would sit on others
             fp.Reference().SetVisible(False)
         fp.Reference().SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(0.9), pcbnew.FromMM(0.9)))
         fp.Reference().SetTextThickness(pcbnew.FromMM(0.14))

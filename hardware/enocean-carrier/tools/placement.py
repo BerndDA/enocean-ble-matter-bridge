@@ -66,6 +66,9 @@ PLACE = {
     "J3": (21.0, 26.4, 0, "F"),     # piezo, below the TCM's bottom-left corner, above H1
     "R9": (10.6, 9.6, 90, "F"),     # SDA pull-up
     "R10": (12.6, 9.6, 90, "F"),    # SCL pull-up
-    "R7": (13.0, 15.3, 0, "F"),     # piezo series resistors next to pins 18 / 19
-    "R8": (13.0, 18.3, 0, "F"),
+    "R7": (14.0, 15.3, 0, "F"),     # piezo series resistors next to pins 18 / 19
+    "R8": (14.0, 18.3, 0, "F"),
+    "U3": (7.9, 16.0, 0, "F"),      # SPI flash (SOIC-8, 1.75 mm) under the module, above its antenna zone
+    "C5": (10.6, 12.3, 0, "F"),     # next to U3's VCC (pin 8)
+    "R11": (5.0, 11.6, 90, "F"),    # CS pull-up, next to U3's pin 1
 }

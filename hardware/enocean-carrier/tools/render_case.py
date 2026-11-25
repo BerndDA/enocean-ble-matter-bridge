@@ -50,6 +50,8 @@ ROD_D = 3.0                           # acrylic rods in the light pipes (carrier
 PIPE_LEN = INNER_H - LED_H - 0.5      # light pipe below the lid
 LEDS = [(43.2, 16.4), (43.2, 20.4), (43.2, 24.4)]   # D1 red, D2 green, D3 yellow, KiCad board coordinates
 LED = LEDS[1]                         # the one that blinks in the USB clip (green)
+PIEZO_AT, PIEZO_D, PIEZO_CH = (28.0, 18.5), 15.0, 1.2   # carrier_case.scad piezo_at / piezo_d / piezo_ch
+J3_PADS = [(21.0, 26.4), (23.54, 26.4)]  # piezo wire pads, KiCad board coordinates
 
 
 def C(x, y):
@@ -334,6 +336,7 @@ inside.append(box("usb", cx - 4.47, PM_Y1 - 7.35 + 0.3, uz - 1.6, cx + 4.47, PM_
 inside.append(box("usb_mouth", cx - 3.9, PM_Y1 + 0.29, uz - 1.05, cx + 3.9, PM_Y1 + 0.33, uz + 1.05, M["usb_in"], 0.0))
 inside.append(box("usb_tongue", cx - 3.3, PM_Y1 + 0.32, uz - 0.35, cx + 3.3, PM_Y1 + 0.36, uz + 0.35, M["tongue"], 0.0))
 
+N_PROMICRO = len(inside)              # the Pro Micro stand-in (headers, module, its parts) so far
 # ---------------- TCM 515: green module PCB with 31 castellated pads, tin shield can, white label
 # Position and pads from the KiCad footprint EnOcean:TCM515 (at 27.6 / 14.0 on the board, -90 deg):
 # footprint x (19 mm) runs along the board's y, footprint y (14.7 mm) against the board's x.
@@ -488,20 +491,80 @@ def usb_plug():
     return plug
 
 
+def piezo_disc():
+    """The optional piezo: a brass disc with its ceramic facing the board, in the lid's ring (front
+    chamber above it), and two wires out through the ring's notch down into J3's holes. One group."""
+    grp = bpy.data.objects.new("piezo", None)
+    scene.collection.objects.link(grp)
+    grp.parent = root
+    px, py = C(*PIEZO_AT)
+    z_brass = BASE_H - PIEZO_CH - 0.2
+    parts = [cyl("piezo_brass", px, py, z_brass, 0.2, PIEZO_D, mat("brass", (0.78, 0.6, 0.3), 0.3, 1.0), 96),
+             cyl("piezo_ceramic", px, py, z_brass - 0.1, 0.1, PIEZO_D * 2 / 3, mat("ceramic", (0.85, 0.85, 0.82), 0.6), 96)]
+    jx, jy = C((J3_PADS[0][0] + J3_PADS[1][0]) / 2, J3_PADS[0][1])
+    d = math.hypot(jx - px, jy - py)
+    ux, uy = (jx - px) / d, (jy - py) / d        # toward J3 (the ring's notch)
+    vx, vy = -uy, ux
+    starts = [(px + 2.0 * ux + 0.8 * vx, py + 2.0 * uy + 0.8 * vy, z_brass - 0.12),      # on the ceramic
+              (px + 6.6 * ux - 0.8 * vx, py + 6.6 * uy - 0.8 * vy, z_brass - 0.02)]      # on the brass rim
+    pads = sorted((C(*p) for p in J3_PADS), key=lambda q: (q[0] - px) * vx + (q[1] - py) * vy, reverse=True)
+    for i, ((sx, sy, sz), (hx, hy), colour) in enumerate(zip(starts, pads, [(0.7, 0.05, 0.04), (0.03, 0.03, 0.03)])):
+        side = 0.6 if i == 0 else -0.6
+        pts = [(sx, sy, sz), (sx, sy, sz - 0.4),
+               (px + 9.5 * ux + side * vx, py + 9.5 * uy + side * vy, BASE_H - 1.9),
+               ((px + 9.5 * ux + hx) / 2, (py + 9.5 * uy + hy) / 2, TOP_Z + 4.0),
+               (hx, hy, TOP_Z + 1.2), (hx, hy, TOP_Z - 0.3)]
+        cu = bpy.data.curves.new(f"piezo_wire{i}", "CURVE")
+        cu.dimensions = "3D"
+        cu.bevel_depth = 0.25                    # 0.5 mm wire
+        cu.bevel_resolution = 3
+        sp = cu.splines.new("NURBS")
+        sp.points.add(len(pts) - 1)
+        for pt, q in zip(sp.points, pts):
+            pt.co = (*q, 1.0)
+        sp.order_u = 3
+        sp.use_endpoint_u = True
+        sp.resolution_u = 12
+        o = bpy.data.objects.new(f"piezo_wire{i}", cu)
+        scene.collection.objects.link(o)
+        o.data.materials.append(mat(f"wire{i}", colour, 0.5))
+        bpy.ops.object.select_all(action="DESELECT")
+        o.select_set(True)
+        bpy.context.view_layer.objects.active = o
+        bpy.ops.object.convert(target="MESH")
+        parts.append(bpy.context.object)
+    for o in parts:
+        o.parent = grp
+    return grp
+
+
 if MODE == "glb":
     # 3D model for viewing (hardware/pcb-viewer.html, Blender, any glTF viewer): the board with
     # its KiCad parts and the stand-ins above, in the closed case. glTF works in metres, so
     # 1 mm = 0.001. Top-level nodes for the viewer's toggles: base, lid (with the light-pipe
-    # rods), pin0/pin1 (button push pins), board_group (board + parts), whip, plug (USB-C plug).
+    # rods), push_pins (both button push pins), board_group (board + TCM + parts), promicro (the
+    # Pro Micro on its headers; node "pro_micro"), whip, plug (USB-C plug), piezo (disc in the lid's ring, wires to J3).
     bpy.data.objects.remove(floor)
     root.scale = (0.001, 0.001, 0.001)
     # Hints for pcb-viewer.html (glTF extras): name in the parts list, hidden at first (it opens
     # on the bare board), left out when framing the view (the whip is twice the case height).
     plug = usb_plug()
+    piezo = piezo_disc()
+    # the Pro Micro (module on its headers) and the two push pins as groups of their own
+    promicro = bpy.data.objects.new("pro_micro", None)
+    scene.collection.objects.link(promicro)
+    promicro.parent = root
+    for o in inside[:N_PROMICRO]:            # board_group and promicro are both unit transforms under root
+        o.parent = promicro
+    push_pins = bpy.data.objects.new("push_pins", None)
+    scene.collection.objects.link(push_pins)
+    push_pins.parent = root
+    for o in pins:                           # root -> push_pins (unit transform) -> pin
+        o.parent = push_pins
     for o, label, hidden in [(board_group, "Board with parts", False), (whip, "868 MHz whip", False),
                              (base, "Case base", True), (lid, "Lid with light pipes", True),
-                             (pins[0], "Push pin FUNC", True), (pins[1], "Push pin RST", True),
-                             (plug, "USB-C plug and cable", True)]:
+                             (promicro, "Pro Micro nRF52840", False), (push_pins, "Push pins", True),
+                             (plug, "USB-C plug and cable", True), (piezo, "Piezo disc and wires", True)]:
         o["viewer_label"] = label
         o["viewer_hidden"] = hidden
     whip["viewer_noframe"] = True
