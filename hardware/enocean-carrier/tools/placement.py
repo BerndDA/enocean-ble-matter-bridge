@@ -59,4 +59,13 @@ PLACE = {
     "SW2": (29.0, 30.75, 0, "F"),
     "SW1": (41.6, 30.75, 0, "F"),
     "H1": (22.2, 30.7, 0, "F"),
+    # v0.4 expansion: wire pads where the board had room, resistors under the Pro Micro
+    # (between its header rows, clear of its antenna keepout from y 20.5)
+    "J2": (28.62, 1.75, 180, "F"),  # I2C, top edge above the TCM: SCL SDA 3V3 GND left to right
+                                    # (pin 1 GND on the right: the data lines come in from the Pro Micro)
+    "J3": (21.0, 26.4, 0, "F"),     # piezo, below the TCM's bottom-left corner, above H1
+    "R9": (10.6, 9.6, 90, "F"),     # SDA pull-up
+    "R10": (12.6, 9.6, 90, "F"),    # SCL pull-up
+    "R7": (13.0, 15.3, 0, "F"),     # piezo series resistors next to pins 18 / 19
+    "R8": (13.0, 18.3, 0, "F"),
 }

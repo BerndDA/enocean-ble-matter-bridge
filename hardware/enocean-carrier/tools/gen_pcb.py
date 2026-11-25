@@ -179,7 +179,8 @@ def main():
             fp.SetField(fname, fval)
             if fname not in ("Reference", "Value"):
                 fp.GetField(fname).SetVisible(False)
-        if ref in ("U1", "U2", "TP1", "H1", "H2", "R4", "R5", "R6", "D1", "D2", "D3"):   # obvious or tiny parts: labels would sit on others
+        if ref in ("U1", "U2", "TP1", "H1", "H2", "R4", "R5", "R6", "D1", "D2", "D3",
+                   "R7", "R8", "R9", "R10", "J2", "J3"):   # obvious or tiny parts: labels would sit on others
             fp.Reference().SetVisible(False)
         fp.Reference().SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(0.9), pcbnew.FromMM(0.9)))
         fp.Reference().SetTextThickness(pcbnew.FromMM(0.14))
@@ -216,7 +217,27 @@ def main():
 
     route_868(board, nets)
 
-    for s, x, y, size, layer in (("EnOcean carrier v0.3", 32.0, 31.6, 1.0, pcbnew.B_SilkS),
+    # no top tracks along the TCM's top pads (1-5): they would cut the pour's spokes to GND pads
+    # 1 and 3 next to RF_50 (v0.4: the strip above the TCM now carries J2)
+    k = pcbnew.ZONE(board)
+    k.SetIsRuleArea(True)
+    k.SetDoNotAllowTracks(True)
+    k.SetDoNotAllowVias(False)
+    k.SetDoNotAllowZoneFills(False)
+    k.SetDoNotAllowPads(False)
+    k.SetDoNotAllowFootprints(False)
+    k.SetLayer(pcbnew.F_Cu)
+    k.Outline().AddOutline(rect_poly(22.2, 102.6 - 100, 31.9, 103.9 - 100))
+    k.SetZoneName("TCM top pads: no tracks")
+    board.Add(k)
+
+    for s, x, y, size, layer in (("EnOcean carrier v0.4", 32.0, 31.6, 1.0, pcbnew.B_SilkS),
+                                 # wire pad labels on the back (the front has no room between the pads)
+                                 ("SCL", 21.0, 3.4, 0.8, pcbnew.B_SilkS),
+                                 ("SDA", 23.54, 3.4, 0.8, pcbnew.B_SilkS),
+                                 ("3V3", 26.08, 3.4, 0.8, pcbnew.B_SilkS),
+                                 ("GND", 28.62, 3.4, 0.8, pcbnew.B_SilkS),
+                                 ("PIEZO", 22.27, 24.7, 0.8, pcbnew.B_SilkS),
                                  ("WHIP", 44.4, 4.6, 0.8, pcbnew.F_SilkS),
                                  ("TCM515", 27.6, 14.0, 1.0, pcbnew.F_SilkS),      # inside the module outline
                                  ("R", 43.2, 18.2, 0.8, pcbnew.F_SilkS),           # LED colours, below each LED
@@ -244,13 +265,13 @@ def route_868(board, nets):
         v = board.FindFootprintByReference(ref).FindPadByNumber(num).GetPosition()
         return (round(pcbnew.ToMM(v.x) - ORIGIN[0], 4), round(pcbnew.ToMM(v.y) - ORIGIN[1], 4))
 
-    def track(net, pts, width):
+    def track(net, pts, width, layer=pcbnew.F_Cu):
         for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
             t = pcbnew.PCB_TRACK(board)
             t.SetStart(mm(x0, y0))
             t.SetEnd(mm(x1, y1))
             t.SetWidth(pcbnew.FromMM(width))
-            t.SetLayer(pcbnew.F_Cu)
+            t.SetLayer(layer)
             t.SetNet(nets[net])
             t.SetLocked(True)
             board.Add(t)
@@ -283,6 +304,17 @@ def route_868(board, nets):
         gx, gy = pad("U2", num)
         track("GND", [(gx, gy), (gx + dx, gy + dy)], 0.4)
         via(gx + dx, gy + dy)
+    # pad 15's via straight down on the back to the GND pour along the bottom edge: the tracks
+    # from the Pro Micro's right row to the TCM and J3 would otherwise fence in the ground around
+    # the TCM's bottom-left corner (v0.4)
+    gx, gy = pad("U2", "15")
+    track("GND", [(gx - 1.65, gy), (19.2, gy + 0.25), (19.2, 30.5)], 0.4, layer=pcbnew.B_Cu)
+    via(19.2, 30.5)
+    # C3's GND pad sits between R5, R6 and the NRESET line, where the pour only reaches it with
+    # one spoke: a fixed via straight up, towards R5
+    gx, gy = pad("C3", "2")
+    track("GND", [(gx, gy), (gx, gy - 1.15)], 0.4)
+    via(gx, gy - 1.15)
 
 
 if __name__ == "__main__":

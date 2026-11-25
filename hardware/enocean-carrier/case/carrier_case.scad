@@ -41,13 +41,14 @@ board_fix  = "peg";
 peg_d      = 2.0;     // in the 2.2 mm hole; printed pegs come out a little thin, so it isn't loose
 sma_hole   = false;   // 6.5 mm hole in the right wall for an SMA bulkhead (u.FL pigtail instead of the whip)
 whip_hole  = true;    // 3 mm hole in the lid above the whip pad: the 86 mm wire (up to 1.5 mm) goes straight up
-light_pipe = true;    // one tube per LED from the lid down to just above it, each holds a clear acrylic rod
+light_pipe = true;    // a solid block from the lid down to just above the LEDs, one bore per LED, each holds a clear acrylic rod
 rod_d      = 3.0;     // acrylic (PMMA) rods pressed into the light pipes
 pipe_bore  = rod_d + 0.2;   // printed holes come out ~0.1-0.2 mm small: press fit
 pipe_wall  = 0.8;     // also the wall between two pipes (LEDs 4 mm apart): two lines of a 0.4 mm nozzle
 
 // ---------------------------------------------------------------- labels engraved in the lid top
 labels     = true;
+small_labels = false; // FUNC/RST/PWR/LINK/RX/868 next to buttons and LEDs: too fine for FDM, OK on MJF/SLS/resin
 name       = "EnMT";  // product name, large, over the Pro Micro / TCM area ("" = none)
 logo       = true;    // the EnMT logo (radio waves + triangle of nodes) left of the name
 logo_h     = 9.0;     // logo height
@@ -68,6 +69,9 @@ BUTTONS = [P(29.0, 30.75), P(41.6, 30.75)];  // SW2 FUNC, SW1 RESET (XKB TS-1187
 LEDS    = [P(43.2, 16.4), P(43.2, 20.4), P(43.2, 24.4)];   // D1 red, D2 green, D3 yellow (0805)
 WHIP    = P(44.4, 2.6);                   // TP1
 UFL     = P(43.9, 9.5);                   // J1
+// wire pads (v0.4): first and last hole of each row, KiCad board coordinates
+WIRE_PADS = [[[21.0, 1.75], [28.62, 1.75]],    // J2 I2C (SCL SDA 3V3 GND)
+             [[21.0, 26.4], [23.54, 26.4]]];   // J3 piezo
 USB_X   = 2.4 + 15.24 / 2;                // Pro Micro centre line (pads at x 2.4 and 17.64)
 SW_H    = 1.5;                            // switch height above the board
 LED_H   = 0.8;                            // 0805 LEDs
@@ -132,6 +136,11 @@ module base() {
             translate([p0[0], p0[1], floor_t - pocket_d]) cube([3.2, 31.0, pocket_d + 1]);
         }
         translate([B(WHIP)[0], B(WHIP)[1], floor_t - pocket_d]) cylinder(d = 5.0, h = pocket_d + 1);   // whip pad 3.2 mm + solder
+        // wire pads J2 / J3: 1.6 mm pads, wire ends and solder below
+        for (r = WIRE_PADS) {
+            p0 = B(P(r[0][0] - 1.4, r[0][1] + 1.3));
+            translate([p0[0], p0[1], floor_t - pocket_d]) cube([r[1][0] - r[0][0] + 2.8, 2.6, pocket_d + 1]);
+        }
         // M2 screws from the top through board and floor into hex nuts in the underside
         if (board_fix == "screw") for (h = HOLES) {
             translate([B(h)[0], B(h)[1], -1]) cylinder(d = 2.4, h = floor_t + 2);
@@ -200,9 +209,15 @@ module lid() {
             // hold-down tube: presses the board onto the floor around the peg
             if (board_fix == "peg")
                 for (h = HOLES) translate([B(h)[0], B(h)[1], -inner_h]) cylinder(d = hold_d, h = inner_h);
-            // light pipe down to just above the LED
-            if (light_pipe)
-                for (l = LEDS) translate([B(l)[0], B(l)[1], -pipe_len]) cylinder(d = pipe_bore + 2 * pipe_wall, h = pipe_len);
+            // light pipes: one rectangular block around all three bores, down to just above the LEDs,
+            // reaching out to the lip's outer face so block and lip are one piece
+            if (light_pipe) {
+                r  = pipe_bore / 2 + pipe_wall;
+                x0 = min([for (l = LEDS) B(l)[0]]) - r;
+                y0 = min([for (l = LEDS) B(l)[1]]) - r;
+                y1 = max([for (l = LEDS) B(l)[1]]) + r;
+                translate([x0, y0, -pipe_len]) cube([OUT_W - wall - fit - x0, y1 - y0, pipe_len]);
+            }
         }
         // the buttons sit close to the front edge: notch the lip around each pin collar
         for (b = BUTTONS) translate([B(b)[0], B(b)[1], -lip_h - 1]) cylinder(d = pin_collar_d + 1.0, h = lip_h + 1);
@@ -218,7 +233,7 @@ module lid() {
         for (b = BUTTONS) translate([B(b)[0], B(b)[1], -1]) cylinder(d = 3.8, h = lid_t + 2);
         if (whip_hole) translate([B(WHIP)[0], B(WHIP)[1], -1]) cylinder(d = 3.0, h = lid_t + 2);   // wire up to 1.5 mm, some play
         if (labels) {
-            for (l = LABELS) engrave(l[0], P(l[1], l[2]), l[3], l[4]);
+            if (small_labels) for (l = LABELS) engrave(l[0], P(l[1], l[2]), l[3], l[4]);
             if (name != "" || logo) translate([B(P(NAME_AT[0], NAME_AT[1]))[0], B(P(NAME_AT[0], NAME_AT[1]))[1], lid_t - label_d])
                 linear_extrude(label_d + 1) brand2d();
         }
