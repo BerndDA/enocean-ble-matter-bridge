@@ -51,6 +51,9 @@ const OTA_ATTEMPTS: u8 = 3;
 /// After the download has started: the device sat in Idle that long, so it
 /// gave up, and the provider would wait forever.
 const OTA_IDLE_LIMIT: Duration = Duration::from_secs(180);
+/// No change of the device's update state reported for that long: read it
+/// (see `poll_ota_state`).
+const OTA_POLL_QUIET: Duration = Duration::from_secs(8);
 /// How long a finished update's status stays on `<prefix>/<device>/ota`.
 const OTA_KEEP: Duration = Duration::from_secs(10 * 60);
 
@@ -118,6 +121,8 @@ struct OtaJob {
     /// Set by a cancel; the job's task then ends with this error.
     cancelled: Option<String>,
     cancel: Arc<Notify>,
+    /// Last change of UpdateState or its progress, reported or polled.
+    reported: Instant,
 }
 
 pub struct Hub {
@@ -520,6 +525,7 @@ impl Hub {
             downloading: false,
             cancelled: None,
             cancel: cancel.clone(),
+            reported: Instant::now(),
         });
         drop(job);
         drop(nodes);
@@ -596,6 +602,14 @@ impl Hub {
     async fn ota_watchdog(&self, node_id: u64) -> Attempt {
         loop {
             tokio::time::sleep(Duration::from_secs(5)).await;
+            let quiet = {
+                let job = self.ota_job.lock().unwrap();
+                let Some(j) = job.as_ref() else { continue };
+                j.reported.elapsed()
+            };
+            if quiet > OTA_POLL_QUIET {
+                self.poll_ota_state(node_id).await;
+            }
             let (downloading, idle) = {
                 let job = self.ota_job.lock().unwrap();
                 let Some(j) = job.as_ref() else { continue };
@@ -623,6 +637,23 @@ impl Hub {
             } else {
                 Attempt::Again
             };
+        }
+    }
+
+    /// UpdateState and its progress straight from the device, as if reported. The subscription
+    /// goes quiet for a minute or more when the device drops our sessions before it queries the
+    /// provider (gateway_ota.cpp) until its liveness timeout; meanwhile this keeps the progress
+    /// moving. No answer: nothing changes.
+    async fn poll_ota_state(&self, node_id: u64) {
+        let paths = [
+            ReadPath::concrete(0, ota::REQUESTOR, ota::UPDATE_STATE),
+            ReadPath::concrete(0, ota::REQUESTOR, ota::UPDATE_STATE_PROGRESS),
+        ];
+        let node = self.node(node_id);
+        if let Ok(Ok(values)) = tokio::time::timeout(Duration::from_secs(10), node.read(&paths)).await {
+            for (path, value) in &values {
+                self.attribute(node_id, *path, crate::tlv::to_json(value));
+            }
         }
     }
 
@@ -713,6 +744,7 @@ impl Hub {
             .and_then(|p| u8::try_from(p).ok());
         let name = state.map_or("unknown", ota::update_state_name);
         if let Some(j) = self.ota_job.lock().unwrap().as_mut().filter(|j| j.node_id == node_id) {
+            j.reported = Instant::now();
             j.idle_since = if name == "idle" { j.idle_since.or(Some(Instant::now())) } else { None };
             j.downloading |= matches!(name, "downloading" | "applying" | "delayed_on_apply");
         }
