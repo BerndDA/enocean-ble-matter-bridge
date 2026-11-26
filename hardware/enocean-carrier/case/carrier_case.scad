@@ -12,6 +12,14 @@
 
 part = "assembly";
 
+// ---------------------------------------------------------------- print process
+// The fits below depend on how the parts are printed:
+//   "fdm": holes come out ~0.1-0.2 mm small and round parts a little fat: generous clearances
+//   "sla": resin (SLA/MSLA/DLP) prints close to size: tight clearances, or parts rattle and rods fall out
+// tools/export_case.sh writes carrier_case-<part>.stl (FDM) and carrier_case-<part>-sla.stl.
+process  = "fdm";
+SLA      = process == "sla";
+
 // ---------------------------------------------------------------- how the Pro Micro sits
 // "direct": soldered on male pin headers (plastic spacer 2.5 mm)   -> Pro Micro 2.5 mm above the board
 // "socket": female headers (8.5 mm) + male header spacer (2.5 mm) -> Pro Micro 11 mm above the board
@@ -38,12 +46,12 @@ usb_hole_h = 6.6;
 //            down around it. No screw, closed floor.
 //   "screw": M2 screw from the top through board and floor into a hex nut in the underside.
 board_fix  = "peg";
-peg_d      = 2.0;     // in the 2.2 mm hole; printed pegs come out a little thin, so it isn't loose
+peg_d      = SLA ? 2.1 : 2.0;   // in the 2.2 mm hole; FDM pegs come out a little thin, so it isn't loose
 sma_hole   = false;   // 6.5 mm hole in the right wall for an SMA bulkhead (u.FL pigtail instead of the whip)
 whip_hole  = true;    // 3 mm hole in the lid above the whip pad: the 86 mm wire (up to 1.5 mm) goes straight up
 light_pipe = true;    // a solid block from the lid down to just above the LEDs, one bore per LED, each holds a clear acrylic rod
 rod_d      = 3.0;     // acrylic (PMMA) rods pressed into the light pipes
-pipe_bore  = rod_d + 0.2;   // printed holes come out ~0.1-0.2 mm small: press fit
+pipe_bore  = rod_d + (SLA ? 0.1 : 0.2);   // snug fit: FDM holes come out ~0.1-0.2 mm small, SLA ones close to size (resin over-cure ~0.05)
 pipe_wall  = 0.8;     // also the wall between two pipes (LEDs 4 mm apart): two lines of a 0.4 mm nozzle
 // piezo disc under the lid, over the TCM (the only spot with ~6 mm of height): the disc's rim rests
 // on a ledge, a dab of glue in the lip below holds it; the chamber in front of it and the sound hole
@@ -114,7 +122,7 @@ lip_h    = 3.0;     // lid lip reaching into the base
 piezo_ring_h = piezo_ch + piezo_t + piezo_lip;   // how far the piezo ring hangs below the lid
 pipe_len = inner_h - LED_H - 0.5;          // light pipes below the lid, end 0.5 mm above the LEDs
 rod_len  = pipe_len + lid_t;               // rod flush with the lid top and the pipe end
-fit      = 0.25;    // lip clearance per side
+fit      = SLA ? 0.12 : 0.25;   // lip clearance per side
 $fn = 48;
 
 IN_W = BOARD_W + 2 * gap;
@@ -256,7 +264,7 @@ module lid() {
                 cube([piezo_wall + 2, 3, piezo_lip + piezo_t + 1]);
         }
         // button holes
-        for (b = BUTTONS) translate([B(b)[0], B(b)[1], -1]) cylinder(d = 3.8, h = lid_t + 2);
+        for (b = BUTTONS) translate([B(b)[0], B(b)[1], -1]) cylinder(d = pin_hole_d, h = lid_t + 2);
         if (whip_hole) translate([B(WHIP)[0], B(WHIP)[1], -1]) cylinder(d = 3.0, h = lid_t + 2);   // wire up to 1.5 mm, some play
         if (labels) {
             if (small_labels) for (l = LABELS) engrave(l[0], P(l[1], l[2]), l[3], l[4]);
@@ -268,10 +276,12 @@ module lid() {
 
 // push pin: collar under the lid keeps it captive, lower end 0.3 mm above the switch
 pin_below = inner_h - SW_H - 0.3;   // collar top (lid underside) down to the pin tip
+pin_hole_d   = 3.8;                 // button hole in the lid
+pin_d        = SLA ? 3.55 : 3.3;    // shaft: 0.12 mm play per side on SLA; FDM holes shrink, so 0.25 there
 pin_collar_d = 5.4;                 // keeps the pin captive (hole 3.8); 0.35 mm clear of the base wall
 module pin() {
     collar = 1.2;
-    cylinder(d = 3.3, h = pin_below + lid_t + 1.2);           // shaft: through the lid, 1.2 mm proud
+    cylinder(d = pin_d, h = pin_below + lid_t + 1.2);         // shaft: through the lid, 1.2 mm proud
     translate([0, 0, pin_below - collar]) cylinder(d = pin_collar_d, h = collar);
 }
 
