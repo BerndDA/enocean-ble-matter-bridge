@@ -10,7 +10,7 @@ anyhow = "1"
 axum = "0.8"
 clap = { version = "4", features = ["derive", "env"] }
 matter-codec = "0.3.2"
-matter-controller = { version = "0.18.3", default-features = false }
+matter-controller = { version = "0.18.3", default-features = false, features = ["ota"] }
 rumqttc = { version = "0.25.1", default-features = false }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

@@ -7,10 +7,15 @@
 //! DELETE /api/nodes/{id}[?local_only=true]  remove our fabric from the device
 //! GET    /api/nodes/{id}/read?ep=&cluster=&attr=  debug read, omitted = wildcard
 //! GET    /api/thread                   Thread neighbor/route tables of every node
+//! POST   /api/nodes/{id}/ota           body: an .ota file; starts an OTA update
+//! GET    /api/nodes/{id}/ota           status of the current or last update
+//! DELETE /api/nodes/{id}/ota           cancels the running update
+//! GET    /api/config                   topic prefix and MQTT WebSocket URL for the UI
 
 use std::sync::Arc;
 
-use axum::extract::{Path, Query, State};
+use axum::body::Bytes;
+use axum::extract::{DefaultBodyLimit, Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Response};
 use axum::routing::{get, put};
@@ -19,6 +24,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value as JsonValue, json};
 
 use crate::hub::{Hub, NodeView};
+use crate::ota::{OtaImage, OtaStatus};
+
+/// Larger than any .ota for the 888 KB app area of the gateways.
+const MAX_OTA_FILE: usize = 4 * 1024 * 1024;
 
 pub fn router(hub: Arc<Hub>) -> Router {
     Router::new()
@@ -28,6 +37,11 @@ pub fn router(hub: Arc<Hub>) -> Router {
         .route("/api/nodes/{id}/fabric-label", put(fabric_label))
         .route("/api/nodes/{id}/read", get(read))
         .route("/api/thread", get(thread))
+        .route(
+            "/api/nodes/{id}/ota",
+            get(ota_status).post(ota_start).delete(ota_cancel).layer(DefaultBodyLimit::max(MAX_OTA_FILE)),
+        )
+        .route("/api/config", get(config))
         .with_state(hub)
 }
 
@@ -63,6 +77,12 @@ struct NodeSummary {
     /// BasicInformation NodeLabel, else ProductName.
     name: Option<JsonValue>,
     values: usize,
+    /// The device's name in topics: `<prefix>/<device>/...`.
+    device: Option<String>,
+    /// BasicInformation SoftwareVersion and SoftwareVersionString.
+    software_version: Option<JsonValue>,
+    software_version_string: Option<JsonValue>,
+    ota: Option<OtaStatus>,
 }
 
 async fn list(State(hub): State<Arc<Hub>>) -> ApiResult<Json<Vec<NodeSummary>>> {
@@ -81,6 +101,10 @@ async fn list(State(hub): State<Arc<Hub>>) -> ApiResult<Json<Vec<NodeSummary>>> 
                     online: v.online,
                     name,
                     values: v.values.len(),
+                    device: hub.device_name(n.node_id),
+                    software_version: v.values.get("0/0028/0009").cloned(),
+                    software_version_string: v.values.get("0/0028/000a").cloned(),
+                    ota: hub.ota_status(n.node_id),
                 }
             })
             .collect(),
@@ -213,4 +237,30 @@ async fn read(
             })
             .collect(),
     ))
+}
+
+async fn ota_start(
+    State(hub): State<Arc<Hub>>,
+    Path(id): Path<u64>,
+    body: Bytes,
+) -> ApiResult<impl IntoResponse> {
+    known(&hub, id).await?;
+    let image = OtaImage::parse(body.to_vec()).map_err(|e| ApiError(StatusCode::BAD_REQUEST, format!("{e:#}")))?;
+    let status = hub.start_ota(id, image).map_err(|e| ApiError(StatusCode::CONFLICT, format!("{e:#}")))?;
+    Ok((StatusCode::ACCEPTED, Json(status)))
+}
+
+async fn ota_status(State(hub): State<Arc<Hub>>, Path(id): Path<u64>) -> ApiResult<Json<Option<OtaStatus>>> {
+    known(&hub, id).await?;
+    Ok(Json(hub.ota_status(id)))
+}
+
+async fn ota_cancel(State(hub): State<Arc<Hub>>, Path(id): Path<u64>) -> ApiResult<StatusCode> {
+    known(&hub, id).await?;
+    hub.cancel_ota(id).map_err(|e| ApiError(StatusCode::CONFLICT, format!("{e:#}")))?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn config(State(hub): State<Arc<Hub>>) -> Json<JsonValue> {
+    Json(json!({ "prefix": hub.cfg.prefix, "mqtt_ws": hub.cfg.mqtt_ws }))
 }

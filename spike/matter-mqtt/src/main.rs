@@ -10,6 +10,7 @@
 mod hub;
 mod mapping;
 mod mqtt;
+mod ota;
 mod thread;
 mod tlv;
 mod watcher;
@@ -74,6 +75,22 @@ struct Args {
     /// Echo every published message on stdout.
     #[arg(long)]
     print: bool,
+
+    /// UDP port of the OTA provider. Thread devices reach it through the
+    /// border router, like the controller itself.
+    #[arg(long, env = "OTA_PORT", default_value_t = 5560)]
+    ota_port: u16,
+
+    /// Directory with .ota files for `<prefix>/<device>/ota/set` {"file": ...}.
+    /// Default: `ota` next to the store.
+    #[arg(long, env = "OTA_DIR")]
+    ota_dir: Option<PathBuf>,
+
+    /// MQTT over WebSockets for the web UI's OTA progress, e.g.
+    /// wss://broker:443 (the browser only reads `<prefix>/+/ota`). Without it,
+    /// the UI polls the REST API instead.
+    #[arg(long, env = "MQTT_WS")]
+    mqtt_ws: Option<String>,
 }
 
 #[tokio::main]
@@ -103,13 +120,18 @@ async fn main() -> Result<()> {
             user: args.mqtt_user.clone(),
             password: args.mqtt_password.clone(),
             status_topic: format!("{}/status", args.prefix),
+            subscribe: vec![format!("{}/+/ota/set", args.prefix)],
         }))
     };
+    let state_dir = args.store.parent().unwrap_or(Path::new(".")).to_path_buf();
     let hub = hub::Hub::new(
         controller.clone(),
         hub::Config {
             prefix: args.prefix.clone(),
-            state_dir: args.store.parent().unwrap_or(Path::new(".")).to_path_buf(),
+            ota_port: args.ota_port,
+            ota_dir: args.ota_dir.clone().unwrap_or_else(|| state_dir.join("ota")),
+            mqtt_ws: args.mqtt_ws.clone(),
+            state_dir,
             max_interval: args.max_interval,
             all: args.all,
             raw: args.raw,

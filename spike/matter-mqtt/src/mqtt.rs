@@ -1,7 +1,8 @@
 //! MQTT connection. Publishing never blocks the caller: messages go into the
 //! client's queue and the event loop task sends them. After every (re)connect
 //! the hub republishes its whole retained state, so a broker that lost its
-//! retained messages (restart without persistence) is refilled.
+//! retained messages (restart without persistence) is refilled. The only
+//! subscription is `<prefix>/+/ota/set` (OTA updates, see `Hub::mqtt_message`).
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -22,12 +23,15 @@ pub struct Settings {
     pub password: Option<String>,
     /// `<prefix>/status`: "online", "offline" as last will.
     pub status_topic: String,
+    /// Subscribed after every connect.
+    pub subscribe: Vec<String>,
 }
 
 #[derive(Clone)]
 pub struct Mqtt {
     client: AsyncClient,
     status_topic: String,
+    subscribe: Vec<String>,
     stopping: Arc<AtomicBool>,
 }
 
@@ -42,7 +46,7 @@ pub fn connect(s: Settings) -> (Mqtt, EventLoop) {
         opts.set_credentials(user, s.password.unwrap_or_default());
     }
     let (client, eventloop) = AsyncClient::new(opts, QUEUE);
-    (Mqtt { client, status_topic: s.status_topic, stopping: Arc::default() }, eventloop)
+    (Mqtt { client, status_topic: s.status_topic, subscribe: s.subscribe, stopping: Arc::default() }, eventloop)
 }
 
 impl Mqtt {
@@ -54,6 +58,12 @@ impl Mqtt {
     }
 
     fn online(&self) {
+        // A clean session forgets subscriptions: subscribe again on every connect
+        for topic in &self.subscribe {
+            if let Err(e) = self.client.try_subscribe(topic, QoS::AtLeastOnce) {
+                eprintln!("mqtt: cannot subscribe to {topic}: {e}");
+            }
+        }
         self.publish(&self.status_topic, "online".into(), true);
     }
 
@@ -78,6 +88,9 @@ pub async fn run(mut eventloop: EventLoop, mqtt: Mqtt, hub: Arc<Hub>) {
                 connected = true;
                 mqtt.online();
                 hub.republish();
+            }
+            Ok(Event::Incoming(Packet::Publish(p))) => {
+                hub.mqtt_message(&p.topic, &p.payload, p.retain);
             }
             Ok(_) => {}
             Err(_) if mqtt.stopping.load(Ordering::Relaxed) => return,

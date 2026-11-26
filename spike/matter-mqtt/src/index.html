@@ -67,6 +67,13 @@
   .scroll { overflow-x: auto; }
   td.num { font-family: ui-monospace, monospace; white-space: nowrap; }
   th { text-align: left; font-weight: 600; color: var(--muted); padding: 4px 8px 4px 0; white-space: nowrap; }
+  .ota { margin-top: 8px; font-size: 13px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .ota .bar { flex: 1 1 160px; max-width: 320px; height: 8px; background: var(--line); border-radius: 4px;
+              overflow: hidden; }
+  .ota .bar i { display: block; height: 100%; background: var(--accent); transition: width .4s; }
+  .ota.failed .state { color: var(--danger); }
+  .ota.applied .state { color: var(--ok); }
+  .ota button { padding: 3px 8px; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -86,7 +93,10 @@
   </section>
 
   <section class="card">
-    <h2>Devices</h2>
+    <div class="card-head">
+      <h2>Devices</h2>
+      <span id="ota-source" class="meta"></span>
+    </div>
     <div id="nodes"><p class="empty">Loading...</p></div>
   </section>
   <section class="card">
@@ -159,6 +169,96 @@ function valuesTable(view) {
   return html + "</table></details>";
 }
 
+// ---- OTA updates ------------------------------------------------------------
+// Progress comes from MQTT (<prefix>/<device>/ota, retained) when the server
+// has --mqtt-ws; otherwise from the polled /api/nodes.
+const otaLive = new Map();   // device -> status, or null once the topic is cleared
+let otaMqtt = false;
+
+const OTA_TEXT = {
+  announcing: "Offering the update...", querying: "Device asks for the image...",
+  delayed_on_query: "Device will ask again later", downloading: "Downloading",
+  applying: "Applying...", delayed_on_apply: "Device will apply later",
+  installing: "Installing (the bootloader copies the image)...", applied: "Updated",
+  failed: "Update failed", rolling_back: "Rolling back",
+};
+
+function otaFor(n) {
+  return n.device && otaLive.has(n.device) ? otaLive.get(n.device) : n.ota;
+}
+
+function otaHtml(s) {
+  if (!s) return "";
+  const done = s.state === "applied" || s.state === "failed";
+  const pct = s.progress ?? (s.state === "applied" ? 100 : null);
+  const versions = s.to ? `${s.from ?? "?"} → ${s.to}${s.to_string ? " (" + s.to_string + ")" : ""}` : "";
+  return `<div class="ota ${esc(s.state)}">
+    <span class="state">${esc(OTA_TEXT[s.state] || s.state)}${pct != null && !done ? " " + pct + " %" : ""}${s.attempt > 1 && !done ? " (attempt " + s.attempt + ")" : ""}</span>
+    ${pct != null && !done ? `<span class="bar"><i style="width:${pct}%"></i></span>` : ""}
+    ${versions ? `<span class="meta">${esc(versions)}</span>` : ""}
+    ${s.error ? `<span class="meta">${esc(s.error)}</span>` : ""}
+    ${done ? "" : `<button data-act="ota-cancel" class="danger">Cancel</button>`}
+  </div>`;
+}
+
+function paintOta(device) {
+  const el = document.querySelector(`.node[data-device="${CSS.escape(device)}"] .ota-slot`);
+  if (el) el.innerHTML = otaHtml(otaLive.get(device));
+}
+
+function loadScript(src) {
+  return new Promise((ok, fail) => {
+    const s = document.createElement("script");
+    s.src = src; s.onload = ok; s.onerror = () => fail(new Error("cannot load " + src));
+    document.head.append(s);
+  });
+}
+
+async function startOtaFeed() {
+  let cfg;
+  try { cfg = await api("GET", "/api/config"); } catch { return; }
+  if (!cfg.mqtt_ws) { $("#ota-source").textContent = "OTA progress: polled"; return; }
+  try {
+    await loadScript("https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js");
+  } catch (e) { $("#ota-source").textContent = "OTA progress: polled (" + e.message + ")"; return; }
+  const client = mqtt.connect(cfg.mqtt_ws, {reconnectPeriod: 5000});
+  const topic = `${cfg.prefix}/+/ota`;
+  client.on("connect", () => {
+    otaMqtt = true;
+    $("#ota-source").textContent = "OTA progress: MQTT";
+    client.subscribe(topic);
+  });
+  client.on("close", () => {
+    if (otaMqtt) $("#ota-source").textContent = "OTA progress: polled (MQTT disconnected)";
+    otaMqtt = false;
+  });
+  client.on("message", (t, payload) => {
+    const device = t.slice(cfg.prefix.length + 1, -"/ota".length);
+    let status = null;
+    if (payload.length) { try { status = JSON.parse(payload.toString()); } catch { return; } }
+    otaLive.set(device, status);
+    paintOta(device);
+  });
+}
+
+function pickOta(id, msg) {
+  const input = document.createElement("input");
+  input.type = "file"; input.accept = ".ota";
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+    msg.className = "msg"; msg.textContent = `Uploading ${file.name}...`;
+    try {
+      const r = await fetch(`/api/nodes/${id}/ota`, {method: "POST", body: file,
+        headers: {"Content-Type": "application/octet-stream"}});
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
+      msg.textContent = "";
+      render();
+    } catch (e) { msg.className = "msg err"; msg.textContent = e.message; }
+  };
+  input.click();
+}
+
 async function render() {
   let nodes;
   try { nodes = await api("GET", "/api/nodes"); }
@@ -169,20 +269,23 @@ async function render() {
     open.has(n.node_id) ? api("GET", `/api/nodes/${n.node_id}`).catch(() => null) : null));
 
   $("#nodes").innerHTML = nodes.map((n, i) => `
-    <div class="node" data-id="${n.node_id}">
+    <div class="node" data-id="${n.node_id}" data-device="${esc(n.device || "")}">
       <div class="head">
         <span class="dot ${n.online ? "on" : ""}" title="${n.online ? "online" : "offline"}"></span>
         <span class="title">${esc(n.label || n.name || "Node " + n.node_id)}</span>
         <span class="meta">node ${n.node_id}
           ${n.vendor_id != null ? " · vendor " + hex(n.vendor_id) : ""}
           ${n.product_id != null ? " · product " + hex(n.product_id) : ""}
+          ${n.software_version_string != null ? " · version " + esc(n.software_version_string) : ""}
           · ${n.values} values</span>
         <span class="actions">
           <button data-act="toggle">${open.has(n.node_id) ? "Hide" : "Values"}</button>
+          <button data-act="ota">Update</button>
           <button data-act="label">Fabric label</button>
           <button data-act="remove" class="danger">Remove</button>
         </span>
       </div>
+      <div class="ota-slot">${otaHtml(otaFor(n))}</div>
       ${views[i] ? valuesTable(views[i]) : ""}
       <div class="msg"></div>
     </div>`).join("");
@@ -194,10 +297,15 @@ $("#nodes").addEventListener("click", async ev => {
   const el = btn.closest(".node"), id = Number(el.dataset.id), msg = $(".msg", el);
   const act = btn.dataset.act;
   if (act === "toggle") { open.has(id) ? open.delete(id) : open.add(id); return render(); }
+  if (act === "ota") return pickOta(id, msg);
 
   btn.disabled = true;
   try {
-    if (act === "label") {
+    if (act === "ota-cancel") {
+      if (!confirm("Cancel the update? The device keeps its current firmware.")) return;
+      await api("DELETE", `/api/nodes/${id}/ota`);
+      return render();
+    } else if (act === "label") {
       const label = prompt("Label of this controller's fabric on the device (max 32 characters):", "MQTT bridge");
       if (label === null) return;
       await api("PUT", `/api/nodes/${id}/fabric-label`, {label});
@@ -241,6 +349,7 @@ $("#add").addEventListener("submit", async ev => {
 
 render();
 setInterval(render, 3000);
+startOtaFeed();
 
 // ---- Thread mesh ----------------------------------------------------------
 // One graph node per Thread device (keyed by extended address). Edges come

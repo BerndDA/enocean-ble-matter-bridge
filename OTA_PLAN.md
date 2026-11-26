@@ -198,31 +198,53 @@ Still to do: copy it next to the `.uf2` under a name with the version, from the 
 
 **Pitfall:** the gateway reuses *any* existing session to the provider's node ID. In the first attempt it still had a session from the stopped matter-mqtt process, which had been killed without a CloseSession. So the retry went there, and the requestor gave up after its single retry. Resetting the gateway fixed it. For Phase 5 this means the provider runs in the same process as the controller (matter-mqtt itself), so there are no stale sessions from a second process.
 
-## Phase 5: matter-mqtt (`spike/matter-mqtt`)
+## Phase 5: matter-mqtt (`spike/matter-mqtt`): implemented, tested on the DK (2026-11-26)
 
-1. `Cargo.toml`: `matter-controller = { version = "0.18.3", default-features = false, features = ["ota"] }`.
-2. Trigger. The binary never goes through the broker, because `mqtt.rs` caps packets at 256 KB:
-   - MQTT: `matter/<device>/ota/set` with `{"url": "...", "version": 7}`. matter-mqtt downloads the `.ota` (or reads a path under `/data/ota`).
-   - Web: `POST /api/nodes/{id}/ota` (multipart upload plus version) and a button in `index.html`.
-3. A tokio task per update. Only one update at a time across all devices. `serve_ota_with_block_size(node, image, version, port, 512)` inside `tokio::time::timeout` (about 30 min).
-4. Progress, retained, on `matter/<device>/ota`:
-   ```json
-   {"state": "announcing", "progress": 42, "from": 6, "to": 7, "error": null, "since": 1764150000}
-   ```
-   - `state` comes from two sources:
-     - matter-mqtt's own task: `announcing`, `failed` (timeout, BDX abort, version rejected), `applied` (once `serve_ota` returns).
-     - the device's requestor attributes, which matter-mqtt already receives through its subscription to every attribute: `UpdateState` (0x002A/0x0002) gives `querying`, `downloading`, `applying`, `rebooting`, and `UpdateStateProgress` (0x002A/0x0003) gives `progress` in %.
-   - matter-controller's `serve_ota` has no progress callback, so the progress comes from the device rather than from the BDX sender. No crate patch is needed. If the device's progress turns out to be too coarse, the fallback is a `[patch.crates-io]` fork of the crate with a callback at the block counter in `ProviderServer::serve_ota_once`.
-   - While the device reboots it goes offline, and its subscription drops and comes back. Keep `state` at `rebooting` until the Basic Information `SoftwareVersion` shows `to`.
-   - Clear the retained message (or set `idle`) a while after `applied` / `failed`, so the UI doesn't show stale bars forever.
-   - Also map `UpdateState` / `UpdateStateProgress` in `mapping.rs`, so every device's OTA state shows up even for updates started elsewhere.
-5. Docker: host networking (already required) also covers the provider's mDNS advertisement. Pick a fixed provider port (e.g. 5560) in case of firewalls.
-6. Web UI progress over MQTT:
-   - `index.html` subscribes to `matter/+/ota` with mqtt.js (from cdnjs/jsdelivr, a pinned version) over WebSockets, and shows a progress bar and state per device row.
-   - The broker on the Pi already has a read-only, anonymous WebSocket listener: port 9001, `wss://mqtt.home.seidenspinner.tv` through traefik. Check that its ACL (`acl_websockets`, root-only on the Pi) allows reading `matter/#`.
-   - New flag `--mqtt-ws <url>` (env `MQTT_WS`). The page gets it from a small `GET /api/config`. Without it, the page hides the progress view and keeps working as today.
-   - The browser only reads. Starting an update stays a REST call (`POST /api/nodes/{id}/ota`), so the read-only listener is enough and needs no credentials in the page.
-   - Because the status is retained, a page opened mid-update shows the current state immediately.
+- **`ota.rs`:** parses the `.ota` header and holds the status type.
+- **Hub:**
+  - At most one update at a time.
+  - Checks before starting: the device is online, has a requestor, vendor and product match, and the new version is higher.
+  - Runs the library's `serve_ota_with_block_size(…, 512)` in-process, with a 30 min timeout.
+- **Triggers:**
+  - REST `POST /api/nodes/{id}/ota` (body: the `.ota` file);
+  - MQTT `<prefix>/<device>/ota/set` `{"file": "x.ota"}` from `--ota-dir` (default: `ota` next to the store). Plain names only; retained replays are ignored.
+- **Cancel:** `DELETE /api/nodes/{id}/ota`.
+- **Status, retained on `<prefix>/<device>/ota`:**
+  - Format: `{state, attempt, progress, from, to, to_string, error, since}`.
+  - matter-mqtt's own states (announcing, applied, failed) plus the device's `UpdateState`/`UpdateStateProgress`. The watcher now subscribes to those two attributes.
+  - Cleared 10 min after the end.
+- **Retries:** if the device is still Idle 60 s after the announcement (confirmed by reading `UpdateState` directly, since its reports pause while it drops sessions), the provider is restarted and the update announced again, up to 3 attempts. Once the download is running, 3 min of Idle means failed.
+- **Applied:** if the provider ends with an error but the device already reports the target version, the update counts as applied.
+- **Web UI:** an Update button and status line with a progress bar per device.
+  - With `--mqtt-ws`, live via MQTT over WebSockets (mqtt.js 5.10.1 from jsdelivr).
+  - Otherwise from `/api/nodes`, polled every 3 s.
+- **New options:** `--ota-port` (5560), `--ota-dir`, `--mqtt-ws`; `/api/config` passes the prefix and WebSocket URL to the UI.
+
+**Findings, fixed in the firmware (`common/ota/gateway_ota.cpp`):**
+- **Stale sessions.** The provider has the controller's node ID, and the gateway sends QueryImage, ApplyUpdate and NotifyUpdateApplied over any session it holds to that node. Those include the watcher's subscription, the announce session, and its own subscription resumption after a reboot. All of them go to the controller's socket, which never answers.
+- **The fix,** a driver subclass:
+  - before QueryImage and NotifyUpdateApplied, drop all sessions to the provider node;
+  - before ApplyUpdate, drop only the ones the peer started.
+- Side effect: the first QueryImage no longer waits 51 s for a timeout.
+
+**Finding, fixed in the build (`common/ota/check_version.cmake`):** after a `VERSION` bump, an incremental build gives a `.ota` header with the new version, but Matter's library keeps the old one (it doesn't track `app_version.h`). The device then never confirms the update. The build now fails if `zephyr.bin` lacks its own version string. Release images must be built clean (`west build -p`).
+
+**Test on the DK:** an update 0.1.0 → 0.1.0+1 triggered over MQTT.
+- Attempt 1: a lookup of node 1 was still pending after the gateway's reboot, and the requestor gave up.
+- Attempt 2: resolved within 1 s; 800 KB downloaded in 2:36 with progress on MQTT; installed, NotifyUpdateApplied, "applied".
+- Also checked:
+  - rejected: a non-`.ota` body, the same or an older version, path traversal;
+  - the idle watchdog;
+  - cancel;
+  - the UI in headless Chrome.
+
+**Open:**
+- Deploy to the Pi:
+  - `--mqtt-ws wss://mqtt.home.seidenspinner.tv`;
+  - check `acl_websockets` allows reading `matter/#`;
+  - a broker ACL for `matter/+/ota/set`;
+  - a volume or folder for `/data/ota`.
+- Once on the DK, the bootloader's UF2 drive enumerated but macOS didn't mount it (after `gateway bootloader`, and after GPREGRET 0x57). Not yet understood.
 
 ## Security
 

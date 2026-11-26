@@ -836,6 +836,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
 
 [[package]]
+name = "matter-bdx"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d596122b9b70a1522b3376447dbf1ae75c100152ee7b196dd9cf38525d4effbd"
+dependencies = [
+ "bitflags",
+ "thiserror",
+]
+
+[[package]]
 name = "matter-cert"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -897,12 +907,14 @@ version = "0.18.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ded56c18ed464db6bcc43f984a10606c4b7763f2fa6aca32d786b2a5745b6a0f"
 dependencies = [
+ "matter-bdx",
  "matter-cert",
  "matter-clusters",
  "matter-codec",
  "matter-commissioning",
  "matter-crypto",
  "matter-interaction",
+ "matter-ota",
  "matter-transport",
  "ring",
  "thiserror",
@@ -951,6 +963,18 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "matter-ota"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56ea9e57b7c4d96cb04554e64facf38f0ec6157954bbe0e146096d98a44679e4"
+dependencies = [
+ "matter-clusters",
+ "matter-codec",
+ "matter-interaction",
+ "thiserror",
 ]
 
 [[package]]

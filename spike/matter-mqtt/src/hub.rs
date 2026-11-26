@@ -7,8 +7,9 @@
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, bail, ensure};
 use matter_codec::Tag;
 use matter_controller::{
     AttributePath, CommandPath, ImStatus, InvokeResult, MatterController, Node, NodeInfo,
@@ -16,10 +17,12 @@ use matter_controller::{
 };
 use serde::Serialize;
 use serde_json::{Map, Value as Json, json};
+use tokio::sync::Notify;
 use tokio::task::JoinHandle;
 
 use crate::mapping;
 use crate::mqtt::Mqtt;
+use crate::ota::{self, OtaImage, OtaStatus};
 use crate::watcher::Watcher;
 
 const OPERATIONAL_CREDENTIALS: u32 = 0x003e;
@@ -32,6 +35,24 @@ const BASIC_INFORMATION: u32 = 0x0028;
 const BRIDGED_DEVICE: u32 = 0x0039;
 const NODE_LABEL: u32 = 0x0005;
 const UNIQUE_ID: u32 = 0x0012;
+const SOFTWARE_VERSION: u32 = 0x0009;
+
+/// BDX block size for OTA: 512 keeps a block within fewer 6LoWPAN fragments
+/// than the library's Wi-Fi default of 960 (Thread: about 5 KB/s).
+const OTA_BLOCK_SIZE: u16 = 512;
+/// An update that hasn't finished by then is given up.
+const OTA_TIMEOUT: Duration = Duration::from_secs(30 * 60);
+/// Before the download has started: the device sat in Idle that long after
+/// the announcement, so it gave up (typically a stale session or a pending
+/// lookup of our node shortly after its reboot, see gateway_ota.cpp). The
+/// provider is restarted and the update announced again.
+const OTA_RETRY_IDLE: Duration = Duration::from_secs(60);
+const OTA_ATTEMPTS: u8 = 3;
+/// After the download has started: the device sat in Idle that long, so it
+/// gave up, and the provider would wait forever.
+const OTA_IDLE_LIMIT: Duration = Duration::from_secs(180);
+/// How long a finished update's status stays on `<prefix>/<device>/ota`.
+const OTA_KEEP: Duration = Duration::from_secs(10 * 60);
 
 pub struct Config {
     pub prefix: String,
@@ -42,6 +63,12 @@ pub struct Config {
     pub raw: bool,
     /// Echo every message on stdout.
     pub print: bool,
+    /// UDP port of the OTA provider (BDX).
+    pub ota_port: u16,
+    /// Where `<prefix>/<device>/ota/set` {"file": ...} looks for .ota files.
+    pub ota_dir: PathBuf,
+    /// MQTT over WebSockets for the web UI's OTA progress (read only).
+    pub mqtt_ws: Option<String>,
 }
 
 #[derive(Default, Clone, Serialize)]
@@ -70,6 +97,27 @@ struct NodeState {
     raw: HashMap<(u16, u32, u32), Json>,
     /// While `publish_all` runs: every topic it produced, to find stale ones.
     touched: Option<HashSet<String>>,
+    /// The current or last OTA update, published on `<prefix>/<device>/ota`.
+    ota: Option<OtaStatus>,
+}
+
+/// How one announce-and-serve attempt of an OTA update ended.
+enum Attempt {
+    Done(std::result::Result<(), String>),
+    /// The device didn't start: announce again.
+    Again,
+}
+
+/// The one OTA update that may run at a time.
+struct OtaJob {
+    node_id: u64,
+    /// Since when the device has been reporting Idle (None: busy).
+    idle_since: Option<Instant>,
+    /// The device has reported Downloading (or later) in this update.
+    downloading: bool,
+    /// Set by a cancel; the job's task then ends with this error.
+    cancelled: Option<String>,
+    cancel: Arc<Notify>,
 }
 
 pub struct Hub {
@@ -78,6 +126,8 @@ pub struct Hub {
     mqtt: Option<Mqtt>,
     nodes: Mutex<HashMap<u64, NodeState>>,
     tasks: Mutex<HashMap<u64, JoinHandle<()>>>,
+    /// Lock order: `nodes` before `ota_job`.
+    ota_job: Mutex<Option<OtaJob>>,
 }
 
 impl Hub {
@@ -88,6 +138,7 @@ impl Hub {
             mqtt,
             nodes: Mutex::default(),
             tasks: Mutex::default(),
+            ota_job: Mutex::default(),
         })
     }
 
@@ -102,7 +153,7 @@ impl Hub {
     pub fn start(self: &Arc<Self>, node_id: u64, label: Option<String>) {
         self.nodes.lock().unwrap().insert(
             node_id,
-            NodeState { label, view: NodeView::default(), raw: HashMap::new(), touched: None },
+            NodeState { label, view: NodeView::default(), raw: HashMap::new(), touched: None, ota: None },
         );
         let task = tokio::spawn(Watcher::new(self.clone(), node_id).run());
         if let Some(old) = self.tasks.lock().unwrap().insert(node_id, task) {
@@ -144,6 +195,10 @@ impl Hub {
         n.view.online = online;
         let topic = format!("{}/{}/online", self.cfg.prefix, device_name(node_id, n));
         self.publish(n, topic, json!(online));
+        // Applying, then gone: the device is rebooting into the bootloader, which installs the image
+        if !online && n.ota.as_ref().is_some_and(|o| o.state == "applying") {
+            self.update_ota(node_id, n, |o| o.state = "installing".into());
+        }
     }
 
     pub fn attribute(&self, node_id: u64, p: AttributePath, value: Json) {
@@ -157,6 +212,12 @@ impl Hub {
         n.view
             .values
             .insert(format!("{}/{:04x}/{:04x}", p.endpoint, p.cluster, p.attribute), value.clone());
+        if p.endpoint == 0
+            && p.cluster == ota::REQUESTOR
+            && matches!(p.attribute, ota::UPDATE_STATE | ota::UPDATE_STATE_PROGRESS)
+        {
+            self.ota_device_report(node_id, n);
+        }
         if self.cfg.raw {
             let topic = format!(
                 "{}/raw/{node_id}/{}/{:04x}/{:04x}",
@@ -294,6 +355,9 @@ impl Hub {
         let online = n.view.online;
         let topic = format!("{}/{}/online", self.cfg.prefix, device_name(node_id, n));
         self.publish(n, topic, json!(online));
+        if let Some(status) = n.ota.clone() {
+            self.publish(n, ota_topic(&self.cfg.prefix, node_id, n), json!(status));
+        }
     }
 
     /// Retained metadata: BasicInformation for the device (endpoint 0),
@@ -389,6 +453,350 @@ impl Hub {
         eprintln!("removed node {node_id}{}", if local_only { " (local only)" } else { "" });
         Ok(())
     }
+}
+
+impl Hub {
+    // ---- OTA updates (OTA_PLAN.md phase 5) ---------------------------------
+
+    /// The device name used in topics.
+    pub fn device_name(&self, node_id: u64) -> Option<String> {
+        self.nodes.lock().unwrap().get(&node_id).map(|n| device_name(node_id, n))
+    }
+
+    pub fn ota_status(&self, node_id: u64) -> Option<OtaStatus> {
+        self.nodes.lock().unwrap().get(&node_id).and_then(|n| n.ota.clone())
+    }
+
+    /// Starts serving `image` to the node. Checks first that the device is
+    /// online, has an OTA requestor, is the image's vendor and product, and
+    /// runs an older version. Only one update runs at a time.
+    pub fn start_ota(self: &Arc<Self>, node_id: u64, image: OtaImage) -> Result<OtaStatus> {
+        let mut nodes = self.nodes.lock().unwrap();
+        let n = nodes.get_mut(&node_id).with_context(|| format!("unknown node {node_id}"))?;
+        let mut job = self.ota_job.lock().unwrap();
+        if let Some(j) = job.as_ref() {
+            bail!("an update is already running (node {})", j.node_id);
+        }
+        ensure!(n.view.online, "the device is offline");
+        let num = |at: u32| n.raw.get(&(0, BASIC_INFORMATION, at)).and_then(Json::as_u64);
+        let (vid, pid) = (num(0x0002), num(0x0004));
+        ensure!(
+            vid == Some(image.vendor_id.into()) && pid == Some(image.product_id.into()),
+            "the image is for {:04x}:{:04x}, the device is {}:{}",
+            image.vendor_id,
+            image.product_id,
+            vid.map_or("?".into(), |v| format!("{v:04x}")),
+            pid.map_or("?".into(), |v| format!("{v:04x}")),
+        );
+        let from = num(SOFTWARE_VERSION).and_then(|v| u32::try_from(v).ok());
+        if let Some(current) = from {
+            ensure!(
+                image.version > current,
+                "the device already runs version {current}, the image is {} (it must be higher)",
+                image.version
+            );
+        }
+        ensure!(
+            n.raw.contains_key(&(0, ota::REQUESTOR, ota::UPDATE_STATE)),
+            "the device has no OTA Software Update Requestor (cluster 0x002A on endpoint 0)"
+        );
+
+        let since = SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs());
+        let status = OtaStatus {
+            state: "announcing".into(),
+            attempt: 1,
+            progress: None,
+            from,
+            to: image.version,
+            to_string: image.version_string.clone(),
+            error: None,
+            since,
+        };
+        self.put_ota(node_id, n, Some(status.clone()));
+        let cancel = Arc::new(Notify::new());
+        *job = Some(OtaJob {
+            node_id,
+            idle_since: Some(Instant::now()),
+            downloading: false,
+            cancelled: None,
+            cancel: cancel.clone(),
+        });
+        drop(job);
+        drop(nodes);
+        eprintln!(
+            "{}/{node_id}: OTA to version {} ({}), {} bytes",
+            self.cfg.prefix,
+            image.version,
+            image.version_string,
+            image.bytes.len()
+        );
+
+        let hub = self.clone();
+        tokio::spawn(async move {
+            let deadline = tokio::time::Instant::now() + OTA_TIMEOUT;
+            let mut attempt = 1;
+            let result = loop {
+                if let Some(j) = hub.ota_job.lock().unwrap().as_mut() {
+                    j.idle_since = Some(Instant::now());
+                }
+                let serve = hub.controller.serve_ota_with_block_size(
+                    node_id,
+                    image.bytes.clone(),
+                    image.version,
+                    hub.cfg.ota_port,
+                    OTA_BLOCK_SIZE,
+                );
+                let outcome = tokio::select! {
+                    r = serve => Attempt::Done(r.map_err(|e| e.to_string())),
+                    () = cancel.notified() => Attempt::Done(Err(hub.cancel_reason())),
+                    a = hub.ota_watchdog(node_id) => a,
+                    () = tokio::time::sleep_until(deadline) => Attempt::Done(Err("timed out".into())),
+                };
+                match outcome {
+                    Attempt::Done(r) => break r,
+                    Attempt::Again if attempt >= OTA_ATTEMPTS => {
+                        break Err(format!(
+                            "the device didn't start the download after {attempt} announcements (see its log)"
+                        ));
+                    }
+                    Attempt::Again => {
+                        attempt += 1;
+                        eprintln!("{}/{node_id}: OTA: the device stays idle, announcing again ({attempt})", hub.cfg.prefix);
+                        hub.ota_attempt(node_id, attempt);
+                        tokio::select! {
+                            () = tokio::time::sleep(Duration::from_secs(10)) => {}
+                            () = cancel.notified() => break Err(hub.cancel_reason()),
+                        }
+                    }
+                }
+            };
+            hub.finish_ota(node_id, since, result);
+        });
+        Ok(status)
+    }
+
+    fn cancel_reason(&self) -> String {
+        let job = self.ota_job.lock().unwrap();
+        job.as_ref().and_then(|j| j.cancelled.clone()).unwrap_or_else(|| "cancelled".into())
+    }
+
+    /// Ends an attempt once the device has stayed idle too long: announce
+    /// again before the download has started, give up after. Idle as far as
+    /// the subscription knows is confirmed by a read first: the device drops
+    /// our sessions before it queries the provider (gateway_ota.cpp), so its
+    /// reports stop until the watcher has resubscribed.
+    async fn ota_watchdog(&self, node_id: u64) -> Attempt {
+        loop {
+            tokio::time::sleep(Duration::from_secs(5)).await;
+            let (downloading, idle) = {
+                let job = self.ota_job.lock().unwrap();
+                let Some(j) = job.as_ref() else { continue };
+                (j.downloading, j.idle_since.map(|t| t.elapsed()))
+            };
+            let limit = if downloading { OTA_IDLE_LIMIT } else { OTA_RETRY_IDLE };
+            if !idle.is_some_and(|i| i > limit) {
+                continue;
+            }
+            match self.read_update_state(node_id).await {
+                Some(1) => {}
+                state => {
+                    // Busy (or no answer): it isn't idle, count again from now
+                    let name = state.map_or("no answer", ota::update_state_name);
+                    eprintln!("{}/{node_id}: OTA: the device is not idle ({name})", self.cfg.prefix);
+                    if let Some(j) = self.ota_job.lock().unwrap().as_mut() {
+                        j.idle_since = Some(Instant::now());
+                        j.downloading |= matches!(state, Some(4..=6));
+                    }
+                    continue;
+                }
+            }
+            return if downloading {
+                Attempt::Done(Err("the device stopped the update (see its log)".into()))
+            } else {
+                Attempt::Again
+            };
+        }
+    }
+
+    /// UpdateState straight from the device; None if it doesn't answer in time.
+    async fn read_update_state(&self, node_id: u64) -> Option<u64> {
+        let paths = [ReadPath::concrete(0, ota::REQUESTOR, ota::UPDATE_STATE)];
+        let node = self.node(node_id);
+        match tokio::time::timeout(Duration::from_secs(20), node.read(&paths)).await {
+            Ok(Ok(values)) => values.iter().find_map(|(_, v)| match v {
+                Value::Uint(u) => Some(*u),
+                _ => None,
+            }),
+            _ => None,
+        }
+    }
+
+    fn ota_attempt(&self, node_id: u64, attempt: u8) {
+        let mut nodes = self.nodes.lock().unwrap();
+        if let Some(n) = nodes.get_mut(&node_id) {
+            self.update_ota(node_id, n, |o| {
+                o.state = "announcing".into();
+                o.attempt = attempt;
+            });
+        }
+    }
+
+    /// Stops the running update of a node (the device may need a moment to
+    /// notice: its download then times out).
+    pub fn cancel_ota(&self, node_id: u64) -> Result<()> {
+        let mut job = self.ota_job.lock().unwrap();
+        let j = job.as_mut().filter(|j| j.node_id == node_id).context("no update running for this node")?;
+        j.cancelled = Some("cancelled".into());
+        j.cancel.notify_one();
+        Ok(())
+    }
+
+    fn finish_ota(self: &Arc<Self>, node_id: u64, since: u64, result: Result<(), String>) {
+        let mut nodes = self.nodes.lock().unwrap();
+        *self.ota_job.lock().unwrap() = None;
+        let Some(n) = nodes.get_mut(&node_id) else { return };
+        // The device runs the new version although the provider saw no NotifyUpdateApplied
+        let to = n.ota.as_ref().map(|o| u64::from(o.to));
+        let running = n.raw.get(&(0, BASIC_INFORMATION, SOFTWARE_VERSION)).and_then(Json::as_u64);
+        let result = if result.is_err() && to.is_some() && running == to { Ok(()) } else { result };
+        match &result {
+            Ok(()) => eprintln!("{}/{node_id}: OTA applied", self.cfg.prefix),
+            Err(e) => eprintln!("{}/{node_id}: OTA failed: {e}", self.cfg.prefix),
+        }
+        self.update_ota(node_id, n, |o| match result {
+            Ok(()) => {
+                o.state = "applied".into();
+                o.progress = Some(100);
+            }
+            Err(e) => {
+                o.state = "failed".into();
+                o.error = Some(e);
+            }
+        });
+        drop(nodes);
+        self.expire_ota(node_id, since);
+    }
+
+    /// A finished update's status disappears after a while, unless a newer
+    /// update has replaced it.
+    fn expire_ota(self: &Arc<Self>, node_id: u64, since: u64) {
+        let hub = self.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(OTA_KEEP).await;
+            let mut nodes = hub.nodes.lock().unwrap();
+            let Some(n) = nodes.get_mut(&node_id) else { return };
+            if n.ota.as_ref().is_some_and(|o| o.since == since && o.finished()) {
+                hub.put_ota(node_id, n, None);
+            }
+        });
+    }
+
+    /// The device's requestor reported UpdateState / UpdateStateProgress.
+    fn ota_device_report(&self, node_id: u64, n: &mut NodeState) {
+        let running = n.ota.as_ref().is_some_and(|o| !o.finished());
+        if !running {
+            return;
+        }
+        let state = n.raw.get(&(0, ota::REQUESTOR, ota::UPDATE_STATE)).and_then(Json::as_u64);
+        let progress = n
+            .raw
+            .get(&(0, ota::REQUESTOR, ota::UPDATE_STATE_PROGRESS))
+            .and_then(Json::as_u64)
+            .and_then(|p| u8::try_from(p).ok());
+        let name = state.map_or("unknown", ota::update_state_name);
+        if let Some(j) = self.ota_job.lock().unwrap().as_mut().filter(|j| j.node_id == node_id) {
+            j.idle_since = if name == "idle" { j.idle_since.or(Some(Instant::now())) } else { None };
+            j.downloading |= matches!(name, "downloading" | "applying" | "delayed_on_apply");
+        }
+        self.update_ota(node_id, n, |o| {
+            // Before the device starts, it's still Idle: keep "announcing"
+            if name != "idle" && name != "unknown" {
+                o.state = name.into();
+            }
+            if name == "downloading" || progress.is_some() {
+                o.progress = progress;
+            }
+        });
+    }
+
+    fn update_ota(&self, node_id: u64, n: &mut NodeState, f: impl FnOnce(&mut OtaStatus)) {
+        let Some(mut status) = n.ota.clone() else { return };
+        f(&mut status);
+        self.put_ota(node_id, n, Some(status));
+    }
+
+    /// Sets (retained) or clears the node's OTA status.
+    fn put_ota(&self, node_id: u64, n: &mut NodeState, status: Option<OtaStatus>) {
+        let topic = ota_topic(&self.cfg.prefix, node_id, n);
+        n.ota = status.clone();
+        match status {
+            Some(s) => self.publish(n, topic, json!(s)),
+            None => self.clear(n, vec![topic]),
+        }
+    }
+
+    /// `<prefix>/<device>/ota/set` {"file": "name.ota"}: an update from the
+    /// OTA directory. Retained messages are ignored, so a forgotten one can't
+    /// start an update on every reconnect.
+    pub fn mqtt_message(self: &Arc<Self>, topic: &str, payload: &[u8], retain: bool) {
+        let Some(device) = topic
+            .strip_prefix(&format!("{}/", self.cfg.prefix))
+            .and_then(|t| t.strip_suffix("/ota/set"))
+        else {
+            return;
+        };
+        if retain {
+            eprintln!("mqtt: ignoring retained {topic} (send it without the retain flag)");
+            return;
+        }
+        let node_id = {
+            let nodes = self.nodes.lock().unwrap();
+            nodes.iter().find(|(id, n)| device_name(**id, n) == device).map(|(id, _)| *id)
+        };
+        let Some(node_id) = node_id else {
+            eprintln!("mqtt: {topic}: no device named {device}");
+            return;
+        };
+        let result = (|| -> Result<OtaStatus> {
+            let req: serde_json::Value = serde_json::from_slice(payload).context("payload is not JSON")?;
+            let file = req.get("file").and_then(Json::as_str).context(r#"expected {"file": "name.ota"}"#)?;
+            ensure!(
+                !file.is_empty() && !file.starts_with('.') && !file.contains(['/', '\\']),
+                "file must be a plain name in the OTA directory"
+            );
+            let path = self.cfg.ota_dir.join(file);
+            let bytes = std::fs::read(&path).with_context(|| format!("reading {}", path.display()))?;
+            self.start_ota(node_id, OtaImage::parse(bytes)?)
+        })();
+        if let Err(e) = result {
+            eprintln!("mqtt: {topic}: {e:#}");
+            // Report it where the update's status would be, unless one is running
+            let busy = self.ota_job.lock().unwrap().as_ref().is_some_and(|j| j.node_id == node_id);
+            if !busy {
+                let since = SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs());
+                let mut nodes = self.nodes.lock().unwrap();
+                if let Some(n) = nodes.get_mut(&node_id) {
+                    let status = OtaStatus {
+                        state: "failed".into(),
+                        attempt: 0,
+                        progress: None,
+                        from: None,
+                        to: 0,
+                        to_string: String::new(),
+                        error: Some(format!("{e:#}")),
+                        since,
+                    };
+                    self.put_ota(node_id, n, Some(status));
+                }
+                drop(nodes);
+                self.expire_ota(node_id, since);
+            }
+        }
+    }
+}
+
+fn ota_topic(prefix: &str, node_id: u64, n: &NodeState) -> String {
+    format!("{prefix}/{}/ota", device_name(node_id, n))
 }
 
 fn is_info(p: AttributePath) -> bool {

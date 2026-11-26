@@ -177,8 +177,8 @@ impl Watcher {
     }
 
     /// Endpoint 0 is infrastructure (certificates, ACLs, diagnostics): only
-    /// BasicInformation and the endpoint list are of interest there. Every
-    /// other endpoint is subscribed completely.
+    /// BasicInformation, the endpoint list and the OTA requestor's state are
+    /// of interest there. Every other endpoint is subscribed completely.
     async fn paths(&self, wildcard: bool) -> Result<Paths> {
         if wildcard {
             return Ok(Paths {
@@ -198,6 +198,9 @@ impl Watcher {
         let mut attrs = vec![
             ReadPath::cluster(0, BASIC_INFORMATION),
             ReadPath::concrete(0, DESCRIPTOR, DESCRIPTOR_PARTS_LIST),
+            // OTA progress (UpdateState, UpdateStateProgress), see ota.rs
+            ReadPath::concrete(0, crate::ota::REQUESTOR, crate::ota::UPDATE_STATE),
+            ReadPath::concrete(0, crate::ota::REQUESTOR, crate::ota::UPDATE_STATE_PROGRESS),
         ];
         let mut events = vec![EventPath::cluster(0, BASIC_INFORMATION)];
         for &ep in &parts {

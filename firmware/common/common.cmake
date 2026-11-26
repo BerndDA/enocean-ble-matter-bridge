@@ -79,6 +79,13 @@ if(CONFIG_GATEWAY_OTA)
     INPUT_FILES ${ZEPHYR_BINARY_DIR}/${CONFIG_KERNEL_BIN_NAME}.bin
     OUTPUT_FILE ${ZEPHYR_BINARY_DIR}/matter.ota)
   add_dependencies(gateway_ota_image zephyr_final)
+  # The binary must report the version the .ota header promises (ota/check_version.cmake)
+  add_custom_target(gateway_ota_version_check
+    COMMAND ${CMAKE_COMMAND} -DBIN=${ZEPHYR_BINARY_DIR}/${CONFIG_KERNEL_BIN_NAME}.bin
+            -DVERSION_STRING=${APP_VERSION_EXTENDED_STRING}
+            -P ${GATEWAY_COMMON_DIR}/ota/check_version.cmake)
+  add_dependencies(gateway_ota_version_check zephyr_final)
+  add_dependencies(gateway_ota_image gateway_ota_version_check)
 endif()
 
 # Matter device types: an app adds the ones it uses, for example

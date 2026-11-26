@@ -9,6 +9,17 @@
  * Finalize checks the payload against the .ota header's SHA-256 and only then writes the bootloader
  * header (enmt_ota.h) to ota_header_partition: that write commits the update. PrepareDownload and
  * Abort erase the header first, so a half-written slot is never behind a valid header.
+ *
+ * Stale sessions: the requestor talks to the provider over whatever secure session it finds to the
+ * provider's node ID. matter-mqtt's provider (matter-controller's serve_ota) has the same node ID as
+ * its controller, and we hold sessions to the controller too: the ones it started (its
+ * subscription, the announce; we are CASE responder) and the one we start after a reboot to resume
+ * its subscription (we are initiator). A QueryImage, ApplyUpdate or NotifyUpdateApplied sent on any
+ * of those goes to the controller's socket, which never answers, and the requestor gives up. So:
+ *   - before QueryImage and NotifyUpdateApplied, all sessions to the provider node are evicted, and
+ *     the requestor opens a new one to the provider's own socket;
+ *   - before ApplyUpdate, only the responder ones: the one initiator session left is the one the
+ *     requestor opened for the query and the download.
  */
 
 #include "gateway_ota.h"
@@ -59,6 +70,8 @@ void PostOtaState(OtaState state)
 	event.OtaStateChanged.newState = state;
 	(void)PlatformMgr().PostEvent(&event);
 }
+
+void DropStaleProviderSessions(const char *before, bool keepInitiator);
 
 CHIP_ERROR FlashError(int rc)
 {
@@ -361,13 +374,59 @@ bool StagingImageProcessor::IsFirstImageRun()
 
 CHIP_ERROR StagingImageProcessor::ConfirmCurrentImage()
 {
-	/* Nothing to confirm: the bootloader verified the copy and erased the header */
+	/* Nothing to confirm: the bootloader verified the copy and erased the header. The driver
+	 * sends NotifyUpdateApplied right after this. */
+	DropStaleProviderSessions("NotifyUpdateApplied", false);
 	PostOtaState(kOtaApplyComplete);
 	return CHIP_NO_ERROR;
 }
 
+/* Evicts sessions to the current provider's node (see the top): all of them, or with
+ * keepInitiator only the ones the peer started. */
+void DropStaleProviderSessions(const char *before, bool keepInitiator)
+{
+	OTARequestorInterface *requestor = GetRequestorInstance();
+	VerifyOrReturn(requestor != nullptr);
+	Optional<OTARequestorInterface::ProviderLocationType> provider;
+	requestor->GetProviderLocation(provider);
+	VerifyOrReturn(provider.HasValue());
+
+	ScopedNodeId const node(provider.Value().providerNodeID, provider.Value().fabricIndex);
+	unsigned dropped = 0;
+	Server::GetInstance().GetSecureSessionManager().ForEachMatchingSession(node, [&](auto *session) {
+		if (session->GetSecureSessionType() == Transport::SecureSession::Type::kCASE &&
+		    !(keepInitiator && session->GetCryptoContext().IsInitiator())) {
+			session->MarkForEviction();
+			dropped++;
+		}
+	});
+	if (dropped > 0) {
+		LOG_INF("OTA: dropped %u session(s) to the provider's node before %s", dropped, before);
+	}
+}
+
+class StagingRequestorDriver : public DefaultOTARequestorDriver {
+public:
+	/* Both scheduled: the requestor may call them from a callback on the session being evicted */
+	void SendQueryImage() override
+	{
+		SystemLayer().ScheduleLambda([this] {
+			DropStaleProviderSessions("QueryImage", false);
+			DefaultOTARequestorDriver::SendQueryImage();
+		});
+	}
+
+	void UpdateDownloaded() override
+	{
+		SystemLayer().ScheduleLambda([this] {
+			DropStaleProviderSessions("ApplyUpdate", true);
+			DefaultOTARequestorDriver::UpdateDownloaded();
+		});
+	}
+};
+
 DefaultOTARequestorStorage sRequestorStorage;
-DefaultOTARequestorDriver sRequestorDriver;
+StagingRequestorDriver sRequestorDriver;
 BDXDownloader sDownloader;
 DefaultOTARequestor sRequestor;
 StagingImageProcessor sImageProcessor;
