@@ -20,6 +20,8 @@
  *     the requestor opens a new one to the provider's own socket;
  *   - before ApplyUpdate, only the responder ones: the one initiator session left is the one the
  *     requestor opened for the query and the download.
+ * Each evicted session first gets a CloseSession, so the controller drops it (and resubscribes)
+ * at once instead of after its subscription's liveness timeout.
  * After an announcement the eviction waits kAnnounceAnswerDelay: the answer to the announce travels
  * on one of those sessions, and once it is evicted a lost answer can't be retransmitted.
  */
@@ -41,6 +43,8 @@
 #include <platform/OTAImageProcessor.h>
 #include <platform/nrfconnect/ExternalFlashManager.h>
 #include <platform/nrfconnect/Reboot.h>
+#include <protocols/secure_channel/Constants.h>
+#include <protocols/secure_channel/StatusReport.h>
 
 #include <zephyr/logging/log.h>
 #include <zephyr/storage/flash_map.h>
@@ -383,6 +387,27 @@ CHIP_ERROR StagingImageProcessor::ConfirmCurrentImage()
 	return CHIP_NO_ERROR;
 }
 
+/* Tells the peer the session is closed (Matter Core 4.11.1.4): a StatusReport without MRP, as the
+ * session is evicted right after. Best effort: if it is lost, the peer finds out by a timeout. */
+void SendCloseSession(Transport::SecureSession *session)
+{
+	using namespace Protocols::SecureChannel;
+	Messaging::ExchangeContext *ec =
+		Server::GetInstance().GetExchangeManager().NewContext(SessionHandle(*session), nullptr);
+	VerifyOrReturn(ec != nullptr);
+
+	StatusReport report(GeneralStatusCode::kSuccess, Id, kProtocolCodeCloseSession);
+	Encoding::LittleEndian::PacketBufferWriter buf(System::PacketBufferHandle::New(report.Size()));
+	report.WriteToBuffer(buf);
+	System::PacketBufferHandle msg = buf.Finalize();
+	CHIP_ERROR err = msg.IsNull() ? CHIP_ERROR_NO_MEMORY
+				      : ec->SendMessage(MsgType::StatusReport, std::move(msg),
+							Messaging::SendFlags(Messaging::SendMessageFlags::kNoAutoRequestAck));
+	if (err != CHIP_NO_ERROR) {
+		ec->Close(); /* on success it has closed itself */
+	}
+}
+
 /* Evicts sessions to the current provider's node (see the top): all of them, or with
  * keepInitiator only the ones the peer started. */
 void DropStaleProviderSessions(const char *before, bool keepInitiator)
@@ -398,6 +423,9 @@ void DropStaleProviderSessions(const char *before, bool keepInitiator)
 	Server::GetInstance().GetSecureSessionManager().ForEachMatchingSession(node, [&](auto *session) {
 		if (session->GetSecureSessionType() == Transport::SecureSession::Type::kCASE &&
 		    !(keepInitiator && session->GetCryptoContext().IsInitiator())) {
+			if (session->IsActiveSession()) {
+				SendCloseSession(session);
+			}
 			session->MarkForEviction();
 			dropped++;
 		}
