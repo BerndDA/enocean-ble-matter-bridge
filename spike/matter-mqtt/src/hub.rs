@@ -547,7 +547,15 @@ impl Hub {
                     OTA_BLOCK_SIZE,
                 );
                 let outcome = tokio::select! {
-                    r = serve => Attempt::Done(r.map_err(|e| e.to_string())),
+                    r = serve => match r {
+                        // The device took the announcement but its answer got lost (the gateway
+                        // drops its sessions to our node id before QueryImage): announce again
+                        Err(matter_controller::Error::ResponseTimeout { .. }) => {
+                            eprintln!("{}/{node_id}: OTA: no answer to the announcement", hub.cfg.prefix);
+                            Attempt::Again
+                        }
+                        r => Attempt::Done(r.map_err(|e| e.to_string())),
+                    },
                     () = cancel.notified() => Attempt::Done(Err(hub.cancel_reason())),
                     a = hub.ota_watchdog(node_id) => a,
                     () = tokio::time::sleep_until(deadline) => Attempt::Done(Err("timed out".into())),

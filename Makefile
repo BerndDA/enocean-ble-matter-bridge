@@ -86,7 +86,7 @@ TARGETS    ?= 18.5,18
 
 NCS := source scripts/ncs-env.sh >/dev/null &&
 
-.PHONY: help build flash flash-erase release release-flash diag diag-flash test zap term measure summary identity netlog hosts clean
+.PHONY: help build flash flash-erase release release-flash ota release-ota diag diag-flash test zap term measure summary identity netlog hosts clean
 
 help: ## List the targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-12s %s\n", $$1, $$2}'
@@ -111,6 +111,24 @@ release: ## Build with prj_release.conf (no logging, watchdog, reset on fatal er
 
 release-flash: release ## Build the release firmware and flash it; keeps commissioning and stored devices
 	@$(call flash_dir,$(RELEASE))
+
+# Matter OTA image (OTA_PLAN.md): only boards with the QSPI slot. Always a pristine build, as an
+# incremental one can keep the previous version in the Matter library.
+OTA_VER = $(shell awk -F' *= *' '/^VERSION_MAJOR/{a=$$2} /^VERSION_MINOR/{b=$$2} /^PATCHLEVEL/{c=$$2} \
+	/^VERSION_TWEAK/{d=$$2} END{printf "%s.%s.%s%s", a, b, c, (d+0 ? "+" d : "")}' $(APP_DIR)/VERSION)
+# $(1) build folder, $(2) extra CMake arguments, $(3) file name suffix
+define ota_build
+	@case "$(BOARD)" in enmt|enmt-dk) ;; *) echo "BOARD=$(BOARD) has no OTA slot: use enmt or enmt-dk"; exit 1;; esac
+	@$(NCS) west build -p always -b $(TARGET) --sysbuild -d $(1) $(APP_DIR) -- $(2) $(BOARD_ARGS)
+	@cp $(1)/$(APP)/zephyr/matter.ota $(1)/$(APP)-$(OTA_VER)-$(BOARD)$(3).ota
+	@echo "OTA image: $(1)/$(APP)-$(OTA_VER)-$(BOARD)$(3).ota"
+endef
+
+ota: ## Pristine debug build and its Matter OTA image <app>-<version>-<board>-debug.ota (enmt, enmt-dk)
+	$(call ota_build,$(BUILD),,-debug)
+
+release-ota: ## Pristine release build and its Matter OTA image <app>-<version>-<board>.ota (enmt, enmt-dk)
+	$(call ota_build,$(RELEASE),-DFILE_SUFFIX=release,)
 
 diag: ## Build the diagnostics firmware (stack, heap, thread statistics) into build-diag
 	@$(NCS) west build -b $(TARGET) --sysbuild -d $(DIAG) $(APP_DIR) -- -DEXTRA_CONF_FILE=diag.conf $(BOARD_ARGS)

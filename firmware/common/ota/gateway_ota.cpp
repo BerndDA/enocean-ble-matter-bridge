@@ -20,6 +20,8 @@
  *     the requestor opens a new one to the provider's own socket;
  *   - before ApplyUpdate, only the responder ones: the one initiator session left is the one the
  *     requestor opened for the query and the download.
+ * After an announcement the eviction waits kAnnounceAnswerDelay: the answer to the announce travels
+ * on one of those sessions, and once it is evicted a lost answer can't be retransmitted.
  */
 
 #include "gateway_ota.h"
@@ -407,13 +409,13 @@ void DropStaleProviderSessions(const char *before, bool keepInitiator)
 
 class StagingRequestorDriver : public DefaultOTARequestorDriver {
 public:
-	/* Both scheduled: the requestor may call them from a callback on the session being evicted */
+	/* Both deferred: the requestor may call them from a callback on the session being evicted */
 	void SendQueryImage() override
 	{
-		SystemLayer().ScheduleLambda([this] {
-			DropStaleProviderSessions("QueryImage", false);
-			DefaultOTARequestorDriver::SendQueryImage();
-		});
+		SystemLayer().CancelTimer(QueryImageNow, this);
+		if (SystemLayer().StartTimer(kAnnounceAnswerDelay, QueryImageNow, this) != CHIP_NO_ERROR) {
+			SystemLayer().ScheduleLambda([this] { QueryImageNow(nullptr, this); });
+		}
 	}
 
 	void UpdateDownloaded() override
@@ -422,6 +424,16 @@ public:
 			DropStaleProviderSessions("ApplyUpdate", true);
 			DefaultOTARequestorDriver::UpdateDownloaded();
 		});
+	}
+
+private:
+	/* Time for the announce's answer (and MRP retransmissions of it) before its session goes */
+	static constexpr System::Clock::Timeout kAnnounceAnswerDelay = System::Clock::Seconds16(3);
+
+	static void QueryImageNow(System::Layer *, void *context)
+	{
+		DropStaleProviderSessions("QueryImage", false);
+		static_cast<StagingRequestorDriver *>(context)->DefaultOTARequestorDriver::SendQueryImage();
 	}
 };
 
