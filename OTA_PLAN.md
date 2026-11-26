@@ -157,11 +157,11 @@ Done (2026-11-26):
   - The header layout and `enmt_ota_header_ok()` come straight from `firmware/bootloader/enmt_ota.h`.
 - **Software version:** with a `VERSION` file NCS uses `APPVERSION` = major<<24 | minor<<16 | patch<<8 | tweak. So 0.1.0 is 0x00010000 and `VERSION_TWEAK = 1` gives 0x00010001. The vendor is still the test VID 0xFFF1, PID 0x8003 (enocean-gateway).
 - **Size:** enocean-gateway `enmt-dk` grows from 767 KB to 800 KB (+33 KB: QSPI driver, requestor, BDX). RAM use is 84.6 %.
-- **ble-gateway: no OTA for now.** With OTA it overflowed the 888 KB app area by 492 bytes. Its UF2 board config sets `CONFIG_GATEWAY_OTA=n`, which brings it to 881 KB. That's 4.6 KB more than before, because the QSPI driver stays: the flash map needs it for the overlay's partitions.
+- **ble-gateway: OTA in release builds only.** The debug build with OTA overflowed the 888 KB app area by 492 bytes, so its `prj.conf` sets `CONFIG_GATEWAY_OTA=n` (881 KB; 4.6 KB more than before, because the QSPI driver stays: the flash map needs it for the overlay's partitions). The release build has OTA: 824 KB (`make release-ota APP=ble-gateway`). A BLE gateway takes updates only once it runs a release build, and only release images.
 
 Still open in Phase 2:
 
-- Later: room for OTA in ble-gateway. Stage bootloader updates in the QSPI flash instead of 0xDF000–0xE9000, so the app area grows to about 928 KB on boards with QSPI. This touches the bootloader's staging code, the UF2 overlay's layout and `make-uf2.py`'s checks, and gives boards with and without QSPI different layouts.
+- Later: room for OTA in debug builds of ble-gateway. Stage bootloader updates in the QSPI flash instead of 0xDF000–0xE9000, so the app area grows to about 928 KB on boards with QSPI. This touches the bootloader's staging code, the UF2 overlay's layout and `make-uf2.py`'s checks, and gives boards with and without QSPI different layouts.
 - Show the OTA state on the status page (`common/web`) and in the netlog.
 
 ## Phase 3: build: done in Phase 2
@@ -268,4 +268,4 @@ Answered in Phases 2 and 4:
 - Requestor without MCUboot: no `CHIP_OTA_REQUESTOR`; our own `GATEWAY_OTA` with the data model's requestor code.
 - Software version: from `VERSION` via `APPVERSION`.
 - Vendor ID: still the test VID 0xFFF1, and the `.ota` takes it from Kconfig.
-- ble-gateway with OTA: doesn't fit (492 bytes over). OTA is off there for now; more room is a later step (Phase 2, "Still open").
+- ble-gateway with OTA: the debug build doesn't fit (492 bytes over), the release build does (824 KB). OTA is on in release builds only.
