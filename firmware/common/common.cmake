@@ -66,6 +66,21 @@ if(CONFIG_GATEWAY_WEB)
     ${ZEPHYR_BINARY_DIR}/include/generated/index.html.gz.inc --gzip)
 endif()
 
+# Matter OTA staged in the external flash for the EnMT bootloader (ota/gateway_ota.h). The .ota's
+# payload is the raw app binary; vendor, product and version (APPVERSION, from the app's VERSION
+# file) as in NCS's own Matter OTA images.
+if(CONFIG_GATEWAY_OTA)
+  target_sources(app PRIVATE ${GATEWAY_COMMON_DIR}/ota/gateway_ota.cpp)
+  if(NOT DEFINED CHIP_ROOT)
+    set(CHIP_ROOT ${ZEPHYR_CONNECTEDHOMEIP_MODULE_DIR})
+  endif()
+  include(${ZEPHYR_CONNECTEDHOMEIP_MODULE_DIR}/config/zephyr/ota-image.cmake)
+  chip_ota_image(gateway_ota_image
+    INPUT_FILES ${ZEPHYR_BINARY_DIR}/${CONFIG_KERNEL_BIN_NAME}.bin
+    OUTPUT_FILE ${ZEPHYR_BINARY_DIR}/matter.ota)
+  add_dependencies(gateway_ota_image zephyr_final)
+endif()
+
 # Matter device types: an app adds the ones it uses, for example
 #   target_sources(app PRIVATE ${GATEWAY_BRIDGED_DEVICE_TYPES}/temperature_sensor.cpp)
 set(GATEWAY_BRIDGED_DEVICE_TYPES ${GATEWAY_COMMON_DIR}/bridged_device_types)

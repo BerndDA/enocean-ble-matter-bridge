@@ -8,7 +8,8 @@
  *   0x001000  slot: raw app binary for load_addr
  *
  * Hardware-independent part, compiled into the bootloader (board BOARD_QSPI_OTA, glue in
- * enmt_qspi_ota.c) and into the host test (test/ota_test.c) against fake flash.
+ * enmt_qspi_ota.c) and into the host test (test/ota_test.c) against fake flash. The app's OTA
+ * image processor (firmware/common/ota/gateway_ota.cpp) writes this header.
  */
 
 #ifndef ENMT_OTA_H
@@ -52,8 +53,12 @@ typedef enum {
   ENMT_OTA_IO_ERROR,      // external flash didn't answer: header kept
 } enmt_ota_result_t;
 
-// Header valid for an app area [load_addr, app_end)? load_addr must be app_start.
-bool enmt_ota_header_ok(enmt_ota_header_t const *h, uint32_t app_start, uint32_t app_end);
+// Header valid for an app area [app_start, app_end)? Also used by the app (common/ota).
+static inline bool enmt_ota_header_ok(enmt_ota_header_t const *h, uint32_t app_start,
+                                      uint32_t app_end) {
+  return h->magic == ENMT_OTA_MAGIC && h->header_version == ENMT_OTA_HEADER_VERSION &&
+         h->load_addr == app_start && h->size > 0 && h->size <= app_end - app_start;
+}
 
 // Applies a staged image, if any. buf: 4 KB, 4-byte aligned scratch buffer.
 enmt_ota_result_t enmt_ota_apply(enmt_ota_io_t const *io, uint32_t app_start, uint32_t app_end,

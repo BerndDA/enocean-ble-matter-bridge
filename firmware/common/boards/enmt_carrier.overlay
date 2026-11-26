@@ -48,3 +48,79 @@
 		led3 = &led_module;
 	};
 };
+
+/*
+ * QSPI flash U3 (W25Q32JVSNIQ, 4 MB, carrier v0.4) for Matter OTA: the app stages an update there,
+ * the EnMT bootloader installs it (common/ota/gateway_ota.h, firmware/bootloader/enmt_ota.h). The
+ * offsets are fixed by the bootloader. The IQ/JQ parts ship with QE fixed at 1, so the driver
+ * mustn't touch the status registers (quad-enable-requirements = "NONE"). P0.11 and P1.00 are
+ * i2c0's pins in the Pro Micro board files; i2c0 is disabled (promicro_nrf52840_common.dtsi).
+ * Untested: v0.4 isn't built yet.
+ */
+&pinctrl {
+	qspi_default: qspi_default {
+		group1 {
+			psels = <NRF_PSEL(QSPI_SCK, 0, 17)>,
+				<NRF_PSEL(QSPI_IO0, 0, 22)>,
+				<NRF_PSEL(QSPI_IO1, 0, 20)>,
+				<NRF_PSEL(QSPI_IO2, 1, 0)>,
+				<NRF_PSEL(QSPI_IO3, 0, 11)>,
+				<NRF_PSEL(QSPI_CSN, 0, 24)>;
+			nordic,drive-mode = <NRF_DRIVE_H0H1>;
+		};
+	};
+
+	qspi_sleep: qspi_sleep {
+		group1 {
+			psels = <NRF_PSEL(QSPI_SCK, 0, 17)>,
+				<NRF_PSEL(QSPI_IO0, 0, 22)>,
+				<NRF_PSEL(QSPI_IO1, 0, 20)>,
+				<NRF_PSEL(QSPI_IO2, 1, 0)>,
+				<NRF_PSEL(QSPI_IO3, 0, 11)>;
+			low-power-enable;
+		};
+
+		group2 {
+			psels = <NRF_PSEL(QSPI_CSN, 0, 24)>;
+			low-power-enable;
+			bias-pull-up;
+		};
+	};
+};
+
+&qspi {
+	status = "okay";
+	pinctrl-0 = <&qspi_default>;
+	pinctrl-1 = <&qspi_sleep>;
+	pinctrl-names = "default", "sleep";
+
+	ext_flash: w25q32jv@0 {
+		compatible = "nordic,qspi-nor";
+		reg = <0>;
+		writeoc = "pp4o";
+		readoc = "read4io";
+		quad-enable-requirements = "NONE";
+		sck-frequency = <8000000>;
+		jedec-id = [ef 40 16];
+		size = <33554432>;
+		has-dpd;
+		t-enter-dpd = <3000>;
+		t-exit-dpd = <3000>;
+
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			ota_header_partition: partition@0 {
+				label = "ota-header";
+				reg = <0x00000000 DT_SIZE_K(4)>;
+			};
+
+			ota_slot_partition: partition@1000 {
+				label = "ota-slot";
+				reg = <0x00001000 DT_SIZE_K(888)>;
+			};
+		};
+	};
+};

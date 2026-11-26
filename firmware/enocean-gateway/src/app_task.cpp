@@ -24,6 +24,7 @@
 #include "tcm.h"
 #endif
 
+#include "ota/gateway_ota.h"
 #include "app/matter_init.h"
 #include "app/task_executor.h"
 #include "board/board.h"
@@ -155,6 +156,10 @@ CHIP_ERROR AppTask::Init()
 #endif
 
 	ReturnErrorOnFailure(sIdentifyCluster.Init());
+
+#ifdef CONFIG_GATEWAY_OTA
+	ReturnErrorOnFailure(Gateway::Ota::Init());
+#endif
 
 	return Nrf::Matter::StartServer();
 }

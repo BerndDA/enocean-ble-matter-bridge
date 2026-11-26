@@ -12,11 +12,6 @@
 
 #include "tinycrypt/sha256.h"
 
-bool enmt_ota_header_ok(enmt_ota_header_t const *h, uint32_t app_start, uint32_t app_end) {
-  return h->magic == ENMT_OTA_MAGIC && h->header_version == ENMT_OTA_HEADER_VERSION &&
-         h->load_addr == app_start && h->size > 0 && h->size <= app_end - app_start;
-}
-
 // SHA-256 over len bytes of the slot (external) or of internal flash from addr.
 static bool hash_ext(enmt_ota_io_t const *io, uint32_t len, uint8_t *buf, uint8_t digest[32]) {
   struct tc_sha256_state_struct s;

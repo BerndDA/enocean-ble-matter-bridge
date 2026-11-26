@@ -121,6 +121,22 @@ config GATEWAY_WEB_JSON_BUFFER
 
 endif # GATEWAY_WEB
 
+config GATEWAY_OTA
+	bool "Matter OTA, staged in the external flash for the EnMT bootloader"
+	default $(dt_nodelabel_exists,ota_slot_partition)
+	depends on !CHIP_OTA_REQUESTOR
+	select FLASH
+	select FLASH_MAP
+	help
+	  The OTA Software Update Requestor downloads an update over BDX into
+	  the external QSPI flash (ota_slot_partition), commits it with a header
+	  (ota_header_partition) and reboots; the EnMT UF2 bootloader
+	  (firmware/bootloader) copies it into place. No MCUboot: this replaces
+	  CHIP_OTA_REQUESTOR's MCUboot/DFU-target backend. On by default when the
+	  devicetree has the partitions (common/boards/enmt_dk.overlay,
+	  enmt_carrier.overlay). The build also writes zephyr/matter.ota. See
+	  common/ota/gateway_ota.h and OTA_PLAN.md.
+
 endmenu
 
 # Thread networking

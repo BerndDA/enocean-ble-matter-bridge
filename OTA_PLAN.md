@@ -134,47 +134,69 @@ The original Phase 1 plan:
 4. Host test (`test/`, like `settings_test`): header parsing, range checks, the skip logic against a fake flash.
 5. Bench test before any Matter work: write a header and a test app to QSPI with `nrfjprog --qspi*` (DK) or a small Zephyr shell command. Reset, check the app starts, and check the factory data and settings are unchanged. Cut power during the copy and check that the next boot finishes it.
 
-## Phase 2: firmware (`firmware/common`, both gateway apps)
+## Phase 2: firmware (`firmware/common`): done, tested end to end (Phase 4)
 
-1. Devicetree:
-   - `enmt_dk.overlay` and `enmt_carrier.overlay`: a `&qspi` node with the flash chip (`nordic,qspi-nor`: MX25R64 or W25Q32JV, quad mode, pins as above).
-   - An `ota_header` partition and an `ota_slot` partition on it.
-2. Kconfig:
-   - `CONFIG_CHIP_OTA_REQUESTOR=y` for `enmt` / `enmt-dk` only.
-   - Not NCS's MCUboot/DFU-target image processor. `Kconfig.sysbuild` currently ties `MATTER_OTA` to MCUboot. To check: which options turn on the requestor without `dfu_target`/`DFU_MULTI_IMAGE`.
-3. A custom `OTAImageProcessorImpl` (`chip::OTAImageProcessorInterface`) in `firmware/common/ota/`:
-   - `PrepareDownload`: erase the header first, then the slot (or erase sectors as data arrives), start SHA-256.
-   - `ProcessBlock`: the first bytes go through `chip::OTAImageHeaderParser`, the payload goes to the slot via `flash_area_write`.
-   - `Finalize`: check the payload size and the hash in the `.ota` header (`ImageDigest`), then write the EMOT header.
-   - `Apply`: `sys_reboot` (only after the header is written).
-   - `Abort`: erase the header, leave the slot alone.
-   - `IsFirstImageRun` / `ConfirmCurrentImage`: compare the running version with the target version kept in settings. On a match, report applied. The bootloader has already erased the header.
-4. Wire it to the requestor: `DefaultOTARequestor`, `DefaultOTARequestorDriver`, `DefaultOTARequestorStorage`, `BDXDownloader`. NCS's `ota_util.cpp` is the template.
-   - Add the OTA Software Update Requestor cluster (0x002A) on endpoint 0 to both `bridge.zap` / `bridge.matter`; it isn't there today. Its `UpdateState` (0x0002) and `UpdateStateProgress` (0x0003, 0–100 %) are what matter-mqtt shows as download progress (Phase 5). `DefaultOTARequestor` updates both on its own.
-5. Software version: `CONFIG_CHIP_DEVICE_SOFTWARE_VERSION` / `_STRING` must come from `VERSION`. Every release must raise the version number, or the requestor ignores the offer. To check how NCS derives it.
-6. Show the OTA state on the status page (`common/web`) and in the netlog.
+Done (2026-11-26):
 
-## Phase 3: build (`Makefile`)
+- **Devicetree:** `common/boards/enmt_dk.overlay` and `enmt_carrier.overlay` add the QSPI flash with `ota_header_partition` (0x0, 4 KB) and `ota_slot_partition` (0x1000, 888 KB).
+  - DK: MX25R6435F, the node from Zephyr's nrf52840dk board files.
+  - Carrier: W25Q32JV with `quad-enable-requirements = "NONE"` (QE fixed at 1 on the IQ part). Untested.
+- **No `CHIP_OTA_REQUESTOR`.** In NCS that option pulls in MCUboot, `dfu_target`, `DFU_MULTI_IMAGE` and NCS's `ota_util.cpp`. Instead:
+  - New `CONFIG_GATEWAY_OTA` (`common/Kconfig`). It's on by default when the devicetree has `ota_slot_partition` and requires `CHIP_OTA_REQUESTOR` to be off.
+  - The requestor's own code (`DefaultOTARequestor`, `BDXDownloader`, the cluster server) comes from the data model: the OTA Software Update Requestor cluster (0x002A) is already in all three `bridge.zap` files.
+  - Side effect: the Matter shell's `matter ota …` commands answer `Error: 2f`, since they are compiled only with `CHIP_OTA_REQUESTOR`.
+- **`common/ota/gateway_ota.cpp`:**
+  - `Gateway::Ota::Init()` is called in each `app_task.cpp` before `StartServer()`. It sets the requestor up on `kServerReady`, as NCS does. On Thread, Matter posts that only once DNS-SD is up, i.e. after commissioning.
+  - Image processor:
+    - `PrepareDownload` erases the header.
+    - Blocks go to the slot in 1 KB writes, each 4 KB sector erased on first use, with a running SHA-256.
+    - The `.ota` header's vendor and product must match the factory data, and the payload must have a SHA-256 digest and fit the app area.
+    - `Finalize` compares the hash, then writes the EMOT header.
+    - `Apply` reboots only if a valid header is there.
+    - `Abort` erases the header.
+  - The header layout and `enmt_ota_header_ok()` come straight from `firmware/bootloader/enmt_ota.h`.
+- **Software version:** with a `VERSION` file NCS uses `APPVERSION` = major<<24 | minor<<16 | patch<<8 | tweak. So 0.1.0 is 0x00010000 and `VERSION_TWEAK = 1` gives 0x00010001. The vendor is still the test VID 0xFFF1, PID 0x8003 (enocean-gateway).
+- **Size:** enocean-gateway `enmt-dk` grows from 767 KB to 800 KB (+33 KB: QSPI driver, requestor, BDX). RAM use is 84.6 %.
+- **ble-gateway: no OTA for now.** With OTA it overflowed the 888 KB app area by 492 bytes. Its UF2 board config sets `CONFIG_GATEWAY_OTA=n`, which brings it to 881 KB. That's 4.6 KB more than before, because the QSPI driver stays: the flash map needs it for the overlay's partitions.
 
-- For `BOARD=enmt` / `enmt-dk`, also build `<app>-<version>.ota`: `zephyr.bin` wrapped with connectedhomeip's `src/app/ota_image_tool.py create`.
-  - `-v` vendor ID and `-p` product ID: match the device (`CONFIG_CHIP_DEVICE_PRODUCT_ID=32771`).
-  - `-vn` version number, `-vs` version string.
-  - `-da sha256`.
-- `make-uf2.py`'s range checks also apply to the `.ota` payload (≤ 888 KB from 0x1000).
+Still open in Phase 2:
 
-## Phase 4: manual end-to-end test
+- Later: room for OTA in ble-gateway. Stage bootloader updates in the QSPI flash instead of 0xDF000–0xE9000, so the app area grows to about 928 KB on boards with QSPI. This touches the bootloader's staging code, the UF2 overlay's layout and `make-uf2.py`'s checks, and gives boards with and without QSPI different layouts.
+- Show the OTA state on the status page (`common/web`) and in the netlog.
 
-1. Commission the `enmt-dk` gateway into the matter-mqtt fabric.
-2. Stop matter-mqtt: only one process may use the fabric.
-3. Run the crate example against the same store:
-   `cargo run --example serve_ota -- --store state/controller.bin --node <id> --version <n> --image <app>.ota --block-size 512`
-   (from the matter-controller 0.18.3 crate, `ota` feature).
-4. Expected: the download over Thread takes several minutes; then reboot, bootloader copy, new version running, `NotifyUpdateApplied`, and the example exits.
-5. Failure cases:
-   - power off during the download (no header, old app keeps running)
-   - power off during the copy (copy repeats)
-   - the same version offered again (rejected)
-   - a corrupt `.ota` (hash check fails in `Finalize`)
+## Phase 3: build: done in Phase 2
+
+`common.cmake` builds `zephyr/matter.ota` with NCS's `chip_ota_image()` (connectedhomeip's `ota_image_tool.py`):
+- vendor and product from Kconfig;
+- version and string from `VERSION`;
+- SHA-256 digest;
+- payload `zephyr.bin`.
+
+Still to do: copy it next to the `.uf2` under a name with the version, from the Makefile.
+
+## Phase 4: manual end-to-end test: passed (2026-11-26)
+
+**Setup:**
+- The DK runs enocean-gateway `enmt-dk` 0.1.0 (0x10000) with the new bootloader.
+- It is commissioned in Apple Home and, via a pairing code, into a separate test fabric: a local matter-mqtt with its own state file and `--mqtt none`.
+- matter-mqtt was then stopped, and the crate's `serve_ota` example run on the Mac against that state file:
+  `serve_ota --store controller.bin --node 2 --version 65537 --image matter.ota --port 5560 --block-size 512`
+- The image is a build with `VERSION_TWEAK = 1` (0x10001).
+
+**Result:**
+
+| Step | Time |
+|---|---|
+| AnnounceOTAProvider → first QueryImage over the announce session times out (by design, see the crate's `serve_ota` docs) | 51 s |
+| Retry: new CASE to the provider on port 5560, QueryImageResponse 65537 | |
+| BDX download, 1564 × 512 B (about 10 blocks/s, 5 KB/s over Thread) | 156 s |
+| `OTA: version 65537 staged` → ApplyUpdate → reboot | |
+| Bootloader copy, app up, NotifyUpdateApplied, `serve_ota` exits 0 | 7 s |
+
+- Internal flash matches the new `zephyr.bin`, and the QSPI header was erased.
+- The copy took only 7 s because the two builds differ in 3 of 196 pages and the bootloader skips pages that already match. A real release with more changes takes up to about 30 s.
+
+**Pitfall:** the gateway reuses *any* existing session to the provider's node ID. In the first attempt it still had a session from the stopped matter-mqtt process, which had been killed without a CloseSession. So the retry went there, and the requestor gave up after its single retry. Resetting the gateway fixed it. For Phase 5 this means the provider runs in the same process as the controller (matter-mqtt itself), so there are no stale sessions from a second process.
 
 ## Phase 5: matter-mqtt (`spike/matter-mqtt`)
 
@@ -217,7 +239,11 @@ Anyone who can publish to `matter/+/ota/set` or reach the web UI can install fir
 
 ## Open questions
 
-- Which NCS Kconfig options give the OTA requestor without MCUboot/`dfu_target`? (Phase 2.2)
-- How NCS derives the Matter software version from `VERSION`. (Phase 2.5)
-- Is the vendor ID still the test VID 0xFFF1? It must match in the `.ota`.
-- Is BDX over Thread through the OTBR reliable at 512 B blocks, and how long does 888 KB take?
+None at the moment.
+
+Answered in Phases 2 and 4:
+- BDX over Thread at 512 B blocks: reliable in the test, about 5 KB/s, so roughly 3 minutes for 888 KB.
+- Requestor without MCUboot: no `CHIP_OTA_REQUESTOR`; our own `GATEWAY_OTA` with the data model's requestor code.
+- Software version: from `VERSION` via `APPVERSION`.
+- Vendor ID: still the test VID 0xFFF1, and the `.ota` takes it from Kconfig.
+- ble-gateway with OTA: doesn't fit (492 bytes over). OTA is off there for now; more room is a later step (Phase 2, "Still open").
