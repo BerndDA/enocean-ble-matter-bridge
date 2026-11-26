@@ -25,6 +25,16 @@
 #define BUTTON_DFU_OTA 12
 #define BUTTON_PULL    NRF_GPIO_PIN_PULLUP
 
+/*------------------------------------------------------------------*/
+/* QSPI flash (U4, MX25R6435F, 8 MB) for staged OTA images, see enmt_qspi_ota.c
+ *------------------------------------------------------------------*/
+#define QSPI_OTA_PIN_SCK 19
+#define QSPI_OTA_PIN_CSN 17
+#define QSPI_OTA_PIN_IO0 20
+#define QSPI_OTA_PIN_IO1 21
+#define QSPI_OTA_PIN_IO2 22
+#define QSPI_OTA_PIN_IO3 23
+
 //--------------------------------------------------------------------+
 // BLE OTA
 //--------------------------------------------------------------------+

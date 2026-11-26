@@ -26,3 +26,8 @@ CFLAGS += -DBOARD_RESTART_FILE
 # Finish an update (and reset) only once the host has stopped writing for 1 s, so the copy ends
 # without an I/O error on the host
 CFLAGS += -DBOARD_FINISH_ON_IDLE
+
+# Matter OTA: an image staged in the external QSPI flash is copied into place at boot
+# (enmt_qspi_ota.c, enmt_ota.c; pins in board.h; OTA_PLAN.md)
+CFLAGS += -DBOARD_QSPI_OTA
+C_SRC += src/boards/enmt_ota.c src/boards/enmt_qspi_ota.c

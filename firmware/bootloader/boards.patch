@@ -129,7 +129,7 @@ index c02a278..60e87aa 100644
  
  // WS2812B (rev B) timing is 0.4 and 0.8 us
 diff --git a/src/main.c b/src/main.c
-index c988ee4..35761a4 100644
+index c988ee4..fab841a 100644
 --- a/src/main.c
 +++ b/src/main.c
 @@ -132,7 +132,11 @@ extern void tusb_hal_nrf_power_event(uint32_t event);
@@ -144,7 +144,31 @@ index c988ee4..35761a4 100644
  bool _ota_connected = false;
  bool _ota_was_connected = false;
  bool _sd_inited = false;
-@@ -245,7 +249,9 @@ static void check_dfu_mode(void) {
+@@ -164,6 +168,10 @@ static void disable_softdevice(void) {
+ //--------------------------------------------------------------------+
+ //
+ //--------------------------------------------------------------------+
++#ifdef BOARD_QSPI_OTA
++void enmt_qspi_ota_apply(void);
++#endif
++
+ int main(void) {
+   // Populate Boot Address and MBR Param into MBR if not already
+   // MBR_BOOTLOADER_ADDR/MBR_PARAM_PAGE_ADDR are used if available, else UICR registers are used
+@@ -179,6 +187,12 @@ int main(void) {
+   PRINTF("Bootloader Start\r\n");
+   led_state(STATE_BOOTLOADER_STARTED);
+ 
++#ifdef BOARD_QSPI_OTA
++  // An OTA image staged in the external flash goes into place before anything else, so a UF2
++  // written later can't be overwritten by an older staged image (enmt_qspi_ota.c)
++  enmt_qspi_ota_apply();
++#endif
++
+   // When updating SoftDevice, bootloader will reset before swapping SD
+   if (bootloader_dfu_sd_in_progress()) {
+     led_state(STATE_WRITING_STARTED);
+@@ -245,7 +259,9 @@ static void check_dfu_mode(void) {
    _sd_inited = (gpregret == DFU_MAGIC_OTA_APPJUM);
  
    // Start Bootloader in BLE OTA mode
@@ -154,7 +178,7 @@ index c988ee4..35761a4 100644
  
    // Serial only mode
    bool const serial_only_dfu = (gpregret == DFU_MAGIC_SERIAL_ONLY_RESET);
-@@ -276,7 +282,9 @@ static void check_dfu_mode(void) {
+@@ -276,7 +292,9 @@ static void check_dfu_mode(void) {
  
    // DFU + FRESET are pressed --> OTA
  #if defined(BUTTON_DFU) && defined(BUTTON_DFU_OTA)
@@ -164,7 +188,7 @@ index c988ee4..35761a4 100644
  #endif
  
    bool const valid_app = bootloader_app_is_valid();
-@@ -502,6 +510,9 @@ extern void ble_evt_dispatch(ble_evt_t *p_ble_evt);
+@@ -502,6 +520,9 @@ extern void ble_evt_dispatch(ble_evt_t *p_ble_evt);
  
  // Process BLE event from SD
  uint32_t proc_ble(void) {
@@ -174,7 +198,7 @@ index c988ee4..35761a4 100644
    __ALIGN(4) uint8_t ev_buf[BLE_EVT_LEN_MAX(BLEGATT_ATT_MTU_MAX)];
    uint16_t ev_len = BLE_EVT_LEN_MAX(BLEGATT_ATT_MTU_MAX);
  
-@@ -546,6 +557,7 @@ uint32_t proc_ble(void) {
+@@ -546,6 +567,7 @@ uint32_t proc_ble(void) {
    }
  
    return err;

@@ -28,6 +28,16 @@
 #define BUTTON_DFU  PINNUM(1, 6)
 #define BUTTON_PULL NRF_GPIO_PIN_PULLUP
 
+/*------------------------------------------------------------------*/
+/* QSPI flash (U3, W25Q32JV, 4 MB) for staged OTA images, see enmt_qspi_ota.c
+ *------------------------------------------------------------------*/
+#define QSPI_OTA_PIN_SCK PINNUM(0, 17)
+#define QSPI_OTA_PIN_CSN PINNUM(0, 24)
+#define QSPI_OTA_PIN_IO0 PINNUM(0, 22)
+#define QSPI_OTA_PIN_IO1 PINNUM(0, 20)
+#define QSPI_OTA_PIN_IO2 PINNUM(1, 0)
+#define QSPI_OTA_PIN_IO3 PINNUM(0, 11)
+
 //--------------------------------------------------------------------+
 // BLE OTA
 //--------------------------------------------------------------------+
