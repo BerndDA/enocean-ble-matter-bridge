@@ -216,6 +216,7 @@ def main():
         board.Add(z)
 
     route_868(board, nets)
+    route_edge_lanes(board, nets)
 
     # no top tracks along the TCM's top pads (1-5): they would cut the pour's spokes to GND pads
     # 1 and 3 next to RF_50 (v0.4: the strip above the TCM now carries J2)
@@ -315,6 +316,42 @@ def route_868(board, nets):
     gx, gy = pad("C3", "2")
     track("GND", [(gx, gy), (gx, gy - 1.15)], 0.4)
     via(gx, gy - 1.15)
+    # U3's GND pad 4 (v0.4): the flash's IO1 / IO0 tracks fence it in on the front; a fixed via
+    # under the SOIC body, between the pad rows, ties it to the back pour
+    gx, gy = pad("U3", "4")
+    track("GND", [(gx, gy), (7.0, gy)], 0.4)
+    via(7.0, gy)
+
+
+def route_edge_lanes(board, nets):
+    """Pro Micro pins 9, 10 and 12 sit beside the module's antenna keepout (tracks not allowed
+    from x 3.7, y 20.5), so their tracks can only leave along the board edge, in the 1.05 mm
+    between the edge clearance and the header pads: two 0.25 mm lanes per layer. Freerouting
+    doesn't find that packing on its own (v0.4: FLASH_IO2 stayed unrouted), so the lanes are
+    drawn here, up to just above the keepout; the router carries on from their ends.
+    CS (pin 8) leaves upward between pads 7 and 8 and needs no lane."""
+    def pad(ref, num):
+        v = board.FindFootprintByReference(ref).FindPadByNumber(num).GetPosition()
+        return (round(pcbnew.ToMM(v.x) - ORIGIN[0], 4), round(pcbnew.ToMM(v.y) - ORIGIN[1], 4))
+
+    def track(net, pts, layer):
+        for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+            t = pcbnew.PCB_TRACK(board)
+            t.SetStart(mm(x0, y0))
+            t.SetEnd(mm(x1, y1))
+            t.SetWidth(pcbnew.FromMM(0.25))
+            t.SetLayer(layer)
+            t.SetNet(nets[net])
+            t.SetLocked(True)
+            board.Add(t)
+
+    outer, inner, top = 0.45, 0.95, 20.3
+    for net, pin, lane, layer in (("/BTN_FUNC", "12", outer, pcbnew.B_Cu),
+                                  ("/FLASH_IO3", "10", inner, pcbnew.B_Cu),
+                                  ("/FLASH_IO2", "9", inner, pcbnew.F_Cu)):
+        x, y = pad("U1", pin)
+        d = x - lane                       # 45 degrees off the pad into the lane, then up
+        track(net, [(x, y), (lane, y - d), (lane, top)], layer)
 
 
 if __name__ == "__main__":

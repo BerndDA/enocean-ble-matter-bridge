@@ -28,6 +28,13 @@ CLI = "/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli"
 FAB = os.path.join(PROJ, "fab")
 LAYERS = "F.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts"
 
+# Rotation corrections for JLC's part models, added to KiCad's rotation in the CPL. KiCad draws
+# footprints in IPC orientation; some of JLC's models start from the tape orientation instead.
+# Keyed by LCSC number (JLC's models differ per part); check each one in JLC's placement preview.
+JLC_ROT = {
+    "C5355146": 270,    # U3 W25Q32JVSNIQ, SOIC-8: JLC's model has pin 1 bottom-left, pins along the long sides horizontal
+}
+
 
 def cli(*args):
     r = subprocess.run([CLI, *args], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
@@ -79,7 +86,7 @@ def main():
                 found.add(r["Ref"])
                 layer = "Top" if r["Side"].lower().startswith("top") else "Bottom"
                 w.writerow([r["Ref"], f'{float(r["PosX"]):.4f}mm', f'{float(r["PosY"]):.4f}mm',
-                            layer, f'{float(r["Rot"]) % 360:.1f}'])
+                            layer, f'{(float(r["Rot"]) + JLC_ROT.get(placed[r["Ref"]]["lcsc"], 0)) % 360:.1f}'])
     missing = set(placed) - found
     if missing:
         sys.exit(f"not in the position file: {sorted(missing)}")

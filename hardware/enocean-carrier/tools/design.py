@@ -64,11 +64,14 @@ part("U1", "Modules:ProMicro_nRF52840", "ProMicro nRF52840", "Modules:ProMicro_n
     "22": "LED_R",          # P1.11 / P1.13 / P1.15: status LEDs red / green / yellow, active low;
     "21": "LED_G",          # unused by today's firmware: the pins float and the LEDs stay dark
     "20": "LED_Y",
-    "5": "FLASH_SCK",       # P0.17 / P0.22 / P0.31 / P0.24: SPI flash U3 (optional part)
-    "7": "FLASH_MOSI",
-    "17": "FLASH_MISO",
-    "8": "FLASH_CS",        # in the module's antenna zone: its track runs out along the board edge
-    "6": "TCM_NRESET",      # P0.20: TCM reset from firmware (unused today; the TCM's pull-up wins)
+    "5": "FLASH_SCK",       # QSPI flash U3 (optional part) on pins 5-10, the header pins that are
+    "6": "FLASH_IO1",       # not "low frequency I/O only" (nRF52840 PS, pin assignments):
+    "7": "FLASH_IO0",       # SCK P0.17, IO1 P0.20, IO0 P0.22, CSN P0.24, IO2 P1.00, IO3 P0.11.
+    "8": "FLASH_CS",        # P0.22 / P1.00 are on Nordic's recommended QSPI list, the rest
+    "9": "FLASH_IO2",       # aren't on the header. Pins 8-10 are next to the module's antenna
+    "10": "FLASH_IO3",      # zone: their tracks run out along the board edge
+    "17": "TCM_NRESET",     # P0.31: TCM reset from firmware (unused today; the TCM's pull-up wins).
+                            # Low frequency I/O only, fine for a reset line
     "13": None,             # RAW (nice!nano: battery/raw input), not used. The nice!nano v2 has a 13th pin
                             # on each side above the rows (B+ / B-, battery only): no header there, not on this board
 }, nc_rest=True, mpn="nice!nano v2 / SuperMini nRF52840 with UF2 bootloader >= 0.6.1")
@@ -136,13 +139,18 @@ R("R10", "4.7k", 29.5, 29, "+3V3", "I2C_SCL", fp=FP_R0603, lcsc="C23162", mpn="0
 part("J2", "Connector_Generic:Conn_01x04", "I2C", FP_WIRE4, 20, 20,
      {"1": "GND", "2": "+3V3", "3": "I2C_SDA", "4": "I2C_SCL"})
 
-# SPI flash (v0.4, optional: leave U3 off the order and nothing else changes; firmware that
+# QSPI flash (v0.4, optional: leave U3 off the order and nothing else changes; firmware that
 # expects it just finds no device). 4 MB for a LittleFS store and, later, a Matter OTA image slot.
-# 150 mil SOIC-8 (<= 1.75 mm): fits under the Pro Micro (2.5 mm). WP and HOLD tied high (plain
-# SPI); 10k on CS keeps it deselected while the nRF52840 boots.
+# 150 mil SOIC-8 (<= 1.75 mm): fits under the Pro Micro (2.5 mm). All four data lines go to the
+# nRF52840 for the QSPI peripheral (quad read / program). The IQ variant ships with QE set, so pins
+# 3 / 7 are IO2 / IO3, not /WP / /HOLD: no external pull-ups (no room next to the antenna zone);
+# the firmware can enable the GPIO pull-ups on P1.00 / P0.11 if it ever runs plain SPI.
+# Order the IQ / JQ variant only: IM / JM ship with QE = 0, where pin 7 is a live /HOLD that
+# would need a pull-up (Winbond W25Q32JV datasheet, Quad Enable bit).
+# 10k on CS keeps it deselected while the nRF52840 boots.
 part("U3", "Memory_Flash:W25Q32JVSS", "W25Q32JVSNIQ", "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm", 17, 47, {
-    "1": "FLASH_CS", "2": "FLASH_MISO", "3": "+3V3", "4": "GND",
-    "5": "FLASH_MOSI", "6": "FLASH_SCK", "7": "+3V3", "8": "+3V3",
+    "1": "FLASH_CS", "2": "FLASH_IO1", "3": "FLASH_IO2", "4": "GND",
+    "5": "FLASH_IO0", "6": "FLASH_SCK", "7": "FLASH_IO3", "8": "+3V3",
 }, lcsc="C5355146", mpn="W25Q32JVSNIQ")
 C("C5", "100nF", 9, 42.5, "+3V3", fp="Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder",
   lcsc="C14663", mpn="CC0603KRX7R9BB104")
@@ -168,7 +176,7 @@ GROUPS = [
 NOTES = [
     ("J2: wire pads, Qwiic pin order", 7, 25),
     ("On two 1x12 headers: USB, 3.3 V regulator and 2.4 GHz antenna on the module", 7, 61),
-    ("U3: optional SPI flash, 4 MB (WP / HOLD tied high: ERC warns, as intended)", 20, 53.3),
+    ("U3: optional QSPI flash, 4 MB (QE set: pins 3 / 7 are IO2 / IO3)", 20, 53.3),
     ("H1: M2 hole, the case's locating peg", 11, 58.6),
     ("J3: piezo in the lid, PIEZO_P / PIEZO_N in antiphase", 7, 62.5),
     ("LEDs active low: a pin pulled low lights its LED", 7, 64),
@@ -187,14 +195,12 @@ WIRES = [
     ["R9.1", (38, 26), (38, 24)],
     ["R10.1", (32, 29), (32, 27)],
     # --- Pro Micro supply pins
-    # --- SPI flash: VCC rail with C5 and the CS pull-up; WP and HOLD up to it
-    ["U3.8", (17, 40), (31, 40)],
+    # --- QSPI flash: VCC rail with C5 and the CS pull-up
+    ["U3.8", (17, 40), (29, 40)],
     [(9, 40), (17, 40)],
     [(9, 40), "C5.1"],
     [(29, 40), "R11.1"],
     ["R11.2", (29, 44), "U3.1"],
-    ["U3.3", (31, 48)],
-    ["U3.7", (31, 49), (31, 40)],
     ["U1.3", (39, 36.5), (39, 41)],
     ["U1.4", (39, 37.5)],
     ["U1.14", (59, 35.5)],

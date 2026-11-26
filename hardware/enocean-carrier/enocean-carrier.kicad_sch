@@ -1765,11 +1765,6 @@
 		(uuid "20ca42a0-09cc-525d-8ca3-f81704180de8")
 	)
 	(wire
-		(pts (xy 73.66 101.6) (xy 78.74 101.6))
-		(stroke (width 0) (type default))
-		(uuid "994f9c43-f6a2-50ba-a327-320566b55869")
-	)
-	(wire
 		(pts (xy 22.86 101.6) (xy 43.18 101.6))
 		(stroke (width 0) (type default))
 		(uuid "3a9d4fdc-bb99-5d11-a222-7a781e5f8fd9")
@@ -1788,26 +1783,6 @@
 		(pts (xy 73.66 111.76) (xy 53.34 111.76))
 		(stroke (width 0) (type default))
 		(uuid "18084ebc-d8b7-5d57-b52a-b5a910da4078")
-	)
-	(wire
-		(pts (xy 53.34 121.92) (xy 78.74 121.92))
-		(stroke (width 0) (type default))
-		(uuid "f6c00a80-aa6d-54a5-a7fb-ae3a535eb816")
-	)
-	(wire
-		(pts (xy 53.34 124.46) (xy 78.74 124.46))
-		(stroke (width 0) (type default))
-		(uuid "2e5b9807-58b0-51c9-8b42-2e9ab96bb79b")
-	)
-	(wire
-		(pts (xy 78.74 124.46) (xy 78.74 121.92))
-		(stroke (width 0) (type default))
-		(uuid "6dacde3f-0ef8-5a78-bd6a-4ac4f22e3140")
-	)
-	(wire
-		(pts (xy 78.74 121.92) (xy 78.74 101.6))
-		(stroke (width 0) (type default))
-		(uuid "494ad10b-3fda-52d7-8f3a-b0038278e945")
 	)
 	(wire
 		(pts (xy 114.3 92.71) (xy 99.06 92.71))
@@ -2130,18 +2105,6 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "5dcada56-30f1-5b2b-8e91-0ad02039bc17")
-	)
-	(junction
-		(at 73.66 101.6)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "1fb339cd-59f2-5f12-bbca-251c4932d573")
-	)
-	(junction
-		(at 78.74 121.92)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "35e51379-d359-593e-8a5c-072aba666477")
 	)
 	(junction
 		(at 86.36 66.04)
@@ -2575,23 +2538,31 @@
 		(effects (font (size 1.27 1.27)) (justify right bottom))
 		(uuid "97b5c5ad-5b4a-58ef-930a-64e899ab98da")
 	)
-	(label "TCM_NRESET"
+	(label "FLASH_IO1"
 		(at 114.3 100.33 180)
 		(effects (font (size 1.27 1.27)) (justify right bottom))
-		(uuid "c4a3b7a7-dc05-579b-ba7b-b37261e819b4")
+		(uuid "b4844c9d-0129-5520-9682-4b15b7b16802")
 	)
-	(label "FLASH_MOSI"
+	(label "FLASH_IO0"
 		(at 114.3 102.87 180)
 		(effects (font (size 1.27 1.27)) (justify right bottom))
-		(uuid "641c2fd1-6697-5d40-8ae8-333d8f666202")
+		(uuid "c7ef0c21-f041-5e84-b4b0-afd48c060878")
 	)
 	(label "FLASH_CS"
 		(at 114.3 105.41 180)
 		(effects (font (size 1.27 1.27)) (justify right bottom))
 		(uuid "a6624e1e-eea6-5ca6-baab-fdcee5de0e8b")
 	)
-	(no_connect (at 114.3 107.95) (uuid "f5e9c1e1-07fe-5ecd-9546-6e0154ce209f"))
-	(no_connect (at 114.3 110.49) (uuid "4991901f-8cc6-5b18-b836-252fa9cb6441"))
+	(label "FLASH_IO2"
+		(at 114.3 107.95 180)
+		(effects (font (size 1.27 1.27)) (justify right bottom))
+		(uuid "d8a60eef-7746-5cb7-bcb4-9e2190264a5b")
+	)
+	(label "FLASH_IO3"
+		(at 114.3 110.49 180)
+		(effects (font (size 1.27 1.27)) (justify right bottom))
+		(uuid "d624a5b0-8225-50cf-a645-15d410921188")
+	)
 	(no_connect (at 114.3 113.03) (uuid "176ba10a-1ccc-599a-92a1-c3bee9589e0b"))
 	(no_connect (at 139.7 87.63) (uuid "8fcdde68-e065-5227-ae12-16364570dcf1"))
 	(label "NRESET"
@@ -2599,10 +2570,10 @@
 		(effects (font (size 1.27 1.27)) (justify left bottom))
 		(uuid "d04fe98c-7db2-562c-bb33-281a69706fb1")
 	)
-	(label "FLASH_MISO"
+	(label "TCM_NRESET"
 		(at 139.7 97.79 0)
 		(effects (font (size 1.27 1.27)) (justify left bottom))
-		(uuid "7deb0021-9ac0-502f-ae99-2d9185043d2e")
+		(uuid "584decb8-cd8d-54cd-871d-5b4471196312")
 	)
 	(label "TCM_TX"
 		(at 139.7 113.03 0)
@@ -3655,10 +3626,15 @@
 			)
 		)
 	)
-	(label "FLASH_MISO"
+	(label "FLASH_IO1"
 		(at 53.34 119.38 0)
 		(effects (font (size 1.27 1.27)) (justify left bottom))
-		(uuid "58c555f5-1f0f-55ca-bcce-21998a300350")
+		(uuid "d093e270-4778-583d-adc8-a10905b3fd2c")
+	)
+	(label "FLASH_IO2"
+		(at 53.34 121.92 0)
+		(effects (font (size 1.27 1.27)) (justify left bottom))
+		(uuid "e7542d8d-806b-5043-b320-0d9f050f7019")
 	)
 	(symbol
 		(lib_id "power:GND")
@@ -3680,15 +3656,20 @@
 			)
 		)
 	)
-	(label "FLASH_MOSI"
+	(label "FLASH_IO0"
 		(at 53.34 116.84 0)
 		(effects (font (size 1.27 1.27)) (justify left bottom))
-		(uuid "dd59c172-1006-5e7c-8a5c-a51c71b8437d")
+		(uuid "582c61e5-d952-556c-bfbe-a25ac789acbb")
 	)
 	(label "FLASH_SCK"
 		(at 53.34 114.3 0)
 		(effects (font (size 1.27 1.27)) (justify left bottom))
 		(uuid "dc85176b-9633-5c61-8522-570d7155ae64")
+	)
+	(label "FLASH_IO3"
+		(at 53.34 124.46 0)
+		(effects (font (size 1.27 1.27)) (justify left bottom))
+		(uuid "0827c8c8-bd2f-5265-b3fa-7ec9bd401bb9")
 	)
 	(symbol
 		(lib_id "Device:C")
@@ -3899,11 +3880,11 @@
 		(effects (font (size 1.5 1.5)) (justify left bottom))
 		(uuid "95929122-f284-5c90-b5bf-bdcfb29c7b59")
 	)
-	(text "U3: optional SPI flash, 4 MB (WP / HOLD tied high: ERC warns, as intended)"
+	(text "U3: optional QSPI flash, 4 MB (QE set: pins 3 / 7 are IO2 / IO3)"
 		(exclude_from_sim no)
 		(at 50.8 135.382 0)
 		(effects (font (size 1.5 1.5)) (justify left bottom))
-		(uuid "c214043c-30f4-57dd-9c0a-ae83afe90312")
+		(uuid "080bfd37-595e-54b6-9e42-92a1c4fba2a8")
 	)
 	(text "H1: M2 hole, the case's locating peg"
 		(exclude_from_sim no)
