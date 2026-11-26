@@ -120,6 +120,8 @@ OTA_VER = $(shell awk -F' *= *' '/^VERSION_MAJOR/{a=$$2} /^VERSION_MINOR/{b=$$2}
 define ota_build
 	@case "$(BOARD)" in enmt|enmt-dk) ;; *) echo "BOARD=$(BOARD) has no OTA slot: use enmt or enmt-dk"; exit 1;; esac
 	@$(NCS) west build -p always -b $(TARGET) --sysbuild -d $(1) $(APP_DIR) -- $(2) $(BOARD_ARGS)
+	@grep -q '^CONFIG_GATEWAY_OTA=y' $(1)/$(APP)/zephyr/.config || \
+		{ echo "$(APP) is built without OTA (CONFIG_GATEWAY_OTA): no .ota image. Set APP=enocean-gateway or nuki-gateway"; exit 1; }
 	@cp $(1)/$(APP)/zephyr/matter.ota $(1)/$(APP)-$(OTA_VER)-$(BOARD)$(3).ota
 	@echo "OTA image: $(1)/$(APP)-$(OTA_VER)-$(BOARD)$(3).ota"
 endef
