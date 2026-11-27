@@ -1,10 +1,11 @@
 #!/bin/sh
-# Builds the Adafruit nRF52 UF2 bootloader 0.11.0 with the EnMT three-LED pattern, for the
-# boards enmt (carrier) and enmt_dk (nRF52840 DK), with the nRF Connect SDK's Zephyr GCC.
+# Builds the Adafruit nRF52 UF2 bootloader 0.11.0 with the EnMT LED pattern, for the boards
+# enmt (carrier), enmt_dk (nRF52840 DK) and promicro (bare Pro Micro nRF52840, its single LED),
+# with the nRF Connect SDK's Zephyr GCC.
 # Output: out/<board>_bootloader-<ver>_nosd.hex (MBR + bootloader, for nrfjprog)
 #         out/update-<board>_bootloader-<ver>_nosd.uf2 (drop on a running UF2 drive)
 #
-#   ./build.sh [board ...]     default: enmt enmt_dk
+#   ./build.sh [board ...]     default: enmt enmt_dk promicro
 set -e
 
 TAG=0.11.0
@@ -32,7 +33,7 @@ for b in "$HERE"/boards/*/; do
 done
 
 mkdir -p "$HERE/out"
-for board in ${@:-enmt enmt_dk}; do
+for board in ${@:-enmt enmt_dk promicro}; do
 	name=${board}_bootloader-$VERSION
 	# Clean build: the Makefile doesn't track header or CFLAGS dependencies, so objects of
 	# unchanged sources would keep old values (e.g. the staging address in msc_uf2.o)

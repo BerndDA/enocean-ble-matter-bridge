@@ -10,6 +10,12 @@
  *   UF2 drive ready       a light sweeps green → yellow → red → yellow → … (1.6 s per pass)
  *   writing a .uf2        all three pulse together (0.4 s); then the bootloader starts the app
  *   BLE DFU connected     green breathes (only boards without NO_BLE_OTA, with a SoftDevice)
+ *
+ * Boards with a single LED (LEDS_NUMBER 1, LED_PRIMARY; boards/promicro) get the same modes on it:
+ *   no USB host           breathes (2 s)
+ *   UF2 drive ready       heartbeat: two quick pulses, then a pause (1.6 s)
+ *   writing a .uf2        fast pulse (0.4 s)
+ *   BLE DFU connected     breathes (2 s)
  */
 
 #ifndef ENMT_LEDS_H
@@ -49,6 +55,7 @@ static uint16_t enmt_duty(uint32_t level) {
 #endif
 }
 
+#if LEDS_NUMBER > 2
 // Light position 0..512 (green 0, yellow 256, red 512): each LED fades with its distance to it.
 static void enmt_sweep(uint32_t millis, uint32_t period) {
   uint32_t const pos = 2 * enmt_triangle(millis, period);
@@ -67,7 +74,15 @@ static void enmt_breathe(uint32_t millis, uint32_t period, uint32_t lit) {
   led_pwm_duty_cycle(LED_SECONDARY, enmt_duty(lit == LED_SECONDARY ? level : 0));
   led_pwm_duty_cycle(LED_TERTIARY, enmt_duty(lit == LED_TERTIARY ? level : 0));
 }
+#else
+// Two pulses of 300 ms, then dark for the rest of the period.
+static uint32_t enmt_heartbeat(uint32_t millis, uint32_t period) {
+  uint32_t const phase = millis % period;
+  return phase < 600 ? enmt_triangle(phase, 300) : 0;
+}
+#endif
 
+#if LEDS_NUMBER > 2
 void led_tick(void) {
   uint32_t const millis = _systick_count;
 
@@ -94,6 +109,31 @@ void led_tick(void) {
       break;
   }
 }
+#elif LEDS_NUMBER == 1
+void led_tick(void) {
+  uint32_t const millis = _systick_count;
+  uint32_t level;
+
+  switch (_enmt_mode) {
+    case ENMT_MODE_READY:
+      level = enmt_heartbeat(millis, 1600);
+      break;
+
+    case ENMT_MODE_WRITING:
+      level = enmt_triangle(millis, 400);
+      break;
+
+    case ENMT_MODE_BLE:
+    case ENMT_MODE_NO_HOST:
+    default:
+      level = enmt_triangle(millis, 2000);
+      break;
+  }
+  led_pwm_duty_cycle(LED_PRIMARY, enmt_duty(level));
+}
+#else
+#error "enmt_leds.h: LEDS_NUMBER must be 1 or 3"
+#endif
 
 void led_state(uint32_t state) {
   switch (state) {
